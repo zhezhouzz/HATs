@@ -1,0 +1,12 @@
+(library
+ (name language)
+ (wrapped false)
+ (modules
+   ty
+   constant
+   corelang
+   language
+ )
+ (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
+ (libraries zzdatatype utils)
+)
