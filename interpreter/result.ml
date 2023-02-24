@@ -1,20 +1,13 @@
-module type T = sig
-  type repr [@@deriving sexp]
-  type res [@@deriving sexp]
-  type effi = int [@@deriving sexp]
-end
-
-module T : T = struct
+module F (C: Corelang.T): T = struct
   open Sexplib.Std
 
-  type repr = BI of int | BU | F of { farg : string; fbody : res }
-  [@@deriving sexp]
+  type constant = Constant.t [@@deriving sexp]
 
-  and res =
-    | V of repr
-    | E of { inst : int; arg : repr; karg : string; kbody : res }
-  [@@deriving sexp]
-
-  type effi = int [@@deriving sexp]
-  (* type effhd = { harg : string; hbody : res } [@@deriving sexp] *)
+  type evalue =
+    | EVConst of constant
+    | EVEffi of int
+    | EVLam of {evlamarg: string, evlambody: C.}
+  and eres =
+    | ERVal of evalue
+    | EREffCall of {ereffi: int; erarg: value; era}
 end

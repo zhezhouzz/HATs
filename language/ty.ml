@@ -2,7 +2,7 @@ module type T = sig
   type t [@@deriving sexp]
 end
 
-module Ty : T = struct
+module Ty = struct
   type t =
     | TyUnit
     | TyInt
@@ -12,7 +12,7 @@ module Ty : T = struct
   [@@deriving sexp]
 end
 
-module OptTy : T = struct
+module OptTy = struct
   open Sexplib.Std
 
   type t = Ty.t option [@@deriving sexp]
