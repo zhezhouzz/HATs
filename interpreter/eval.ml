@@ -24,7 +24,7 @@ module F = struct
     | StHandleInner of rule
     | StHandleShift
     | StHandleRet
-    | StHandleHandle
+    | StHandlePerform of (string typed * value typed list)
 
   let rec layout_rule = function
     | StLetERhs rule -> spf "StLetERhs %s" (layout_rule rule)
@@ -34,7 +34,9 @@ module F = struct
     | StHandleInner rule -> spf "StHandleInner %s" (layout_rule rule)
     | StHandleShift -> "StHandleShift"
     | StHandleRet -> "StHandleRet"
-    | StHandleHandle -> "StHandleHandle"
+    | StHandlePerform (op, args) ->
+        spf "StHandlePerform %s(%s)" op.x
+          (List.split_by_comma layout_value args)
 
   let layout_comp = layout_comp
   let box = mk_noty (CVal (VVar "□"))
@@ -99,7 +101,7 @@ module F = struct
                            (k :: rhsargs))
                         hbody
                     in
-                    BRComp (StHandleHandle, res))
+                    BRComp (StHandlePerform (rhsop, rhsargs), res))
             | _, _ -> (
                 match aux handled_prog with
                 | BRComp (rule, handled_prog) ->
@@ -184,10 +186,10 @@ module F = struct
     eloop comp
 
   let example_prog =
-    let x = mk_tvar "x" in
-    let y = mk_tvar "x" in
-    let z = mk_tvar "z" in
-    let k = mk_tvar "k" in
+    let x = mk_var "x" in
+    let y = mk_var "x" in
+    let z = mk_var "z" in
+    let k = mk_var "k" in
     let retbody = x in
     let hbody = mk_letapp y k x y in
     let mk_hd op = mk_single_handler op retbody hbody in
@@ -201,10 +203,10 @@ module F = struct
          (mk_hd "unlock")
 
   let put_get_prog =
-    let x = mk_tvar "x" in
-    let y = mk_tvar "x" in
-    let z = mk_tvar "z" in
-    let k = mk_tvar "k" in
+    let x = mk_var "x" in
+    let y = mk_var "x" in
+    let z = mk_var "z" in
+    let k = mk_var "k" in
     let retbody = x in
     let get_hd = mk_single_handler "get" retbody (mk_letapp y k (mk_int 3) y) in
     let put_hd = mk_single_handler "put" retbody (mk_letapp y k mk_unit y) in

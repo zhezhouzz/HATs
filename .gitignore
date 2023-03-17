@@ -1,3 +1,4 @@
+.ocamlformat
 *.annot
 *.cmo
 *.cma

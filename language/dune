@@ -3,6 +3,7 @@
  (wrapped false)
  (modules
    ty
+   typed
    constant
    corelang
    language

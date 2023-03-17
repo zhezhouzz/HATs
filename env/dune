@@ -1,0 +1,10 @@
+(library
+ (name env)
+ (wrapped false)
+ (modules
+   env
+ )
+ (libraries core utils)
+ (preprocess (pps ppx_inline_test ppx_assert ppx_optcomp ppx_compare ppx_sexp_conv))
+ (inline_tests)
+)
