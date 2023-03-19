@@ -59,6 +59,7 @@ module F = struct
     let rec aux comp =
       let res =
         match comp.x with
+        | CErr -> failwith "end by CErr"
         | CVal v -> BRValue { x = v; ty = comp.ty }
         | CWithH { handler; handled_prog } -> (
             match (handled_prog.x, handler.x) with

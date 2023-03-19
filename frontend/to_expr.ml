@@ -3,7 +3,7 @@ open Ocaml_parser
 open Parsetree
 open Zzdatatype.Datatype
 module Type = Normalty.Frontend
-module L = Ast.Termlang
+open Language.OptTypedTermlang
 
 let get_if_rec flag =
   match flag with Asttypes.Recursive -> true | Asttypes.Nonrecursive -> false
@@ -25,22 +25,22 @@ let rec expr_to_ocamlexpr expr =
   desc_to_ocamlexpr @@ typed_expr_to_ocamlexpr_desc expr
 
 and typed_expr_to_ocamlexpr_desc expr =
-  match expr.L.ty with
-  | None -> expr_to_ocamlexpr_desc expr.L.x
+  match expr.ty with
+  | None -> expr_to_ocamlexpr_desc expr.x
   | Some ty ->
       Pexp_constraint
-        ( desc_to_ocamlexpr @@ expr_to_ocamlexpr_desc expr.L.x,
-          Type.notated_t_to_core_type ty )
+        ( desc_to_ocamlexpr @@ expr_to_ocamlexpr_desc expr.x,
+          Type.t_to_core_type ty )
 
 and expr_to_ocamlexpr_desc expr =
   let aux expr =
     match expr with
-    | L.Exn -> Pexp_ident (mk_idloc [ "Exn" ])
-    | L.Tu es -> Pexp_tuple (List.map expr_to_ocamlexpr es)
-    | L.Var var -> Pexp_ident (mk_idloc [ var ])
-    | L.Const v -> (Value.value_to_expr v).pexp_desc
-    | L.Let (_, [], _, _) -> failwith "die"
-    | L.Let (if_rec, names, e, body) ->
+    | Err -> Pexp_ident (mk_idloc [ "Err" ])
+    | Tu es -> Pexp_tuple (List.map expr_to_ocamlexpr es)
+    | Var var -> Pexp_ident (mk_idloc [ var ])
+    | Const v -> (Value.value_to_expr v).pexp_desc
+    | Let (_, [], _, _) -> failwith "die"
+    | Let { if_rec; lhs; rhs; letbody } ->
         let flag =
           if if_rec then Asttypes.Recursive else Asttypes.Nonrecursive
         in
@@ -48,36 +48,35 @@ and expr_to_ocamlexpr_desc expr =
           {
             pvb_pat =
               Pat.slang_to_pattern
-                L.(
-                  make_untyped
-                  @@ Tu
-                       (List.map
-                          (fun (ty, id) -> { ty = Some ty; x = Var id })
-                          names));
+                (make_untyped
+                @@ Tu
+                     (List.map
+                        (fun (ty, id) -> { ty = Some ty; x = Var id })
+                        names));
             pvb_expr = expr_to_ocamlexpr e;
             pvb_attributes = [];
             pvb_loc = Location.none;
           }
         in
         Pexp_let (flag, [ vb ], expr_to_ocamlexpr body)
-    | L.App (func, args) ->
+    | App (func, args) ->
         let func = expr_to_ocamlexpr func in
         let args =
           List.map (fun x -> (Asttypes.Nolabel, expr_to_ocamlexpr x)) args
         in
         Pexp_apply (func, args)
-    | L.Op (op, args) ->
+    | Op (op, args) ->
         let func =
-          expr_to_ocamlexpr L.{ ty = None; x = Var (Op.T.op_to_string op) }
+          expr_to_ocamlexpr { ty = None; x = Var (Op.T.op_to_string op) }
         in
         let args =
           List.map (fun x -> (Asttypes.Nolabel, expr_to_ocamlexpr x)) args
         in
         Pexp_apply (func, args)
-    | L.Ite (e1, e2, e3) ->
+    | Ite (e1, e2, e3) ->
         let e1, e2, e3 = Sugar.map3 expr_to_ocamlexpr (e1, e2, e3) in
         Pexp_ifthenelse (e1, e2, Some e3)
-    | L.Match (case_target, cs) ->
+    | Match (case_target, cs) ->
         let case_target = expr_to_ocamlexpr case_target in
         let cases =
           List.map
@@ -85,14 +84,14 @@ and expr_to_ocamlexpr_desc expr =
               {
                 pc_lhs =
                   Pat.slang_to_pattern
-                    L.(make_untyped_id_app (case.L.constructor.x, case.L.args));
+                    (make_untyped_id_app (case.constructor.x, case.args));
                 pc_guard = None;
-                pc_rhs = expr_to_ocamlexpr case.L.exp;
+                pc_rhs = expr_to_ocamlexpr case.exp;
               })
             cs
         in
         Pexp_match (case_target, cases)
-    | L.Lam (ty, x, rankfunc, body) ->
+    | Lam (ty, x, rankfunc, body) ->
         let ext =
           match rankfunc with
           | None -> []
@@ -111,7 +110,7 @@ and expr_to_ocamlexpr_desc expr =
         let flag = Asttypes.Nolabel in
         (* let body = *)
         (*   let e = expr_to_ocamlexpr body in *)
-        (*   match body.L.ty with *)
+        (*   match body.ty with *)
         (*   | None -> e *)
         (*   | Some tp -> *)
         (*       desc_to_ocamlexpr @@ Pexp_constraint (e, Type.t_to_core_type tp) *)
@@ -120,17 +119,17 @@ and expr_to_ocamlexpr_desc expr =
           ( flag,
             None,
             {
-              (Pat.slang_to_pattern L.{ ty = Some ty; x = Var x }) with
+              (Pat.slang_to_pattern { ty = Some ty; x = Var x }) with
               ppat_attributes = ext;
             },
             expr_to_ocamlexpr body )
-    (* | L.Lam (x :: t, body) -> *)
+    (* | Lam (x :: t, body) -> *)
     (*     let flag = Asttypes.Nolabel in *)
     (*     Pexp_fun *)
     (*       ( flag, *)
     (*         None, *)
-    (*         Pat.slang_to_pattern (L.typedstr_to_var x), *)
-    (*         expr_to_ocamlexpr @@ L.make_untyped @@ L.Lam (t, body) ) *)
+    (*         Pat.slang_to_pattern (typedstr_to_var x), *)
+    (*         expr_to_ocamlexpr @@ make_untyped @@ Lam (t, body) ) *)
   in
   aux expr
 
@@ -155,17 +154,16 @@ let expr_of_ocamlexpr expr =
           (Printf.sprintf "expr, handel id: %s"
           @@ Zzdatatype.Datatype.StrList.to_string ids)
   in
-  let id_to_var id = L.(make_untyped @@ Var (handle_id id)) in
+  let id_to_var id = make_untyped @@ Var (handle_id id) in
   let rec aux expr =
     match expr.pexp_desc with
-    | Pexp_tuple es -> L.(make_untyped @@ Tu (List.map aux es))
+    | Pexp_tuple es -> make_untyped @@ Tu (List.map aux es)
     | Pexp_constraint (expr, ty) -> (
         let e = aux expr in
         let ty = Type.core_type_to_t ty in
-        L.(
-          match e.ty with
-          | None -> { ty = Some (None, ty); x = e.x }
-          | Some _ -> failwith "multi typed"))
+        match e.ty with
+        | None -> { ty = Some (None, ty); x = e.x }
+        | Some _ -> failwith "multi typed")
     | Pexp_ident id -> id_to_var id
     | Pexp_construct (c, args) -> (
         (* let () = *)
@@ -174,21 +172,20 @@ let expr_of_ocamlexpr expr =
         let c = handle_id c in
         (* let () = Printf.printf "Pat: %s\n" c in *)
         match c with
-        | "Exn" -> L.{ ty = Some (None, Ty_unknown); x = Exn }
-        | "true" -> L.{ ty = Some (None, Ty_bool); x = Const (Value.V.B true) }
-        | "false" ->
-            L.{ ty = Some (None, Ty_bool); x = Const (Value.V.B false) }
+        | "Err" -> { ty = Some (None, Ty_unknown); x = Err }
+        | "true" -> { ty = Some (None, Ty_bool); x = Const (Value.V.B true) }
+        | "false" -> { ty = Some (None, Ty_bool); x = Const (Value.V.B false) }
         | _ -> (
-            let c = L.(make_untyped @@ Var c) in
+            let c = make_untyped @@ Var c in
             match args with
             | None -> handle_app c []
             | Some args -> (
                 let args = aux args in
                 match args.x with
-                | L.Var _ -> handle_app c [ args ]
-                | L.Tu es -> handle_app c es
+                | Var _ -> handle_app c [ args ]
+                | Tu es -> handle_app c es
                 | _ -> failwith "die")))
-    | Pexp_constant _ -> L.(make_untyped @@ Const (Value.expr_to_value expr))
+    | Pexp_constant _ -> make_untyped @@ Const (Value.expr_to_value expr)
     | Pexp_let (flag, vbs, e) ->
         List.fold_right
           (fun vb body ->
@@ -196,45 +193,40 @@ let expr_of_ocamlexpr expr =
             let leftvars = Pat.to_typed_slang leftvar in
             let leftvars =
               List.map
-                L.(
-                  fun x ->
-                    match x.ty with
-                    | None ->
-                        failwith
-                          "Syntax error: let binding should provide types"
-                    | Some ty -> (ty, x.x))
+                (fun x ->
+                  match x.ty with
+                  | None ->
+                      failwith "Syntax error: let binding should provide types"
+                  | Some ty -> (ty, x.x))
                 leftvars
             in
             (* let _ = *)
             (*   Printf.printf "leftvar: %s --> %s\n" (Pat.layout_ vb.pvb_pat) *)
             (*     (List.split_by_comma *)
             (*        (fun x -> *)
-            (*          Printf.sprintf "%s:%s" x.L.x *)
+            (*          Printf.sprintf "%s:%s" x.x *)
             (*            (match x.ty with *)
             (*            | None -> "none" *)
             (*            | Some ty -> Type.layout ty)) *)
             (*        leftvars) *)
             (* in *)
-            L.(
-              make_untyped
-              @@ Let (get_if_rec flag, leftvars, aux vb.pvb_expr, body)))
+            make_untyped
+            @@ Let (get_if_rec flag, leftvars, aux vb.pvb_expr, body))
           vbs (aux e)
     | Pexp_apply (func, args) ->
         let args = List.map (fun x -> aux @@ snd x) args in
         handle_app (aux func) args
     | Pexp_ifthenelse (e1, e2, Some e3) ->
-        L.(make_untyped @@ Ite (aux e1, aux e2, aux e3))
+        make_untyped @@ Ite (aux e1, aux e2, aux e3)
     | Pexp_ifthenelse (_, _, None) -> raise @@ failwith "no else branch in ite"
     | Pexp_match (case_target, cases) ->
         let get_constructor x =
-          match L.term_to_string_opt x with
+          match term_to_string_opt x with
           | Some x -> (x, [])
           | None -> (
               match x.x with
-              | L.App (id, ids) -> (
-                  match
-                    (L.term_to_string_opt id, L.terms_to_strings_opt ids)
-                  with
+              | App (id, ids) -> (
+                  match (term_to_string_opt id, terms_to_strings_opt ids) with
                   | Some id, Some ids -> (id, ids)
                   | _ -> failwith "pexp match")
               | _ -> failwith "pexp match")
@@ -243,8 +235,8 @@ let expr_of_ocamlexpr expr =
         (*   let e = aux match_arg in *)
         (*   let rec aux e = *)
         (*     match e with *)
-        (*     | L.Var (_, var) -> [ var ] *)
-        (*     | L.Tu vars -> List.flatten @@ List.map aux vars *)
+        (*     | Var (_, var) -> [ var ] *)
+        (*     | Tu vars -> List.flatten @@ List.map aux vars *)
         (*     | _ -> failwith "parser: wrong format in match" *)
         (*   in *)
         (*   aux e *)
@@ -256,10 +248,10 @@ let expr_of_ocamlexpr expr =
               let exp = aux case.pc_rhs in
               let pat = Pat.pattern_to_slang case.pc_lhs in
               let constructor, args = get_constructor pat in
-              L.{ constructor = { ty = None; x = constructor }; args; exp })
+              { constructor = { ty = None; x = constructor }; args; exp })
             cases
         in
-        L.(make_untyped @@ Match (aux case_target, cs))
+        make_untyped @@ Match (aux case_target, cs)
     | Pexp_fun (_, _, arg, expr) ->
         (* let () = Printf.printf "has ext: %s\n" (Pat.layout_ arg) in *)
         let rank_func =
@@ -277,17 +269,17 @@ let expr_of_ocamlexpr expr =
         in
         let arg = Pat.pattern_to_slang arg in
         let ty =
-          match arg.L.ty with
+          match arg.ty with
           | None ->
               failwith "Syntax error: lambda function should provide types"
           | Some ty -> ty
         in
         let x =
-          match arg.L.x with
-          | L.Var x -> x
+          match arg.x with
+          | Var x -> x
           | _ -> failwith "Syntax error: lambda function wrong argument"
         in
-        L.(make_untyped @@ Lam (ty, x, rank_func, aux expr))
+        make_untyped @@ Lam (ty, x, rank_func, aux expr)
         (* un-curry *)
     | _ ->
         raise
@@ -296,15 +288,15 @@ let expr_of_ocamlexpr expr =
              @@ Pprintast.string_of_expression expr)
   and handle_app func args =
     let prim =
-      match func.L.x with
-      | L.Var prim -> Abstraction.Prim.normal_check_if_is_known_prims prim
+      match func.x with
+      | Var prim -> Abstraction.Prim.normal_check_if_is_known_prims prim
       | _ -> None
     in
     match prim with
-    | Some (Op.T.PrimOp op, _) -> L.(make_untyped @@ Op (op, args))
+    | Some (Op.T.PrimOp op, _) -> make_untyped @@ Op (op, args)
     | Some (Op.T.DtConstructor f, _) | Some (Op.T.External f, _) ->
-        L.(make_untyped @@ App ({ x = Var f; ty = None }, args))
-    | None -> L.(make_untyped @@ App (func, args))
+        make_untyped @@ App ({ x = Var f; ty = None }, args)
+    | None -> make_untyped @@ App (func, args)
   in
   aux expr
 

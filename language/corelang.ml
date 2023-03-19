@@ -21,6 +21,7 @@ module type T = sig
   and handler = { ret_case : ret_case; handler_cases : handler_case list }
 
   and comp =
+    | CErr
     | CVal of value
     | CLetE of { lhs : string typed; rhs : comp typed; letbody : comp typed }
     | CLetApp of {
@@ -43,6 +44,7 @@ module type T = sig
   val var_ : string -> comp
   val mk_unit : comp typed
   val mk_int : int -> comp typed
+  val mk_bool : bool -> comp typed
   val mk_var : string -> comp typed
   val to_v_ : comp -> value
   val to_comp_ : value -> comp
@@ -67,7 +69,7 @@ module type T = sig
   val do_subst : (string * value typed) list -> comp typed -> comp typed
 end
 
-module F (Ty : Typed.T) : T = struct
+module F (Ty : Typed.T) : T with type t = Ty.t = struct
   open Sexplib.Std
 
   type constant = Constant.t [@@deriving sexp]
@@ -92,6 +94,7 @@ module F (Ty : Typed.T) : T = struct
   and handler = { ret_case : ret_case; handler_cases : handler_case list }
 
   and comp =
+    | CErr
     | CVal of value
     | CLetE of { lhs : string typed; rhs : comp typed; letbody : comp typed }
     | CLetApp of {
@@ -109,11 +112,13 @@ module F (Ty : Typed.T) : T = struct
     | CWithH of { handler : handler typed; handled_prog : comp typed }
   [@@deriving sexp]
 
-  let unit_ = CVal (VConst Constant.Unit)
-  let int_ i = CVal (VConst (Constant.Int i))
+  let unit_ = CVal (VConst Constant.U)
+  let int_ i = CVal (VConst (Constant.I i))
+  let bool_ i = CVal (VConst (Constant.B i))
   let var_ name = CVal (VVar name)
   let mk_unit = unit_ #: unit_ty
   let mk_int i = (int_ i) #: int_ty
+  let mk_bool i = (bool_ i) #: bool_ty
   let mk_var name : comp typed = mk_noty @@ var_ name
 
   open Sugar
@@ -208,6 +213,7 @@ module F (Ty : Typed.T) : T = struct
     layout_typed
       (fun (compx : comp) ->
         match compx with
+        | CErr -> "Err"
         | CVal v -> layout_value { x = v; ty = comp.ty }
         | CLetE { lhs; rhs; letbody } ->
             spf "let %s = %s in %s"
@@ -270,6 +276,7 @@ module F (Ty : Typed.T) : T = struct
   and do_subst_comp (x, v) e : comp typed =
     let ex =
       match e.x with
+      | CErr -> CErr
       | CVal _ -> (to_comp @@ do_subst_value (x, v) @@ to_v e).x
       | CWithH { handler; handled_prog } ->
           CWithH

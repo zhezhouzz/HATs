@@ -1,0 +1,16 @@
+(library
+ (name frontend)
+ (wrapped false)
+ (libraries utils language normalty core ocaml_parser env)
+ (modules
+   ; anormal
+   ; to_expr
+   ; pat
+   ; structure
+   ; typedec
+   to_pat
+   to_const
+ )
+ (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert))
+ (inline_tests)
+)

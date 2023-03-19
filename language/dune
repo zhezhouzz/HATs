@@ -2,12 +2,13 @@
  (name language)
  (wrapped false)
  (modules
-   ty
-   typed
+   ; ty
+   ; typed
    constant
+   termlang
    corelang
    language
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
- (libraries zzdatatype utils)
+ (libraries zzdatatype utils normalty)
 )

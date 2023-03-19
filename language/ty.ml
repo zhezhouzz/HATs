@@ -1,9 +1,11 @@
 module type T = sig
   type t [@@deriving sexp]
 
+  val eq : t -> t -> bool
   val default_ty : t
   val unit_ty : t
   val int_ty : t
+  val bool_ty : t
   val mk_arr : t -> t -> t
   val mk_effarr : t -> t -> t
   val mk_hdarr : t -> t -> t
@@ -13,16 +15,30 @@ end
 
 module Ty = struct
   type t =
+    | TyAny
     | TyUnit
     | TyInt
+    | TyBool
     | TyArr of t * t
     | TyEffArr of t * t
     | TyHdArr of t * t
   [@@deriving sexp]
 
+  let eq x y =
+    let rec aux (x, y) =
+      match (x, y) with
+      | TyAny, TyAny | TyUnit, TyUnit | TyBool, TyBool | TyInt, TyInt -> true
+      | TyArr (x, x'), TyArr (y, y') -> aux (x, y) && aux (x', y')
+      | TyEffArr (x, x'), TyEffArr (y, y') -> aux (x, y) && aux (x', y')
+      | TyHdArr (x, x'), TyHdArr (y, y') -> aux (x, y) && aux (x', y')
+      | _, _ -> false
+    in
+    aux (x, y)
+
   let default_ty = TyUnit
   let unit_ty = TyUnit
   let int_ty = TyInt
+  let bool_ty = TyBool
   let mk_arr t1 t2 = TyArr (t1, t2)
   let mk_effarr t1 t2 = TyEffArr (t1, t2)
   let mk_hdarr t1 t2 = TyHdArr (t1, t2)
@@ -50,6 +66,14 @@ module OptTy = struct
   let default_ty = None
   let unit_ty = Some Ty.TyUnit
   let int_ty = Some Ty.TyInt
+  let bool_ty = Some Ty.TyBool
+  let some_ty (ty : Ty.t) : t = Some ty
+
+  let eq x y =
+    match (x, y) with
+    | None, None -> true
+    | Some x, Some y -> Ty.eq x y
+    | _, _ -> false
 
   let mk_arr t1 t2 =
     match (t1, t2) with

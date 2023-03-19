@@ -9,7 +9,7 @@ module type T = sig
   val layout_typed : ('a -> string) -> 'a typed -> string
 end
 
-module F (Ty : Ty.T) : T = struct
+module F (Ty : Ty.T) : T with type t = Ty.t = struct
   include Ty
 
   type 'a typed = { x : 'a; ty : Ty.t } [@@deriving sexp]
