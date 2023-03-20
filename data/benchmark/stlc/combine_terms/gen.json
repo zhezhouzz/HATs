@@ -1,0 +1,11 @@
+{
+    "mps": [
+        "typing",
+        "size_app",
+        "typing_var",
+        "no_app",
+        "is_const",
+        "is_abs"
+    ],
+    "libs": ["or_var_in_typectx"]
+}

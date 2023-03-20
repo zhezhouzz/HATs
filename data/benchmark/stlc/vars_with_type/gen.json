@@ -1,0 +1,8 @@
+{
+    "mps": [
+        "gamma_size", "typing_var", "is_var_in_range"
+    ],
+    "libs": [
+        "vars_with_type_size"
+    ]
+}

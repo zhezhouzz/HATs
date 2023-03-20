@@ -2,7 +2,7 @@ open Sugar
 open Zzdatatype.Datatype
 
 module F = struct
-  open Language.OptTypedCoreEff
+  open Ast.OptTypedCoreEff
   (* open Constant *)
 
   exception ReductionErr of string

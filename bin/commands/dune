@@ -1,0 +1,13 @@
+(library
+ (name commands)
+ (libraries utils core core_unix.sys_unix frontend env qcheck language
+            ; translate typecheck
+ )
+ (modules
+   caux
+   ctest
+   cgen
+ )
+ (preprocess (pps ppx_inline_test ppx_assert ppx_jane))
+ (inline_tests)
+)

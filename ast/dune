@@ -1,0 +1,15 @@
+(library
+ (name ast)
+ (wrapped false)
+ (modules
+   constant
+   pmop
+   termlang
+   corelang
+   type_dec
+   typectx
+   ast
+ )
+ (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
+ (libraries zzdatatype utils normalty env)
+)

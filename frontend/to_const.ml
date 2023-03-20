@@ -1,4 +1,4 @@
-module C = Language.Const
+module C = Ast.Const
 open Ocaml_parser
 open Parsetree
 open Sugar

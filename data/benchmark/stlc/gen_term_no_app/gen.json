@@ -1,0 +1,10 @@
+{
+  "mps": [
+    "size",
+      "typing",
+    "no_app"
+  ],
+  "libs": [
+    "gen_term_no_app_size"
+  ]
+}

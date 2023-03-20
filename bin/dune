@@ -1,4 +1,10 @@
+(env
+ (dev
+  (flags (:standard -w -32 -w -35 -w -27 -w -33 -w -26)))
+)
 (executable
- (public_name coreeff)
  (name main)
- (libraries interpreter))
+ (modules main)
+ (libraries core core_unix.command_unix commands)
+ (preprocess (pps ppx_jane))
+)

@@ -1,25 +1,38 @@
 module Ty = struct
-  include Normalty.Ntyped
+  include Ast.Ty
 end
 
 module OptTy = struct
-  include Normalty.NOpttyped
+  include Ast.OptTy
 end
 
-module TypedCoreEff = Corelang.F (Ty)
+module TypedCoreEff = struct
+  include Ast.TypedCoreEff
+end
 
 module OptTypedCoreEff = struct
-  include Corelang.F (OptTy)
+  include Ast.OptTypedCoreEff
 end
 
-module TypedTermlang = Termlang.F (Ty)
+module TypedTermlang = struct
+  include Ast.TypedTermlang
+end
 
 module OptTypedTermlang = struct
-  include Termlang.F (OptTy)
-  (* open Sugar *)
+  include Ast.OptTypedTermlang
 
-  let de_typed_tuple { x; ty } = match x with Tu es -> es | _ -> [ { x; ty } ]
+  let layout = To_expr.layout
+end
+
+module Structure = struct
+  include Ast.StructureRaw
+end
+
+module NTypectx = struct
+  include Ast.NTyped
 end
 
 (* unwrap *)
-module Const = Constant
+module Const = Ast.Const
+module Pmop = Ast.Pmop
+module Type_dec = Ast.Type_dec

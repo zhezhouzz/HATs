@@ -1,5 +1,6 @@
-open Interpreter.Eval.F;;
+open Core
+open Commands
 
-(* let _ = Printf.printf "Compuation:\n%s\n" @@ layout_comp example_prog in *)
-let _ = eval put_get_prog in
-()
+(* let command = Command.group ~summary:"main " [ ("test", Ctest.test) ] *)
+
+let () = Command_unix.run Ctest.test

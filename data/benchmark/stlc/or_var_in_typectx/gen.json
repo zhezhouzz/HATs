@@ -1,0 +1,9 @@
+{
+    "mps": [
+        "typing",
+        "size_app",
+        "typing_var",
+        "no_app"
+    ],
+    "libs": ["vars_with_type"]
+}

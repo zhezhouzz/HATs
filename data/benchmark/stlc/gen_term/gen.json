@@ -1,0 +1,10 @@
+{
+  "mps": [
+    "dec_pair",
+    "size",
+    "typing"
+  ],
+  "libs": [
+    "gen_term_size"
+  ]
+}

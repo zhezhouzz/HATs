@@ -1,0 +1,8 @@
+{
+    "mps": [
+        "ty_size", "type_eq_spec"
+    ],
+    "libs": [
+        "type_eq_size"
+    ]
+}

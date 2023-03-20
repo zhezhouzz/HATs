@@ -1,0 +1,8 @@
+(library
+ (name ntypecheck)
+ (wrapped true)
+ (libraries utils language core env)
+ (modules
+   ntypecheck
+   aux
+))
