@@ -18,24 +18,24 @@ let mk_constr_types { constr_name; argsty } retty =
   constr_name #: (construct_normal_tp (argsty, retty))
 
 open Zzdatatype.Datatype
-open Sugar
 
 let rec construct_eff_tp = function
   | [], retty -> retty
   | h :: t, retty -> Ty_arrow (Some Leff.EffArr, h, construct_eff_tp (t, retty))
 
 let mk_ctx_ { type_name; type_params; type_decls } =
-  match type_name with
-  | "effect" ->
-      List.map
-        (fun x ->
-          match List.last_destruct_opt x.argsty with
-          | None -> _failatwith __FILE__ __LINE__ "?"
-          | Some (args, retty) ->
-              x.constr_name #: (construct_eff_tp (args, retty)))
-        type_decls
-  | _ ->
-      let retty = name_to_ctype type_name type_params in
-      List.map (fun x -> mk_constr_types x retty) type_decls
+  (* let open Sugar in *)
+  (* match type_name with *)
+  (* | "effect" -> *)
+  (*     List.map *)
+  (*       (fun x -> *)
+  (*         match List.last_destruct_opt x.argsty with *)
+  (*         | None -> _failatwith __FILE__ __LINE__ "?" *)
+  (*         | Some (args, retty) -> *)
+  (*             x.constr_name #: (construct_eff_tp (args, retty))) *)
+  (*       type_decls *)
+  (* | _ -> *)
+  let retty = name_to_ctype type_name type_params in
+  List.map (fun x -> mk_constr_types x retty) type_decls
 
 let mk_ctx es = List.concat @@ List.map mk_ctx_ es

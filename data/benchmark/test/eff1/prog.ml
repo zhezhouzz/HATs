@@ -1,6 +1,3 @@
-type 'a effect =
-  | Put of int * unit
-  | Get of int * int
-  | Dummy of ((int * int) * int) * unit
+val dummy : eff:int * int -> eff:int -> unit
 
-let x = perform (Dummy ((2, 3), 2))
+let x = perform (dummy (2, 3) 2)

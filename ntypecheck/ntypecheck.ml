@@ -189,6 +189,10 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
       | None -> _failatwith __FILE__ __LINE__ "hd should be typed"
       | Some hdty -> hdty
     in
+    let () =
+      if NTyped.is_hd_arr hdty then ()
+      else _failatwith __FILE__ __LINE__ "handler should has typed hd:A -> B"
+    in
     let { ret_case; handler_cases } = hd.x in
     let argty = NTyped.get_argty hdty in
     let retty = NTyped.get_retty hdty in
@@ -220,13 +224,13 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           (Lam { lamarg; lambody }, ty)
       | Perform { rhsop; rhsargs } ->
           let rhsop_ty = infer_op topctx (Pmop.DtConstructor rhsop.x) in
+          let () =
+            if NTyped.is_eff_arr rhsop_ty then ()
+            else
+              _failatwith __FILE__ __LINE__ "effect type has to be eff:A -> B"
+          in
           let rhsop = _unify_update __FILE__ __LINE__ rhsop_ty rhsop in
           let argsty, retty = NTyped.destruct_arr_tp rhsop_ty in
-          let argsty =
-            match argsty with
-            | [ Nt.Ty_tuple ts ] -> ts
-            | _ -> _failatwith __FILE__ __LINE__ "effect type has to be A -> B"
-          in
           let rhsargs =
             List.map (fun (x, ty) -> bidirect_check ctx x ty)
             @@ _safe_combine __FILE__ __LINE__ rhsargs argsty

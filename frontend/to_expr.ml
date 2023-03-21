@@ -8,7 +8,7 @@ open Ast.OptTypedTermlang
 
 let kw_perform = "perform"
 let kw_match_with = "match_with"
-let kw_retc = "Retc"
+let kw_retc = "retc"
 
 let get_if_rec flag =
   match flag with Asttypes.Recursive -> true | Asttypes.Nonrecursive -> false
@@ -114,13 +114,13 @@ and expr_to_ocamlexpr_desc expr =
   aux expr
 
 and hd_case_aux { effop; effk; effargs; hbody } =
-  let name = mk_idloc [ String.uncapitalize_ascii effop.x ] in
+  let name = mk_idloc [ effop.x ] in
   let args = effk :: effargs in
   let lam = curry (args, hbody) in
   (name, expr_to_ocamlexpr lam)
 
 and ret_case_aux { retarg; retbody } =
-  let name = mk_idloc [ String.uncapitalize_ascii kw_retc ] in
+  let name = mk_idloc [ kw_retc ] in
   let lam = curry ([ retarg ], retbody) in
   (name, expr_to_ocamlexpr lam)
 
@@ -192,7 +192,7 @@ let expr_of_ocamlexpr expr =
             | [ (_, arg) ] -> (
                 let res = aux arg in
                 match res.x with
-                | AppOp ({ x = DtConstructor opname; ty }, rhsargs) ->
+                | App ({ x = Var opname; ty }, rhsargs) ->
                     (Perform { rhsop = { x = opname; ty }; rhsargs }) #: res.ty
                 | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: perform")
             | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: perform")
@@ -246,7 +246,7 @@ let expr_of_ocamlexpr expr =
              (Sugar.spf "not imp client parsing:%s"
              @@ Pprintast.string_of_expression expr)
   and hd_case_aux (name, expr) =
-    let effop = (String.capitalize_ascii @@ handle_id name) #: None in
+    let effop = (handle_id name) #: None in
     let args, hbody = uncurry @@ aux expr in
     match args with
     | effk :: effargs -> { effop; effk; effargs; hbody }
