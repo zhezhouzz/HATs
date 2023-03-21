@@ -58,7 +58,8 @@ module StructureRaw = struct
       codes
 end
 
-module NTyped = Typectx.NTypectx
+module NTyped = Normalty.Ntyped
+module NTypectx = Typectx.NTypectx
 
 (* unwrap *)
 module Const = Constant

@@ -26,16 +26,17 @@ let desc_to_ocamlexpr desc =
     pexp_attributes = [];
   }
 
+let typed_to_ocamlexpr_desc f expr =
+  match expr.ty with
+  | None -> f expr.x
+  | Some ty ->
+      Pexp_constraint (desc_to_ocamlexpr @@ f expr.x, Type.t_to_core_type ty)
+
 let rec expr_to_ocamlexpr expr =
   desc_to_ocamlexpr @@ typed_expr_to_ocamlexpr_desc expr
 
 and typed_expr_to_ocamlexpr_desc expr =
-  match expr.ty with
-  | None -> expr_to_ocamlexpr_desc expr.x
-  | Some ty ->
-      Pexp_constraint
-        ( desc_to_ocamlexpr @@ expr_to_ocamlexpr_desc expr.x,
-          Type.t_to_core_type ty )
+  typed_to_ocamlexpr_desc expr_to_ocamlexpr_desc expr
 
 and id_to_ocamlexpr id = expr_to_ocamlexpr { ty = id.ty; x = Var id.x }
 
@@ -48,7 +49,7 @@ and expr_to_ocamlexpr_desc expr =
         (* let () = Printf.printf "print var: %s\n" var in *)
         Pexp_ident (mk_idloc [ var ])
     | Const v -> (To_const.value_to_expr v).pexp_desc
-    | VHd hd -> hd_aux hd.x
+    | VHd hd -> typed_to_ocamlexpr_desc hd_aux hd
     | Let { if_rec; lhs; rhs; letbody } ->
         let flag =
           if if_rec then Asttypes.Recursive else Asttypes.Nonrecursive
@@ -147,7 +148,12 @@ let expr_of_ocamlexpr expr =
     | Pexp_tuple es -> (Tu (List.map aux es)) #: None
     | Pexp_constraint (expr, ty) ->
         let ty = Type.core_type_to_t ty in
-        update_ty (aux expr) ty
+        let res = update_ty (aux expr) ty in
+        (* NOTE: also note the hanlder with the outer type *)
+        let res =
+          match res.x with VHd hd -> (VHd hd.x #: res.ty) #: res.ty | _ -> res
+        in
+        res
     | Pexp_ident id -> id_to_var @@ ((handle_id id) #: None)
     | Pexp_construct (c, args) -> (
         (* let () = *)
@@ -247,6 +253,9 @@ let expr_of_ocamlexpr expr =
     | _ -> _failatwith __FILE__ __LINE__ "?"
   and hd_aux expr : handler typed =
     match expr.pexp_desc with
+    | Pexp_constraint (expr, ty) ->
+        let ty = Type.core_type_to_t ty in
+        update_ty (hd_aux expr) ty
     | Pexp_record (cases, None) -> (
         let l = List.map hd_case_aux cases in
         match List.partition (fun x -> String.equal kw_retc x.effop.x) l with

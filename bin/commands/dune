@@ -1,6 +1,7 @@
 (library
  (name commands)
  (libraries utils core core_unix.sys_unix frontend env qcheck language
+            ntypecheck
             ; translate typecheck
  )
  (modules

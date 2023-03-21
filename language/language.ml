@@ -29,7 +29,7 @@ module Structure = struct
 end
 
 module NTypectx = struct
-  include Ast.NTyped
+  include Ast.NTypectx
 end
 
 (* unwrap *)

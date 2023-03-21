@@ -57,6 +57,14 @@ module F (Ty : CtxType) = struct
             (fun x -> Pp.printf "%s:@{<green>%s@}," x.x (layout x.ty))
             ctx)
 
+  let pretty_print_lines ctx =
+    Env.show_debug_typing (fun _ ->
+        if List.length ctx == 0 then Pp.printf "@{<green>∅@}"
+        else
+          List.iter
+            (fun x -> Pp.printf "%s:@{<green>%s@}\n" x.x (layout x.ty))
+            ctx)
+
   let pretty_layout_judge ctx (e, ty) =
     Printf.sprintf "%s⊢\n%s :\n%s\n" ctx e ty
 

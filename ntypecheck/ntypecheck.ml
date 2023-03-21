@@ -11,13 +11,13 @@ let _unify = _type_unify
 let _unify_ = NTyped._type_unify_
 
 let _unify_update file line ty' { x; ty } =
-  x #: (_unify file line (Some ty') ty)
+  x #: (_unify file line ty (Some ty'))
 
 let _solve_by_argsty file line fty argsty' =
   let open NTyped in
   let argsty, retty = destruct_arr_tp fty in
   let m, argsty_ =
-    _unify_ file line StrMap.empty (mk_tuple argsty) (mk_tuple argsty')
+    _type_unify_ file line StrMap.empty (mk_tuple argsty) (mk_tuple argsty')
   in
   let argsty =
     match argsty_ with
@@ -36,7 +36,7 @@ let _solve_by_retty file line fty retty' =
       match t with
       | Ty_var n -> (
           match StrMap.find_opt m n with None -> t | Some ty -> ty)
-      | Ty_list t -> Ty_list (aux t)
+      (* | Ty_list t -> Ty_list (aux t) *)
       | Ty_arrow (l, t1, t2) -> Ty_arrow (l, aux t1, aux t2)
       | Ty_tuple ts -> Ty_tuple (List.map aux ts)
       | Ty_constructor (id, ts) -> Ty_constructor (id, List.map aux ts)
@@ -65,6 +65,10 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
         let ty = NTyped._type_unify __FILE__ __LINE__ ty' ty in
         check ctx x.x ty
   and check (ctx : Typectx.ctx) (x : term) (ty : NTyped.t) : term typed =
+    let () =
+      Env.show_debug_typing @@ fun _ ->
+      Ctx.pretty_print_judge ctx (layout x #: None, ty)
+    in
     match (x, ty) with
     | Err, _ -> Err #: (Some ty)
     | Const _, _
@@ -73,8 +77,8 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
     | VHd _, _
     | Perform _, _
     | CWithH _, _ ->
-        let x, ty' = infer ctx x in
-        _unify_update __FILE__ __LINE__ ty' x
+        let x, _ = infer ctx x in
+        _unify_update __FILE__ __LINE__ ty x
     | Tu es, Ty_tuple tys ->
         let estys = _safe_combine __FILE__ __LINE__ es tys in
         let es = List.map (fun (e, ty) -> bidirect_check ctx e ty) estys in
@@ -159,7 +163,8 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
              (NTyped.layout ty))
   and check_ret_case (ctx : Typectx.ctx) { retarg; retbody } (argty, retty) =
     let retarg = _unify_update __FILE__ __LINE__ argty retarg in
-    let retbody = bidirect_check ctx retbody retty in
+    let ctx' = Typectx.new_to_right ctx (force_typed retarg) in
+    let retbody = bidirect_check ctx' retbody retty in
     { retarg; retbody }
   and check_handler_case (ctx : Typectx.ctx) { effop; effargs; effk; hbody }
       argty =
@@ -173,7 +178,10 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
       List.map (fun (x, ty) -> _unify_update __FILE__ __LINE__ ty x)
       @@ _safe_combine __FILE__ __LINE__ effargs opargsty
     in
-    let hbody = bidirect_check ctx hbody argty in
+    let ctx' =
+      Typectx.new_to_rights ctx (List.map force_typed (effk :: effargs))
+    in
+    let hbody = bidirect_check ctx' hbody argty in
     { effop; effargs; effk; hbody }
   and infer_hd (ctx : Typectx.ctx) hd =
     let hdty =
@@ -202,6 +210,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           let es, esty = List.split @@ List.map (bidirect_infer ctx) es in
           (Tu es, NTyped.mk_tuple esty)
       | VHd hd ->
+          (* let () = Printf.printf "x: %s\n" @@ layout x #: None in *)
           let hd, hdty = infer_hd ctx hd in
           (VHd hd, hdty)
       | Lam { lamarg; lambody } ->
@@ -210,21 +219,16 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           let ty = NTyped.mk_arr (force_typed lamarg).NTyped.ty lambodyty in
           (Lam { lamarg; lambody }, ty)
       | Perform { rhsop; rhsargs } ->
-          let rhsargs, argsty =
-            List.split @@ List.map (bidirect_infer ctx) rhsargs
-          in
-          let argsty, retty =
-            _solve_by_argsty __FILE__ __LINE__
-              (infer_op topctx (Pmop.DtConstructor rhsop.x))
-              argsty
-          in
-          let rhsop =
-            _unify_update __FILE__ __LINE__
-              (NTyped.construct_normal_tp (argsty, retty))
-              rhsop
+          let rhsop_ty = infer_op topctx (Pmop.DtConstructor rhsop.x) in
+          let rhsop = _unify_update __FILE__ __LINE__ rhsop_ty rhsop in
+          let argsty, retty = NTyped.destruct_arr_tp rhsop_ty in
+          let argsty =
+            match argsty with
+            | [ Nt.Ty_tuple ts ] -> ts
+            | _ -> _failatwith __FILE__ __LINE__ "effect type has to be A -> B"
           in
           let rhsargs =
-            List.map (fun (arg, ty) -> arg.x #: (Some ty))
+            List.map (fun (x, ty) -> bidirect_check ctx x ty)
             @@ _safe_combine __FILE__ __LINE__ rhsargs argsty
           in
           (Perform { rhsop; rhsargs }, retty)
@@ -335,6 +339,10 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           in
           (Match (e, cases), ty)
     in
+    let () =
+      Env.show_debug_typing @@ fun _ ->
+      Ctx.pretty_print_infer ctx (layout x #: None, ty)
+    in
     (x #: (Some ty), ty)
   in
   match tyopt with
@@ -342,6 +350,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
   | Some ty -> bidirect_check Typectx.empty x ty
 
 let struc_infer ctx l =
+  let () = NTypectx.pretty_print_lines ctx in
   Structure.map_imps
     (fun x if_rec body ->
       let rec get_fty e =
@@ -354,7 +363,7 @@ let struc_infer ctx l =
         | _ -> e.ty
       in
       match (if_rec, get_fty body) with
-      | _, None ->
+      | true, None ->
           _failatwith __FILE__ __LINE__
             "require the return type of the function"
       | false, ty -> type_check ctx body ty

@@ -1,5 +1,3 @@
-let[@librty] rty1 = ()
-let[@rty] rty2 = ()
 let rty1 = ()
 let rty2 = ()
 

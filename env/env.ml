@@ -114,6 +114,7 @@ let load_meta meta_fname =
   let mode =
     match metaj |> member "mode" |> to_string with
     | "debug" ->
+        (* let () = Pp.printf "@{<green>Verbose mode@}\n" in *)
         let get_bool field =
           metaj |> member "debug_info" |> member field |> to_bool
         in

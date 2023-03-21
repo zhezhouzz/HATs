@@ -1,7 +1,7 @@
 (library
  (name ntypecheck)
  (wrapped true)
- (libraries utils language core env)
+ (libraries utils language core env ocolor)
  (modules
    ntypecheck
    aux

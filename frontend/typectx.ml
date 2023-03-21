@@ -30,6 +30,15 @@ let pretty_print f ctx =
             (* (List.split_by "∧" f ty) *))
           ctx)
 
+let pretty_print_lines f ctx =
+  Env.show_debug_typing (fun _ ->
+      if List.length ctx == 0 then Pp.printf "@{<green>∅@}"
+      else
+        List.iter
+          (fun (name, ty) ->
+            Pp.printf "%s:@{<green>%s@}\n" name (f ty)
+          ctx)
+
 let pretty_layout_over = pretty_layout Overty.pretty_layout
 let pretty_layout_judge ctx (e, ty) = Printf.sprintf "%s⊢\n%s :\n%s\n" ctx e ty
 
