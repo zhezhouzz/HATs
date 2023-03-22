@@ -1,0 +1,9 @@
+(library
+ (name normalization)
+ (wrapped false)
+ (modules
+   normalize
+ )
+ ; (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
+ (libraries zzdatatype utils language)
+)

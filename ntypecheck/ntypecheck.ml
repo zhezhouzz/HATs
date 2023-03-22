@@ -353,24 +353,31 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
   | None -> fst (bidirect_infer Typectx.empty x)
   | Some ty -> bidirect_check Typectx.empty x ty
 
+let check ctx body ty = To_typed.to_typed_term @@ type_check ctx body ty
+
+(* let infer ctx body ty = *)
+(*   let term, ty = type_infer ctx body in *)
+(*   (To_typed.to_typed_term term, ty) *)
+
+let struc_infer_one ctx x if_rec body =
+  let rec get_fty e =
+    match e.x with
+    | Lam { lamarg; lambody } ->
+        Sugar.(
+          let* bty = get_fty lambody in
+          let* aty = lamarg.ty in
+          Some (NTyped.Ty_arrow (None, aty, bty)))
+    | _ -> e.ty
+  in
+  let res =
+    match (if_rec, get_fty body) with
+    | true, None ->
+        _failatwith __FILE__ __LINE__ "require the return type of the function"
+    | false, ty -> check ctx body ty
+    | true, Some ty -> check Typectx.(new_to_right ctx { x; ty }) body (Some ty)
+  in
+  res
+
 let struc_infer ctx l =
   let () = NTypectx.pretty_print_lines ctx in
-  Structure.map_imps
-    (fun x if_rec body ->
-      let rec get_fty e =
-        match e.x with
-        | Lam { lamarg; lambody } ->
-            Sugar.(
-              let* bty = get_fty lambody in
-              let* aty = lamarg.ty in
-              Some (NTyped.Ty_arrow (None, aty, bty)))
-        | _ -> e.ty
-      in
-      match (if_rec, get_fty body) with
-      | true, None ->
-          _failatwith __FILE__ __LINE__
-            "require the return type of the function"
-      | false, ty -> type_check ctx body ty
-      | true, Some ty ->
-          type_check Typectx.(new_to_right ctx { x; ty }) body (Some ty))
-    l
+  To_typed.to_typed_struct (struc_infer_one ctx) l

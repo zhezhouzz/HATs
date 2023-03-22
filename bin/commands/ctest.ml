@@ -11,12 +11,12 @@ let print_source_code_ meta_config_file source_file () =
   let code = Ocaml_parser.Frontend.parse ~sourcefile:source_file in
   let msize = Env.get_max_printing_size () in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
-  let topnctx = Structure.mk_normal_top_ctx code in
+  let topnctx = StructureRaw.mk_normal_top_ctx code in
   (* let () = NTypectx.pretty_print topnctx in *)
   let () =
     Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout topnctx
   in
-  let () = Printf.printf "%s\n" @@ To_structure.layout code in
+  let () = Printf.printf "%s\n" @@ StructureRaw.layout code in
   ()
 
 let print_typed_source_code_ meta_config_file source_file () =
@@ -24,10 +24,10 @@ let print_typed_source_code_ meta_config_file source_file () =
   let code = Ocaml_parser.Frontend.parse ~sourcefile:source_file in
   let msize = Env.get_max_printing_size () in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
-  let topnctx = Structure.mk_normal_top_ctx code in
-  let () = Printf.printf "%s\n" @@ To_structure.layout code in
+  let topnctx = StructureRaw.mk_normal_top_ctx code in
+  let () = Printf.printf "%s\n" @@ StructureRaw.layout code in
   let code = Ntypecheck.struc_infer topnctx code in
-  let () = Printf.printf "%s\n" @@ To_structure.layout code in
+  let () = Printf.printf "%s\n" @@ Structure.layout code in
   ()
 
 let cmd_config_source summary f =

@@ -16,6 +16,8 @@ end
 
 module TypedTermlang = struct
   include Ast.TypedTermlang
+
+  let layout x = To_expr.layout @@ To_typed.to_opttyped_term x
 end
 
 module OptTypedTermlang = struct
@@ -24,8 +26,20 @@ module OptTypedTermlang = struct
   let layout = To_expr.layout
 end
 
-module Structure = struct
+module StructureRaw = struct
   include Ast.StructureRaw
+
+  let layout_entry = To_structure.layout_entry
+  let layout = To_structure.layout
+end
+
+module Structure = struct
+  include Ast.Structure
+
+  let layout_entry x =
+    To_structure.layout_entry @@ To_typed.to_opttyped_struct_one x
+
+  let layout x = To_structure.layout @@ To_typed.to_opttyped_struct x
 end
 
 module NTypectx = struct
