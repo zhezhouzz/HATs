@@ -69,7 +69,8 @@ module type T = sig
   val do_subst : (string * value typed) list -> comp typed -> comp typed
 end
 
-module F (Ty : Typed.T) : T with type t = Ty.t = struct
+module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
+struct
   open Sexplib.Std
 
   type constant = Constant.t [@@deriving sexp]
