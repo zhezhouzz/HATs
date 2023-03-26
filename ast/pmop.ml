@@ -23,3 +23,11 @@ let from_source_name name =
         let code = Char.code @@ String.get name 0 in
         if 65 <= code && code <= 90 then Some (DtConstructor name) else None
       else None
+
+let eq a b =
+  let aux = function
+    | DtConstructor a, DtConstructor b -> String.equal a b
+    | External a, External b -> String.equal a b
+    | _, _ -> false
+  in
+  aux (a, b)

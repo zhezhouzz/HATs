@@ -34,9 +34,7 @@ let rec expr_to_value e =
          (Pprintast.string_of_expression e))
   in
   match e.pexp_desc with
-  | Pexp_tuple _ ->
-      _failatwith __FILE__ __LINE__ "not support tuple constants"
-      (* C.Tu (List.map expr_to_value es) *)
+  | Pexp_tuple es -> C.Tu (List.map expr_to_value es)
   | Pexp_construct (id, e) -> (
       let name = longident_to_string id.txt in
       match e with
@@ -52,14 +50,18 @@ let value_to_expr v =
   let name_to_expr name e =
     dummy_expr (Pexp_construct (string_to_loc name, e))
   in
-  let aux v =
+  let rec aux v =
     match v with
-    | C.U | C.B _ | C.Prim _ -> name_to_expr (C.layout v) None
+    | C.U | C.B _ -> name_to_expr (C.layout v) None
+    | C.Dt (op, vs) ->
+        dummy_expr
+          (Pexp_construct
+             (string_to_loc (Pmop.t_to_string op), Some (aux (C.Tu vs))))
     | C.I i ->
         dummy_expr (Pexp_constant (Pconst_integer (string_of_int i, None)))
     (* | C.IL [] -> name_to_expr "[]" None *)
     (* | C.IL (h :: t) -> name_to_expr "::" (Some (aux C.(Tu [ I h; IL t ]))) *)
-    (* | C.Tu l -> dummy_expr (Pexp_tuple (List.map aux l)) *)
+    | C.Tu l -> dummy_expr (Pexp_tuple (List.map aux l))
     (* | _ -> failwith "un-imp" *)
   in
   aux v
