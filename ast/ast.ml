@@ -25,8 +25,13 @@ module StructureRaw = Structure.F (OptTy)
 module Structure = Structure.F (Ty)
 module NTyped = Normalty.Ntyped
 module NTypectx = Typectx.NTypectx
+module RtyRaw = StructureRaw.R
+module Rty = Structure.R
+module QualifierRaw = RtyRaw.P
 
 (* unwrap *)
 module Const = Constant
 module Pmop = Pmop
 module Type_dec = Type_dec
+module Typectx = Typectx
+module Corelang = Corelang

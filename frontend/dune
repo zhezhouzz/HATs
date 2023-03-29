@@ -9,6 +9,8 @@
    to_expr
    to_pat
    to_const
+   to_qualifier
+   to_rty
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert))
  (inline_tests)

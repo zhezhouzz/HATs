@@ -14,6 +14,7 @@ type mode =
 [@@deriving sexp]
 
 type prim_path = {
+  qualifier_builtin_type : string;
   normalp : string;
   under_basicp : string;
   under_randomp : string;
@@ -40,15 +41,11 @@ type config = { all_mps : string list; underp : string; measure : string }
 let meta_config : meta_config option ref = ref None
 let config : config option ref = ref None
 
-let get_mode () =
-  match !meta_config with
-  | None -> failwith "uninit"
-  | Some config -> config.mode
+let get_meta () =
+  match !meta_config with None -> failwith "uninit" | Some config -> config
 
-let get_max_printing_size () =
-  match !meta_config with
-  | None -> failwith "uninit"
-  | Some config -> config.max_printing_size
+let get_mode () = (get_meta ()).mode
+let get_max_printing_size () = (get_meta ()).max_printing_size
 
 let show_debug_preprocess (f : unit -> unit) =
   match get_mode () with
@@ -85,15 +82,8 @@ let show_debug_debug (f : unit -> unit) =
   | Debug { show_debug; _ } when show_debug -> f ()
   | _ -> ()
 
-let get_resfile () =
-  match !meta_config with
-  | None -> failwith "get_resfile"
-  | Some config -> config.resfile
-
-let get_prim_path () =
-  match !meta_config with
-  | None -> failwith "uninited prim path"
-  | Some config -> config.prim_path
+let get_resfile () = (get_meta ()).resfile
+let get_prim_path () = (get_meta ()).prim_path
 
 let get_measure () =
   match !config with
@@ -101,16 +91,18 @@ let get_measure () =
   | Some config -> config.measure
 
 let get_randomp_path () = (get_prim_path ()).under_randomp
+let get_qualifier_builtin_type () = (get_prim_path ()).qualifier_builtin_type
 let known_mp : string list option ref = ref None
 
 let get_known_mp () =
   match !known_mp with None -> failwith "uninit mps" | Some mps -> mps
 
-open Json
 open Yojson.Basic.Util
 
 let load_meta meta_fname =
-  let metaj = load_json meta_fname in
+  let () = Printf.printf "meta_fname: %s\n" meta_fname in
+  let () = Printf.printf "pwd: %s\n" (Sys.getcwd ()) in
+  let metaj = Yojson.Basic.from_file meta_fname in
   let mode =
     match metaj |> member "mode" |> to_string with
     | "debug" ->
@@ -138,6 +130,7 @@ let load_meta meta_fname =
   let p = metaj |> member "prim_path" in
   let prim_path =
     {
+      qualifier_builtin_type = p |> member "qualifier_builtin_type" |> to_string;
       normalp = p |> member "normal_typing" |> to_string;
       under_basicp = p |> member "builtin_coverage_typing" |> to_string;
       under_randomp =

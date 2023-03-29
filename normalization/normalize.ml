@@ -18,9 +18,13 @@ let vcont_to_cont (k : value typed -> comp typed) (rhs : comp typed) :
 
 let decurry (f, args) =
   let open T in
+  (* let () = *)
+  (*   Printf.printf "decurry: %s   %s\n" (T.layout f) *)
+  (*     (List.split_by_comma T.layout args) *)
+  (* in *)
   let rec aux f = function
     | [] -> f
-    | arg :: args -> aux (App (f, [ arg ])) #: (get_argty f.ty) args
+    | arg :: args -> aux (App (f, [ arg ])) #: (get_retty f.ty) args
   in
   aux f args
 
@@ -34,7 +38,7 @@ and normalize_get_value (k : vcont) (expr : T.term T.typed) : comp typed =
       | CVal v -> k v #: e.ty
       | _ ->
           let lhs = (new_x ()) #: e.ty in
-          construct_lete lhs e (to_comp @@ var_to_v lhs))
+          construct_lete lhs e (k @@ var_to_v lhs))
     expr
 
 and normalize_get_values (k : vconts) (es : T.term T.typed list) : comp typed =
@@ -125,3 +129,13 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
           in
           k (CMatch { matched; match_cases }))
         matched
+
+module S = Language.Structure
+
+let get_normalized_code code =
+  S.filter_map_imps
+    (fun name if_rec body ->
+      let body = normalize_term body in
+      let e = if if_rec then lam_to_fix_comp name #: body.ty body else body in
+      Some (name, e))
+    code

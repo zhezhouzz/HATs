@@ -4,5 +4,6 @@
  (libraries utils language core env ocolor)
  (modules
    ntypecheck
+   rtycheck
    aux
 ))

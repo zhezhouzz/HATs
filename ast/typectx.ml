@@ -1,6 +1,6 @@
 module type CtxType = sig
-  type t [@@deriving sexp]
-  type 'a typed = { x : 'a; ty : t } [@@deriving sexp]
+  type t
+  type 'a typed = { x : 'a; ty : t }
 
   val mk_noty : 'a -> 'a typed
   val ( #: ) : 'a -> t -> 'a typed
@@ -15,15 +15,17 @@ module type CtxType = sig
   val construct_normal_tp : t list * t -> t
   val default_ty : t
   val _type_unify : string -> int -> t -> t -> t
+  val is_eff_arr : t -> bool
 end
 
 module F (Ty : CtxType) = struct
   open Zzdatatype.Datatype
-  open Sexplib.Std
+
+  (* open Sexplib.Std *)
   open Sugar
   open Ty
 
-  type ctx = string typed list [@@deriving sexp]
+  type ctx = string typed list
 
   let empty = []
   let exists ctx name = List.exists (fun x -> String.equal x.x name) ctx
@@ -32,6 +34,8 @@ module F (Ty : CtxType) = struct
     match List.find_opt (fun x -> String.equal id x.x) ctx with
     | None -> None
     | Some x -> Some x.ty
+
+  let get_effctx l = List.filter (fun x -> is_eff_arr x.ty) l
 
   let get_ty (ctx : ctx) id : t =
     match get_ty_opt ctx id with

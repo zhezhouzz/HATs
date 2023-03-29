@@ -22,9 +22,19 @@ let ocaml_structure_to_structure structure =
       in
       match value_binding.pvb_attributes with
       | [ x ] when String.equal x.attr_name.txt "librty" ->
-          Rty { name; kind = RtyLib; rty = () }
+          Rty
+            {
+              name;
+              kind = RtyLib;
+              rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
+            }
       | [ x ] when String.equal x.attr_name.txt "rty" ->
-          Rty { name; kind = RtyToCheck; rty = () }
+          Rty
+            {
+              name;
+              kind = RtyToCheck;
+              rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
+            }
       | _ ->
           let body = To_expr.expr_of_ocamlexpr value_binding.pvb_expr in
           FuncImp { name; if_rec = To_expr.get_if_rec flag; body })
@@ -44,9 +54,9 @@ let layout_entry = function
       spf "let %s%s = %s"
         (if if_rec then "rec " else "")
         name (To_expr.layout body)
-  | Rty { name; kind; _ } ->
-      spf "let[@%s] %s = %s"
+  | Rty { name; kind; rty } ->
+      spf "val[@%s] %s: %s"
         (match kind with RtyLib -> "librty" | RtyToCheck -> "rty")
-        name "()"
+        name (To_rty.pprint_rty rty)
 
 let layout l = spf "%s\n" (List.split_by "\n" layout_entry l)

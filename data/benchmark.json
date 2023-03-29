@@ -4,6 +4,12 @@
     {
       "benchmark_source": "test",
       "benchmarks": [
+          {
+          "name": "putget",
+          "path": "putget",
+          "spath": "",
+          "is_rec": false
+      },
         {
           "name": "parse1",
           "path": "parse1",

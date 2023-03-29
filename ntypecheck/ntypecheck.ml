@@ -10,26 +10,52 @@ open Aux
 let _unify = _type_unify
 let _unify_ = NTyped._type_unify_
 
+let _partial_curry file line n arrty =
+  let open NTyped in
+  let args, ret = destruct_arr_tp arrty in
+  if n > List.length args then
+    _failatwith file line (spf "_partial_curry(%i): %s" n (layout arrty))
+  else
+    let args1 = List.sublist args ~start_included:0 ~end_excluded:n in
+    let args2 =
+      List.sublist args ~start_included:n ~end_excluded:(List.length args)
+    in
+    (args1, construct_normal_tp (args2, ret))
+
 let _unify_update file line ty' { x; ty } =
   x #: (_unify file line ty (Some ty'))
 
 let _solve_by_argsty file line fty argsty' =
   let open NTyped in
-  let argsty, retty = destruct_arr_tp fty in
+  (* let () = *)
+  (*   Printf.printf "[%s(%i)]: fty: %s; argsty': %s\n" file line (layout fty) *)
+  (*     (List.split_by_comma layout argsty') *)
+  (* in *)
+  let argsty, retty = _partial_curry file line (List.length argsty') fty in
+  (* let () = *)
+  (*   Printf.printf "[%s(%i)]: argsty: %s; retty: %s\n" file line *)
+  (*     (List.split_by_comma layout argsty) *)
+  (*     (layout retty) *)
+  (* in *)
   let m, argsty_ =
     _type_unify_ file line StrMap.empty (mk_tuple argsty) (mk_tuple argsty')
   in
   let argsty =
-    match argsty_ with
-    | Ty_tuple argsty -> argsty
-    | _ -> _failatwith __FILE__ __LINE__ "?"
+    match argsty_ with Ty_tuple argsty -> argsty | t -> [ t ]
+    (* | _ -> _failatwith __FILE__ __LINE__ (spf "? <%s>" (layout argsty_)) *)
   in
   let retty = subst_m m retty in
   (argsty, retty)
 
+let destruct_by_uncurry_ret file line fty retty' =
+  let open NTyped in
+  let b1, _ = destruct_arr_tp retty' in
+  let a1, _ = destruct_arr_tp fty in
+  _partial_curry file line (List.length a1 - List.length b1) fty
+
 let _solve_by_retty file line fty retty' =
   let open NTyped in
-  let argsty, retty = destruct_arr_tp fty in
+  let argsty, retty = destruct_by_uncurry_ret file line fty retty' in
   let m, retty = _unify_ file line StrMap.empty retty retty' in
   let subst m t =
     let rec aux t =
@@ -91,6 +117,8 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
         (Lam { lamarg; lambody }) #: (Some ty)
     | App (f, args), ty ->
         let f, fty = bidirect_infer ctx f in
+        (* let () = Printf.printf "F: %s\n" (layout f) in *)
+        (* let () = Printf.printf "ty: %s\n" (NTyped.layout ty) in *)
         let argsty, retty = _solve_by_retty __FILE__ __LINE__ fty ty in
         let f' =
           bidirect_check ctx f (NTyped.construct_normal_tp (argsty, retty))
@@ -102,6 +130,11 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
         (App (f', args)) #: (Some ty)
     | Let { if_rec; lhs; rhs; letbody }, _ ->
         let xsty = List.map (fun x -> x.ty) lhs in
+        (* let () = *)
+        (*   Printf.printf "lhs = %s; rhs = %s; letbody = %s\n" *)
+        (*     (layout_typed_l (fun x -> x) lhs) *)
+        (*     (layout rhs) (layout letbody) *)
+        (* in *)
         let rhsty =
           match xsty with
           | [] ->
@@ -167,21 +200,33 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
     let retbody = bidirect_check ctx' retbody retty in
     { retarg; retbody }
   and check_handler_case (ctx : Typectx.ctx) { effop; effargs; effk; hbody }
-      argty =
+      retty =
     let opty = infer_op topctx (Pmop.DtConstructor effop.x) in
     let effop = _unify_update __FILE__ __LINE__ opty effop in
+    (* let () = Printf.printf "effop: %s\n" @@ layout_typed (fun x -> x) effop in *)
     let opargsty, opretty = NTyped.destruct_arr_tp opty in
     let effk =
-      _unify_update __FILE__ __LINE__ (NTyped.mk_arr opretty argty) effk
+      _unify_update __FILE__ __LINE__ (NTyped.mk_arr opretty retty) effk
+    in
+    (* let () = *)
+    (*   Printf.printf "effargs: %s\n" @@ layout_typed_l (fun x -> x) effargs *)
+    (* in *)
+    (* let () = *)
+    (*   Printf.printf "opargsty: %s\n" @@ List.split_by_comma Nt.layout opargsty *)
+    (* in *)
+    let opargsty_rest, retty' =
+      _partial_curry __FILE__ __LINE__
+        (List.length effargs - List.length opargsty)
+        retty
     in
     let effargs =
       List.map (fun (x, ty) -> _unify_update __FILE__ __LINE__ ty x)
-      @@ _safe_combine __FILE__ __LINE__ effargs opargsty
+      @@ _safe_combine __FILE__ __LINE__ effargs (opargsty @ opargsty_rest)
     in
     let ctx' =
       Typectx.new_to_rights ctx (List.map force_typed (effk :: effargs))
     in
-    let hbody = bidirect_check ctx' hbody argty in
+    let hbody = bidirect_check ctx' hbody retty' in
     { effop; effargs; effk; hbody }
   and infer_hd (ctx : Typectx.ctx) hd =
     let hdty =
@@ -196,9 +241,13 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
     let { ret_case; handler_cases } = hd.x in
     let argty = NTyped.get_argty hdty in
     let retty = NTyped.get_retty hdty in
+    (* let () = *)
+    (*   Printf.printf "argty: %s; retty: %s\n" (NTyped.layout argty) *)
+    (*     (NTyped.layout retty) *)
+    (* in *)
     let ret_case = check_ret_case ctx ret_case (argty, retty) in
     let handler_cases =
-      List.map (fun x -> check_handler_case ctx x argty) handler_cases
+      List.map (fun x -> check_handler_case ctx x retty) handler_cases
     in
     ({ ret_case; handler_cases } #: (Some hdty), hdty)
   and infer (ctx : Typectx.ctx) (x : term) : term typed * NTyped.t =
@@ -378,6 +427,6 @@ let struc_infer_one ctx x if_rec body =
   in
   res
 
-let struc_infer ctx l =
+let struc_infer ctx qctx l =
   let () = NTypectx.pretty_print_lines ctx in
-  To_typed.to_typed_struct (struc_infer_one ctx) l
+  To_typed.to_typed_struct (struc_infer_one ctx) (Rtycheck.check_rty qctx) l

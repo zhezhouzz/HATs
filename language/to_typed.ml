@@ -164,7 +164,7 @@ and handler_to_handler L.{ ret_case; handler_cases } : handler =
 open Ast.Structure
 module S = Ast.StructureRaw
 
-let to_typed_struct f =
+let to_typed_struct f g =
   List.map (fun code ->
       match code with
       | S.Mps mps -> Mps mps
@@ -172,7 +172,11 @@ let to_typed_struct f =
       | S.Func_dec d -> Func_dec d
       | S.FuncImp { name; if_rec; body } ->
           FuncImp { name; if_rec; body = f name if_rec body }
-      | S.Rty _ -> _failatwith __FILE__ __LINE__ "unimp")
+      | S.Rty { name; kind; rty } ->
+          let kind =
+            match kind with S.RtyLib -> RtyLib | S.RtyToCheck -> RtyToCheck
+          in
+          Rty { name; kind; rty = g rty })
 
 open Ast.StructureRaw
 module U = Ast.Structure
@@ -184,6 +188,10 @@ let to_opttyped_struct_one code =
   | U.Func_dec d -> Func_dec d
   | U.FuncImp { name; if_rec; body } ->
       FuncImp { name; if_rec; body = to_opttyped_term body }
-  | U.Rty _ -> _failatwith __FILE__ __LINE__ "unimp"
+  | U.Rty { name; kind; rty } ->
+      let kind =
+        match kind with U.RtyLib -> RtyLib | U.RtyToCheck -> RtyToCheck
+      in
+      Rty { name; kind; rty = To_typed_rty.to_opt_rty rty }
 
 let to_opttyped_struct = List.map to_opttyped_struct_one

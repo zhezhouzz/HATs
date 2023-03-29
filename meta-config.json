@@ -3,7 +3,7 @@
     "max_printing_size": 300,
     "debug_info": {
         "show_preprocess": false,
-        "show_typing": false,
+        "show_typing": true,
         "show_queries": false,
         "show_stat": false,
         "show_others": false,
@@ -13,6 +13,7 @@
     "resfile": ".result",
     "benchmark_table_file": "data/benchmark.json",
     "prim_path": {
+        "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",
         "data_type_decls": "data/predefined/data_type_decls.ml",
         "normal_typing": "data/predefined/normal_typing.mli",
         "axioms_of_predicates": "data/predefined/axioms_of_predicates.ml",

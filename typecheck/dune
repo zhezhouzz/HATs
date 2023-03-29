@@ -1,0 +1,7 @@
+(library
+ (name typecheck)
+ (wrapped true)
+ (libraries utils language core env ocolor normalization)
+ (modules
+   typeinfer
+))

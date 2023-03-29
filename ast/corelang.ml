@@ -62,6 +62,8 @@ module type T = sig
   val mk_lam : string typed -> comp typed -> value typed
   val mk_id_function : t -> value typed
   val mk_fix : string typed -> string typed -> comp typed -> value typed
+  val lam_to_fix : string typed -> value typed -> value typed
+  val lam_to_fix_comp : string typed -> comp typed -> comp typed
   val mk_lete : string typed -> comp typed -> comp typed -> comp typed
   val mk_app : value typed -> value typed -> comp typed
   val mk_withh : handler typed -> comp typed -> comp typed
@@ -170,6 +172,14 @@ struct
 
   let mk_fix fixname fixarg fixbody =
     (VFix { fixname; fixarg; fixbody }) #: fixname.ty
+
+  let lam_to_fix fixname (body : value typed) : value typed =
+    match body.x with
+    | VLam { lamarg; lambody } -> mk_fix fixname lamarg lambody
+    | _ -> _failatwith __FILE__ __LINE__ ""
+
+  let lam_to_fix_comp fixname (body : comp typed) : comp typed =
+    to_comp (lam_to_fix fixname (to_v body))
 
   let mk_lete lhs rhs letbody = (CLetE { lhs; rhs; letbody }) #: letbody.ty
   let mk_app appf apparg = (CApp { appf; apparg }) #: (get_retty appf.ty)

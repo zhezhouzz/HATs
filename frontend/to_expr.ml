@@ -202,7 +202,7 @@ let expr_of_ocamlexpr expr =
                 let handled_prog = aux handled_prog in
                 let handler = hd_aux hd in
                 (CWithH { handler; handled_prog }) #: None
-            | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: perform")
+            | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: match_with")
         | _ -> (App (func, List.map (fun x -> aux @@ snd x) args)) #: None)
     | Pexp_ifthenelse (e1, e2, Some e3) ->
         (Ite (aux e1, aux e2, aux e3)) #: None
@@ -259,8 +259,16 @@ let expr_of_ocamlexpr expr =
     | Pexp_record (cases, None) -> (
         let l = List.map hd_case_aux cases in
         match List.partition (fun x -> String.equal kw_retc x.effop.x) l with
-        | [ { effk; effargs = []; hbody; _ } ], handler_cases ->
-            let ret_case = { retarg = effk; retbody = hbody } in
+        (* | [ { effk; effargs = []; hbody; _ } ], handler_cases -> *)
+        (*     let ret_case = { retarg = effk; retbody = hbody } in *)
+        (*     { ret_case; handler_cases } #: None *)
+        | [ { effk; effargs; hbody; _ } ], handler_cases ->
+            let retbody =
+              List.fold_right
+                (fun lamarg lambody -> (Lam { lamarg; lambody }) #: None)
+                effargs hbody
+            in
+            let ret_case = { retarg = effk; retbody } in
             { ret_case; handler_cases } #: None
         | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: hd")
     | _ -> _failatwith __FILE__ __LINE__ "?"
