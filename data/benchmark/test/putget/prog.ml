@@ -4,8 +4,11 @@ val set_empty : (int * int) set
 val set_insert : (int * int) set -> int * int -> (int * int) set
 val set_mem : (int * int) set -> int * int -> bool
 val mk_put : eff:int * int -> eff:unit -> unit
-val mk_get : eff:int -> eff:int -> unit
+
+(* val mk_put : eff:int * int -> eff:bool -> unit *)
+(* val mk_get : eff:int -> eff:int -> unit *)
 val check_in : eff:int * int -> bool
+val get' : eff:int -> int option
 
 let rec prog (n : int) : unit =
   if n <= 0 then ()

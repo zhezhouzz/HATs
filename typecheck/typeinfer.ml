@@ -36,7 +36,7 @@ open Sugar
 
 let layout_comp = Denormalize.layout_comp
 let layout_value = Denormalize.layout_value
-let subtyping_check _ _ = ()
+let subtyping_check _ _ _ = ()
 
 let unify_dep name rty =
   let open R in
@@ -47,7 +47,13 @@ let unify_dep name rty =
       | Some x -> (dep, label, rarg, subst_id (x, name) retrty)
       | None -> (dep, label, rarg, retrty))
 
-let rec value_type_infer (ctx : RCtx.ctx) (a : value typed) : R.t =
+let merge_function _ = _failatwith __FILE__ __LINE__ ""
+let exists_function _ _ = _failatwith __FILE__ __LINE__ ""
+(* let open R in *)
+(* match x.ty, rty with *)
+(* | BaseRty {basety = xrty; _}, BaseRty {basety = rty; _} -> *)
+
+let rec value_type_infer (ctx : RCtx.ctx) (a : value typed) : RCtx.ctx * R.t =
   let aty = a.ty in
   let rty =
     match a.x with
@@ -58,38 +64,42 @@ let rec value_type_infer (ctx : RCtx.ctx) (a : value typed) : R.t =
         let rty =
           match RCtx.get_ty_opt ctx x with
           | None -> _failatwith __FILE__ __LINE__ "cannot find rty"
-          | Some _ -> mk_ubasety_eq_id aty x
+          | Some rty -> rty
         in
-        rty
+        if List.length (fst (destruct_arr_tp aty)) == 0 then
+          mk_ubasety_eq_id aty x
+        else rty
     | _ -> _failatwith __FILE__ __LINE__ ""
   in
   let () = RCtx.pretty_print_infer ctx (layout_value a, rty) in
-  rty
+  (ctx, rty)
 
-and comp_type_infer (ctx : RCtx.ctx) (a : comp typed) : R.t =
+and comp_type_infer (ctx : RCtx.ctx) (a : comp typed) : RCtx.ctx * R.t =
   let aty = a.ty in
-  let rty =
+  let ctx, rty =
     match a.x with
     | CVal v -> value_type_infer ctx v #: aty
     | CApp { appf; apparg } ->
-        let f_rty = value_type_infer ctx appf in
+        let ctx, f_rty = value_type_infer ctx appf in
         let f_rty_argty = R.get_argty f_rty in
-        (* let appargname, _ = (Rename.unique "a", apparg.ty) in *)
-        let () = value_type_check ctx apparg f_rty_argty in
-        (* let (_, _, _) = unify_dep appargname f_rty in *)
-        (* let ctx' = RCtx.new_to_right ctx (R.( #: ) appargname f_rty_argty) in *)
-        (* R.get_retty f_rty *)
-        _failatwith __FILE__ __LINE__ ""
+        let appargname, _ = (Rename.unique "a", apparg.ty) in
+        let ctx = value_type_check ctx apparg f_rty_argty in
+        let ctx' = RCtx.new_to_right ctx (R.( #: ) appargname f_rty_argty) in
+        let _, _, _, retty = unify_dep appargname f_rty in
+        (ctx', retty)
     | _ -> _failatwith __FILE__ __LINE__ ""
   in
   let () = RCtx.pretty_print_infer ctx (layout_comp a, rty) in
-  rty
+  (ctx, rty)
 
-and value_type_check (ctx : RCtx.ctx) (a : value typed) (rty : R.t) : unit =
+and value_type_check (ctx : RCtx.ctx) (a : value typed) (rty : R.t) : RCtx.ctx =
   let () = RCtx.pretty_print_judge ctx (layout_value a, rty) in
   let aty = a.ty in
   match a.x with
-  | VConst _ | VVar _ -> subtyping_check (value_type_infer ctx a) rty
+  | VConst _ | VVar _ ->
+      let ctx, rty' = value_type_infer ctx a in
+      let () = subtyping_check ctx rty' rty in
+      ctx
   | VFix { fixname; fixarg; fixbody } ->
       let self = R.( #: ) fixname.x rty in
       let ctx' = RCtx.new_to_right ctx self in
@@ -105,15 +115,27 @@ and value_type_check (ctx : RCtx.ctx) (a : value typed) (rty : R.t) : unit =
       comp_type_check ctx' lambody retrty
   | _ -> _failatwith __FILE__ __LINE__ ""
 
-and comp_type_check (ctx : RCtx.ctx) (a : comp typed) (rty : R.t) : unit =
+and comp_type_check (ctx : RCtx.ctx) (a : comp typed) (rty : R.t) : RCtx.ctx =
   let () = RCtx.pretty_print_judge ctx (layout_comp a, rty) in
   let aty = a.ty in
   match a.x with
   | CVal v -> value_type_check ctx v #: aty rty
   | CLetE { lhs; rhs; letbody } ->
-      let rhs_rty = comp_type_infer ctx rhs in
+      let ctx, rhs_rty = comp_type_infer ctx rhs in
       let ctx' = RCtx.new_to_right ctx (R.( #: ) lhs.x rhs_rty) in
       comp_type_check ctx' letbody rty
+  | CIte { cond; et; ef } ->
+      let ctx, _ = value_type_infer ctx cond in
+      let handle_case b e =
+        let cond_id = Rename.unique "b" in
+        let cond_id =
+          R.( #: ) cond_id (mk_ubasety_eq_c cond.ty (Constant.B b))
+        in
+        let ctx' = RCtx.new_to_right ctx cond_id in
+        let _, ety = comp_type_infer ctx' e in
+        exists_function cond_id ety
+      in
+      merge_function [ handle_case true et; handle_case false ef ]
   | _ -> _failatwith __FILE__ __LINE__ ""
 
 let check code normalized_code =
@@ -132,7 +154,9 @@ let check code normalized_code =
             normalized_code
         with
         | None -> _failatwith __FILE__ __LINE__ ""
-        | Some (_, comp) -> comp_type_check ctx comp rty)
+        | Some (_, comp) ->
+            let _ = comp_type_check ctx comp rty in
+            ())
       tasks
   in
   ()

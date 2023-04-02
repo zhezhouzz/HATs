@@ -40,7 +40,8 @@ let rec pprint_rty rty =
       | Pi ->
           spf "%s%s%s%s" x (pprint_rty rarg.ty) (pprint_label_arr label)
             (pprint_rty retrty)
-      | Sigma -> spf "(%s%s, %s)" x (pprint_rty rarg.ty) (pprint_rty retrty))
+      | Sigma -> spf "(%s%s,\n\n %s)" x (pprint_rty rarg.ty) (pprint_rty retrty)
+      )
 
 let get_ou expr =
   match expr.pexp_attributes with

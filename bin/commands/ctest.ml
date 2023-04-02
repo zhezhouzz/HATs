@@ -49,6 +49,26 @@ let print_typed_normalized_source_code_ meta_config_file source_file () =
   let effctx = NTypectx.get_effctx topnctx in
   let qctx = NTypectx.new_to_rights effctx (init_qnctx ()) in
   let code = Ntypecheck.struc_infer topnctx qctx code in
+  let () = Pp.printf "%s\n" @@ Structure.layout code in
+  let normalized = Normalize.get_normalized_code code in
+  let () =
+    List.iter
+      ~f:(fun (name, e) ->
+        Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp e))
+      normalized
+  in
+  ()
+
+let type_check_ meta_config_file source_file () =
+  let () = Env.load_meta meta_config_file in
+  let code = Ocaml_parser.Frontend.parse ~sourcefile:source_file in
+  let msize = Env.get_max_printing_size () in
+  let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
+  let topnctx = StructureRaw.mk_normal_top_ctx code in
+  let () = Printf.printf "%s\n" @@ StructureRaw.layout code in
+  let effctx = NTypectx.get_effctx topnctx in
+  let qctx = NTypectx.new_to_rights effctx (init_qnctx ()) in
+  let code = Ntypecheck.struc_infer topnctx qctx code in
   let () = Printf.printf "%s\n" @@ Structure.layout code in
   let normalized = Normalize.get_normalized_code code in
   let () =
@@ -77,4 +97,5 @@ let test =
       ( "print-typed-normalized-source-code",
         cmd_config_source "print typed normalized source code"
           print_typed_normalized_source_code_ );
+      ("type-check", cmd_config_source "type check" type_check_);
     ]
