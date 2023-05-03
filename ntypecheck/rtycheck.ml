@@ -60,16 +60,15 @@ let rec type_infer_lit (topctx : Typectx.ctx) (lit : P.lit) : P.lit * Nt.t =
   | AVar x ->
       let x, ty = type_infer_id topctx x in
       (AVar x, ty)
-  | APair (a, b) ->
+  | ATu l ->
+      let l, tys = List.split @@ List.map (type_infer_lit topctx) l in
+      (ATu l, Nt.mk_tuple tys)
+  | AProj (n, total, a) -> (
       let a, aty = type_infer_lit topctx a in
-      let b, bty = type_infer_lit topctx b in
-      (APair (a, b), Nt.mk_tuple [ aty; bty ])
-  | AFst a ->
-      let a, aty = type_infer_lit topctx a in
-      (AFst a, Nt.fst_ty aty)
-  | ASnd a ->
-      let a, aty = type_infer_lit topctx a in
-      (ASnd a, Nt.snd_ty aty)
+      match aty with
+      | Nt.Ty_tuple tys when List.length tys == total && n < total ->
+          (AProj (n, total, a), List.nth tys n)
+      | _ -> _failatwith __FILE__ __LINE__ "?")
   | AApp (f, args) ->
       let args, argsty = List.split @@ List.map (type_infer_lit topctx) args in
       let f, fty = type_infer_id topctx f in
@@ -92,19 +91,22 @@ and type_check_lit (topctx : Typectx.ctx) (lit, ty) : P.lit =
       let lit, ty' = type_infer_lit topctx lit in
       let _ = _check_equality __FILE__ __LINE__ Nt.eq ty ty' in
       lit
-  | APair (a, b) ->
-      let a = type_check_lit topctx (a, Nt.fst_ty ty) in
-      let b = type_check_lit topctx (b, Nt.snd_ty ty) in
-      APair (a, b)
-  | AFst a ->
-      let a = type_check_lit topctx (a, Nt.Ty_tuple [ ty; Ty_any ]) in
-      AFst a
-  | ASnd a ->
-      let a = type_check_lit topctx (a, Nt.Ty_tuple [ Ty_any; ty ]) in
-      ASnd a
+  | ATu l ->
+      let tys =
+        match ty with
+        | Nt.Ty_tuple tys -> tys
+        | _ -> _failatwith __FILE__ __LINE__ "?"
+      in
+      ATu
+        (List.map (type_check_lit topctx)
+           (_safe_combine __FILE__ __LINE__ l tys))
+  | AProj (n, total, a) ->
+      let tys = List.init total (fun i -> if i == n then Nt.Ty_any else ty) in
+      AProj (n, total, type_check_lit topctx (a, Nt.mk_tuple tys))
   | AApp (f, args) ->
       let args, argsty = List.split @@ List.map (type_infer_lit topctx) args in
       let f, fty = type_infer_id topctx f in
+      (* let () = Printf.printf "%s:%s\n" f.x (Nt.layout fty) in *)
       let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
       let argsty, retty =
         _solve_by_retty __FILE__ __LINE__
@@ -148,13 +150,21 @@ let type_check_qualifier (topctx : Typectx.ctx) (qualifier : P.t) : P.t =
   in
   aux topctx qualifier
 
+let basety_check ctx { v; phi } =
+  let ctx' = Typectx.new_to_rights ctx [ v ] in
+  let phi = type_check_qualifier ctx' phi in
+  { v; phi }
+
 let type_check ctx (rty : R.t) : R.t =
   let rec aux ctx rty =
     match rty with
-    | BaseRty { ou; basety = { h; v; phi } } ->
-        let ctx' = Typectx.new_to_rights ctx [ h; v ] in
-        let phi = type_check_qualifier ctx' phi in
-        BaseRty { ou; basety = { h; v; phi } }
+    | BaseRty { ou; basety } -> BaseRty { ou; basety = basety_check ctx basety }
+    | Traced { h; pre; rty; post } ->
+        let pre = basety_check ctx pre in
+        let ctx' = Typectx.new_to_rights ctx [ Nt.(h #: (erase_basety pre)) ] in
+        let post = basety_check ctx' post in
+        let rty = aux ctx' rty in
+        Traced { h; pre; rty; post }
     | DepRty { dep; label; rarg; retrty } ->
         let rarg = RtyRaw.{ x = rarg.x; ty = aux ctx rarg.ty } in
         let ctx' =

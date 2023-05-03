@@ -1,0 +1,53 @@
+module MetaEnv = Env
+open Ocaml5_parser
+open Parsetree
+open Zzdatatype.Datatype
+module Type = Normalty.Frontend
+module NTyped = Normalty.Ntyped
+module TL = Syntax.OptTypedTermlang
+open Syntax.LRaw
+open Sugar
+
+let f_proj = "proj"
+
+let rec lit_to_ocamlexpr expr =
+  To_expr.desc_to_ocamlexpr @@ lit_to_ocamlexpr_desc expr
+
+and lit_to_ocamlexpr_desc expr =
+  let aux expr =
+    match expr with
+    | AC c -> (To_const.value_to_expr c).pexp_desc
+    | AAppOp (op, args) ->
+        let op = To_expr.op_to_ocamlexpr op in
+        let args =
+          List.map (fun x -> (Asttypes.Nolabel, lit_to_ocamlexpr x)) args
+        in
+        Pexp_apply (op, args)
+    | ATu l -> Pexp_tuple (List.map lit_to_ocamlexpr l)
+    | AProj (a, idx) ->
+        let a = (Asttypes.Nolabel, lit_to_ocamlexpr a) in
+        let idx =
+          ( Asttypes.Nolabel,
+            lit_to_ocamlexpr (AC (Constant.I idx)) #: (Some NTyped.int_ty) )
+        in
+        Pexp_apply (To_expr.id_to_ocamlexpr f_proj #: None, [ a; idx ])
+    | AVar x -> (To_expr.id_to_ocamlexpr x #: None).pexp_desc
+  in
+  aux expr.x
+
+let layout_lit lit = Pprintast.string_of_expression @@ lit_to_ocamlexpr lit
+
+let rec term_to_lit expr =
+  (fun e ->
+    match e with
+    | TL.Const c -> AC c
+    | TL.Var id -> AVar id
+    | TL.AppOp (op, args) -> AAppOp (op, List.map term_to_lit args)
+    | TL.Tu es -> ATu (List.map term_to_lit es)
+    | _ ->
+        _failatwith __FILE__ __LINE__
+        @@ spf "parsing: not a op (%s)"
+        @@ To_expr.layout expr)
+  #-> expr
+
+let lit_of_ocamlexpr e = term_to_lit (To_expr.expr_of_ocamlexpr e)

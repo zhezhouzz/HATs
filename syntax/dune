@@ -1,18 +1,22 @@
 (library
- (name ast)
+ (name syntax)
  (wrapped false)
  (modules
+   id
    constant
-   pmop
+   op
    termlang
    corelang
+   lit
+   pred
+   qualifier
+   rty
+   algebraic
    type_dec
    typectx
    structure
-   ast
-   qualifier
-   rty
+   syntax
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
- (libraries zzdatatype utils normalty env)
+ (libraries zzdatatype utils normal5ty env)
 )

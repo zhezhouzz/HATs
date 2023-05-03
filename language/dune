@@ -7,5 +7,5 @@
    language
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
- (libraries zzdatatype utils ast frontend)
+ (libraries zzdatatype utils syntax frontend)
 )

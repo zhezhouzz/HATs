@@ -1,6 +1,6 @@
-module F (Ty : Typed.T) = struct
-  open Termlang.F (Ty)
-  module R = Rty.F (Ty)
+module F (L : Lit.T) = struct
+  open Termlang.F (L)
+  module R = Rty.F (L)
 
   type rty_kind = RtyLib | RtyToCheck
 

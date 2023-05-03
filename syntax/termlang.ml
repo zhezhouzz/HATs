@@ -1,13 +1,10 @@
 module type T = sig
-  type constant = Constant.t [@@deriving sexp]
-
   include Typed.T
 
   type term =
     | Var of string
-    | Const of constant
+    | Const of Constant.t
     | Lam of { lamarg : string typed; lambody : term typed }
-    | VHd of handler typed
     (* term *)
     | Err
     | Let of {
@@ -17,29 +14,16 @@ module type T = sig
         letbody : term typed;
       }
     | App of term typed * term typed list
-    | AppOp of Pmop.t typed * term typed list
-    | Perform of { rhsop : string typed; rhsargs : term typed list }
-    | CWithH of { handler : handler typed; handled_prog : term typed }
+    | AppOp of Op.t typed * term typed list
     | Ite of term typed * term typed * term typed
     | Tu of term typed list
     | Match of term typed * match_case list
 
   and match_case = {
-    constructor : Pmop.t typed;
+    constructor : string typed;
     args : string typed list;
     exp : term typed;
   }
-
-  and handler_case = {
-    effop : string typed;
-    effargs : string typed list;
-    effk : string typed;
-    hbody : term typed;
-  }
-
-  and ret_case = { retarg : string typed; retbody : term typed }
-
-  and handler = { ret_case : ret_case; handler_cases : handler_case list }
   [@@deriving sexp]
 
   val mk_var : string -> term typed
@@ -55,16 +39,12 @@ end
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
 struct
   open Sexplib.Std
-
-  type constant = Constant.t [@@deriving sexp]
-
   include Ty
 
   type term =
     | Var of string
-    | Const of constant
+    | Const of Constant.t
     | Lam of { lamarg : string typed; lambody : term typed }
-    | VHd of handler typed
     (* term *)
     | Err
     | Let of {
@@ -74,29 +54,16 @@ struct
         letbody : term typed;
       }
     | App of term typed * term typed list
-    | AppOp of Pmop.t typed * term typed list
-    | Perform of { rhsop : string typed; rhsargs : term typed list }
-    | CWithH of { handler : handler typed; handled_prog : term typed }
+    | AppOp of Op.t typed * term typed list
     | Ite of term typed * term typed * term typed
     | Tu of term typed list
     | Match of term typed * match_case list
 
   and match_case = {
-    constructor : Pmop.t typed;
+    constructor : string typed;
     args : string typed list;
     exp : term typed;
   }
-
-  and handler_case = {
-    effop : string typed;
-    effargs : string typed list;
-    effk : string typed;
-    hbody : term typed;
-  }
-
-  and ret_case = { retarg : string typed; retbody : term typed }
-
-  and handler = { ret_case : ret_case; handler_cases : handler_case list }
   [@@deriving sexp]
 
   let mk_var name = mk_noty @@ Var name

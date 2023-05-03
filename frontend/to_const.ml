@@ -1,16 +1,8 @@
-module C = Ast.Const
-open Ocaml_parser
+module C = Syntax.Const
+open Ocaml5_parser
 open Parsetree
 open Sugar
 open Zzdatatype.Datatype
-
-let longident_to_string ld =
-  match Longident.flatten ld with
-  | [] -> failwith "die"
-  | [ t ] -> t
-  | _ -> failwith "un-imp"
-
-let string_to_loc str = Location.mknoloc @@ Longident.Lident str
 
 let dummy_expr pexp_desc =
   {
@@ -24,7 +16,6 @@ let string_to_value = function
   | "true" -> C.B true
   | "false" -> C.B false
   | "()" -> C.U
-  (* | "Err" -> C.Err *)
   | x -> failwith (spf "do not support literal: %s" x)
 
 let rec expr_to_value e =
@@ -36,7 +27,7 @@ let rec expr_to_value e =
   match e.pexp_desc with
   | Pexp_tuple es -> C.Tu (List.map expr_to_value es)
   | Pexp_construct (id, e) -> (
-      let name = longident_to_string id.txt in
+      let name = To_id.longid_to_id id in
       match e with
       | None -> string_to_value name
       | Some e -> (
@@ -48,7 +39,7 @@ let rec expr_to_value e =
 
 let value_to_expr v =
   let name_to_expr name e =
-    dummy_expr (Pexp_construct (string_to_loc name, e))
+    dummy_expr (Pexp_construct (To_id.id_to_longid name, e))
   in
   let rec aux v =
     match v with
@@ -56,13 +47,11 @@ let value_to_expr v =
     | C.Dt (op, vs) ->
         dummy_expr
           (Pexp_construct
-             (string_to_loc (Pmop.t_to_string op), Some (aux (C.Tu vs))))
+             ( To_id.id_to_longid (To_op.op_to_string (Op.DtOp op)),
+               Some (aux (C.Tu vs)) ))
     | C.I i ->
         dummy_expr (Pexp_constant (Pconst_integer (string_of_int i, None)))
-    (* | C.IL [] -> name_to_expr "[]" None *)
-    (* | C.IL (h :: t) -> name_to_expr "::" (Some (aux C.(Tu [ I h; IL t ]))) *)
     | C.Tu l -> dummy_expr (Pexp_tuple (List.map aux l))
-    (* | _ -> failwith "un-imp" *)
   in
   aux v
 

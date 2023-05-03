@@ -1,8 +1,8 @@
-open Ocaml_parser
+open Ocaml5_parser
 open Parsetree
-module L = Ast.OptTypedTermlang
+module L = Syntax.OptTypedTermlang
 module Type = Normalty.Frontend
-open Ast.StructureRaw
+open Syntax.StructureRaw
 open Sugar
 
 let ocaml_structure_to_structure structure =

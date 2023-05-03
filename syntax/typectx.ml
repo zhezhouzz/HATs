@@ -2,50 +2,51 @@ module type CtxType = sig
   type t
   type 'a typed = { x : 'a; ty : t }
 
-  val mk_noty : 'a -> 'a typed
-  val ( #: ) : 'a -> t -> 'a typed
-  val xmap : ('a -> 'b) -> 'a typed -> 'b typed
+  (* val mk_noty : 'a -> 'a typed *)
+  (* val ( #: ) : 'a -> t -> 'a typed *)
+
+  (* val ( #-> ) : ('a -> 'b) -> 'a typed -> 'b typed *)
   val layout : t -> string
   val layout_typed : ('a -> string) -> 'a typed -> string
-  val layout_typed_l : ('a -> string) -> 'a typed list -> string
-  val is_basic_tp : t -> bool
-  val is_dt : t -> bool
-  val eq : t -> t -> bool
-  val destruct_arr_tp : t -> t list * t
-  val construct_normal_tp : t list * t -> t
-  val default_ty : t
-  val _type_unify : string -> int -> t -> t -> t
-  val is_eff_arr : t -> bool
+  (* val layout_typed_l : ('a -> string) -> 'a typed list -> string *)
+
+  (* val is_basic_tp : t -> bool *)
+  (* val is_dt : t -> bool *)
+  (* val eq : t -> t -> bool *)
+
+  (* val destruct_arr_tp : t -> t list * t *)
+  (* val construct_arr_tp : t list * t -> t *)
+  (* val default_ty : t *)
+  (* val _type_unify : string -> int -> t -> t -> t *)
 end
 
-module F (Ty : CtxType) = struct
+module F (Id : Id.ID) (Ty : CtxType) = struct
   open Zzdatatype.Datatype
 
   (* open Sexplib.Std *)
   open Sugar
   open Ty
 
-  type ctx = string typed list
+  type ctx = Id.id typed list
 
   let empty = []
-  let exists ctx name = List.exists (fun x -> String.equal x.x name) ctx
+  let exists ctx name = List.exists (fun x -> Id.eq x.x name) ctx
 
   let get_ty_opt (ctx : ctx) id : t option =
-    match List.find_opt (fun x -> String.equal id x.x) ctx with
+    match List.find_opt (fun x -> Id.eq id x.x) ctx with
     | None -> None
     | Some x -> Some x.ty
-
-  let get_effctx l = List.filter (fun x -> is_eff_arr x.ty) l
 
   let get_ty (ctx : ctx) id : t =
     match get_ty_opt ctx id with
     | None ->
         _failatwith __FILE__ __LINE__
-        @@ spf "no such name (%s) in the type context" id
+        @@ spf "no such name (%s) in the type context" (Id.layout id)
     | Some ty -> ty
 
   let new_to_right ctx { x; ty } =
-    if exists ctx x then _failatwith __FILE__ __LINE__ (spf "Add %s" x)
+    if exists ctx x then
+      _failatwith __FILE__ __LINE__ (spf "Add %s" (Id.layout x))
     else ctx @ [ { x; ty } ]
 
   let new_to_rights ctx l = List.fold_left new_to_right ctx l
@@ -88,9 +89,4 @@ module F (Ty : CtxType) = struct
         pretty_print ctx;
         Pp.printf "⊢ @{<hi_magenta>%s@} ⇦ " (short_str 10000 e);
         Pp.printf "@{<cyan>%s@}\n\n" @@ layout r)
-end
-
-module NTypectx = struct
-  include F (Normalty.Ntyped)
-  include Normalty.Ntyped
 end

@@ -15,13 +15,9 @@ open NT
 let name_to_ctype name type_params = Ty_constructor (name, type_params)
 
 let mk_constr_types { constr_name; argsty } retty =
-  constr_name #: (construct_normal_tp (argsty, retty))
+  constr_name #: (construct_arr_tp (argsty, retty))
 
 open Zzdatatype.Datatype
-
-let rec construct_eff_tp = function
-  | [], retty -> retty
-  | h :: t, retty -> Ty_arrow (Some Leff.EffArr, h, construct_eff_tp (t, retty))
 
 let mk_ctx_ { type_name; type_params; type_decls } =
   (* let open Sugar in *)

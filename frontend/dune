@@ -1,16 +1,21 @@
 (library
  (name frontend)
  (wrapped false)
- (libraries utils ast normalty core ocaml_parser env)
+ (libraries utils syntax normal5ty core ocaml5_parser env)
  (modules
    ; anormal
+   to_id
+   to_op
+   to_const
+   to_pat
+   to_expr
+   to_lit
+   to_pred
+   to_qualifier
    to_type_dec
    to_structure
-   to_expr
-   to_pat
-   to_const
-   to_qualifier
    to_rty
+   to_algebraic
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert))
  (inline_tests)

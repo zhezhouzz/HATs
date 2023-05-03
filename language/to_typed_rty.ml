@@ -14,17 +14,15 @@ open P
 let rec force_typed_lit = function
   | R.P.AC c -> AC c
   | R.P.AVar x -> AVar (force_typed x)
-  | R.P.APair (a, b) -> APair (force_typed_lit a, force_typed_lit b)
-  | R.P.AFst a -> AFst (force_typed_lit a)
-  | R.P.ASnd a -> ASnd (force_typed_lit a)
+  | R.P.ATu l -> ATu (List.map force_typed_lit l)
+  | R.P.AProj (n, total, a) -> AProj (n, total, force_typed_lit a)
   | R.P.AApp (f, args) -> AApp (force_typed f, List.map force_typed_lit args)
 
 let rec to_opt_lit = function
   | AC c -> R.P.AC c
   | AVar x -> R.P.AVar (to_opt_ x)
-  | APair (a, b) -> R.P.APair (to_opt_lit a, to_opt_lit b)
-  | AFst a -> R.P.AFst (to_opt_lit a)
-  | ASnd a -> R.P.ASnd (to_opt_lit a)
+  | ATu l -> R.P.ATu (List.map to_opt_lit l)
+  | AProj (n, total, a) -> R.P.AProj (n, total, to_opt_lit a)
   | AApp (f, args) -> R.P.AApp (to_opt_ f, List.map to_opt_lit args)
 
 let force_typed_qualifier =
@@ -63,15 +61,21 @@ let force_typed_ou = function R.Over -> Over | R.Under -> Under
 let to_opt_ou = function Over -> R.Over | Under -> R.Under
 let force_typed_dep = function R.Sigma -> Sigma | R.Pi -> Pi
 let to_opt_dep = function Sigma -> R.Sigma | Pi -> R.Pi
+let force_typed_basety R.{ v; phi } = { v; phi = force_typed_qualifier phi }
+let to_opt_basety { v; phi } = R.{ v; phi = to_opt_qualifier phi }
 
 let force_typed_rty =
   let rec aux = function
-    | R.BaseRty { ou; basety = { v; h; phi } } ->
-        BaseRty
+    | R.Traced { h; pre; rty; post } ->
+        Traced
           {
-            ou = force_typed_ou ou;
-            basety = { v; h; phi = force_typed_qualifier phi };
+            h;
+            pre = force_typed_basety pre;
+            rty = aux rty;
+            post = force_typed_basety post;
           }
+    | R.BaseRty { ou; basety } ->
+        BaseRty { ou = force_typed_ou ou; basety = force_typed_basety basety }
     | R.DepRty { dep; label; rarg; retrty } ->
         let R.{ x; ty } = rarg in
         let rarg = Ast.Rty.{ x; ty = aux ty } in
@@ -81,9 +85,16 @@ let force_typed_rty =
 
 let to_opt_rty =
   let rec aux = function
-    | BaseRty { ou; basety = { v; h; phi } } ->
-        R.BaseRty
-          { ou = to_opt_ou ou; basety = { v; h; phi = to_opt_qualifier phi } }
+    | Traced { h; pre; rty; post } ->
+        R.Traced
+          {
+            h;
+            pre = to_opt_basety pre;
+            rty = aux rty;
+            post = to_opt_basety post;
+          }
+    | BaseRty { ou; basety } ->
+        R.BaseRty { ou = to_opt_ou ou; basety = to_opt_basety basety }
     | DepRty { dep; label; rarg; retrty } ->
         let Ast.Rty.{ x; ty } = rarg in
         let rarg = R.{ x; ty = aux ty } in

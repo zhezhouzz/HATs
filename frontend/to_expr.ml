@@ -1,14 +1,13 @@
 module MetaEnv = Env
-open Ocaml_parser
+open Ocaml5_parser
 open Parsetree
 open Zzdatatype.Datatype
 module Type = Normalty.Frontend
-module Op = Ast.Pmop
-open Ast.OptTypedTermlang
+module Op = Syntax.Op
+open Syntax.OptTypedTermlang
 
 let kw_perform = "perform"
-let kw_match_with = "match_with"
-let kw_retc = "retc"
+let kw_builtin = "pmop"
 
 let get_if_rec flag =
   match flag with Asttypes.Recursive -> true | Asttypes.Nonrecursive -> false
@@ -39,6 +38,7 @@ and typed_expr_to_ocamlexpr_desc expr =
   typed_to_ocamlexpr_desc expr_to_ocamlexpr_desc expr
 
 and id_to_ocamlexpr id = expr_to_ocamlexpr { ty = id.ty; x = Var id.x }
+and op_to_ocamlexpr op = id_to_ocamlexpr @@ (To_op.op_to_string #-> op)
 
 and expr_to_ocamlexpr_desc expr =
   let aux expr =
@@ -49,7 +49,6 @@ and expr_to_ocamlexpr_desc expr =
         (* let () = Printf.printf "print var: %s\n" var in *)
         Pexp_ident (mk_idloc [ var ])
     | Const v -> (To_const.value_to_expr v).pexp_desc
-    | VHd hd -> typed_to_ocamlexpr_desc hd_aux hd
     | Let { if_rec; lhs; rhs; letbody } ->
         let flag =
           if if_rec then Asttypes.Recursive else Asttypes.Nonrecursive
@@ -64,20 +63,21 @@ and expr_to_ocamlexpr_desc expr =
         in
         Pexp_let (flag, [ vb ], expr_to_ocamlexpr letbody)
     | AppOp (op, args) ->
-        let func = id_to_ocamlexpr @@ xmap Op.t_to_string op in
+        let mk_app f args =
+          match op.x with
+          | Op.BuiltinOp _ ->
+              let kw = id_to_ocamlexpr kw_builtin #: None in
+              Pexp_apply (kw, (Asttypes.Nolabel, f) :: args)
+          | Op.DtOp _ -> Pexp_apply (f, args)
+          | Op.EffOp _ ->
+              let kw = id_to_ocamlexpr kw_perform #: None in
+              Pexp_apply (kw, (Asttypes.Nolabel, f) :: args)
+        in
+        let op = op_to_ocamlexpr op in
         let args =
           List.map (fun x -> (Asttypes.Nolabel, expr_to_ocamlexpr x)) args
         in
-        Pexp_apply (func, args)
-    | Perform { rhsop; rhsargs } ->
-        let op = xmap (fun x -> Op.DtConstructor x) rhsop in
-        let perform = (Var kw_perform) #: None in
-        expr_to_ocamlexpr_desc
-          (App (perform, [ (AppOp (op, rhsargs)) #: None ]))
-    | CWithH { handler; handled_prog } ->
-        let match_with = (Var kw_match_with) #: None in
-        expr_to_ocamlexpr_desc
-          (App (match_with, [ handled_prog; (VHd handler) #: handler.ty ]))
+        mk_app op args
     | App (func, args) ->
         let func = expr_to_ocamlexpr func in
         let args =
@@ -89,20 +89,7 @@ and expr_to_ocamlexpr_desc expr =
         Pexp_ifthenelse (e1, e2, Some e3)
     | Match (case_target, cs) ->
         let case_target = expr_to_ocamlexpr case_target in
-        let cases =
-          List.map
-            (fun case ->
-              let args = List.map (xmap (fun x -> Var x)) case.args in
-              let lhs =
-                To_pat.term_to_pattern (AppOp (case.constructor, args)) #: None
-              in
-              {
-                pc_lhs = lhs;
-                pc_guard = None;
-                pc_rhs = expr_to_ocamlexpr case.exp;
-              })
-            cs
-        in
+        let cases = List.map match_case_aux cs in
         Pexp_match (case_target, cases)
     | Lam { lamarg; lambody } ->
         Pexp_fun
@@ -113,64 +100,46 @@ and expr_to_ocamlexpr_desc expr =
   in
   aux expr
 
-and hd_case_aux { effop; effk; effargs; hbody } =
-  let name = mk_idloc [ effop.x ] in
-  let args = effk :: effargs in
-  let lam = curry (args, hbody) in
-  (name, expr_to_ocamlexpr lam)
-
-and ret_case_aux { retarg; retbody } =
-  let name = mk_idloc [ kw_retc ] in
-  let lam = curry ([ retarg ], retbody) in
-  (name, expr_to_ocamlexpr lam)
-
-and hd_aux { ret_case; handler_cases } =
-  Pexp_record (ret_case_aux ret_case :: List.map hd_case_aux handler_cases, None)
+and match_case_aux { constructor; args; exp } =
+  let args = List.map (xmap (fun x -> Var x)) args in
+  let lhs =
+    To_pat.term_to_pattern
+      (AppOp ((fun x -> Op.DtOp x) #-> constructor, args)) #: None
+  in
+  { pc_lhs = lhs; pc_guard = None; pc_rhs = expr_to_ocamlexpr exp }
 
 open Sugar
 
+let id_to_var id = (fun x -> Var x) #-> id
+
+let update_ty { x; ty } ty' =
+  match ty with None -> x #: (Some ty') | Some _ -> x #: (Some ty')
+
 let expr_of_ocamlexpr expr =
-  let handle_id id =
-    match Longident.flatten id.Location.txt with
-    | [ x ] -> x
-    | ids ->
-        failwith
-          (Printf.sprintf "expr, handel id: %s"
-          @@ Zzdatatype.Datatype.StrList.to_string ids)
-  in
-  let id_to_var id = xmap (fun x -> Var x) id in
-  let update_ty { x; ty } ty' =
-    match ty with None -> x #: (Some ty') | Some _ -> x #: (Some ty')
-    (* NOTE: the type denotation is stronger than type inference *)
-  in
   let rec aux expr =
     match expr.pexp_desc with
     | Pexp_tuple es -> (Tu (List.map aux es)) #: None
     | Pexp_constraint (expr, ty) ->
         let ty = Type.core_type_to_t ty in
         let res = update_ty (aux expr) ty in
-        (* NOTE: also note the hanlder with the outer type *)
-        let res =
-          match res.x with VHd hd -> (VHd hd.x #: res.ty) #: res.ty | _ -> res
-        in
         res
-    | Pexp_ident id -> id_to_var @@ ((handle_id id) #: None)
+    | Pexp_ident id -> id_to_var @@ ((To_id.longid_to_id id) #: None)
     | Pexp_construct (c, args) -> (
         (* let () = *)
         (*   Printf.printf "check op: %s\n" (Pprintast.string_of_expression expr) *)
         (* in *)
-        let c = To_pat.constructor_to_term_or_pmop @@ handle_id c in
+        let c = To_pat.constructor_to_term_or_op @@ To_id.longid_to_id c in
         (* let () = Printf.printf "Pat: %s\n" c in *)
         match c with
         | To_pat.C_is_term tm -> tm
-        | To_pat.C_is_pmop pmop -> (
+        | To_pat.C_is_op op -> (
             match args with
-            | None -> (AppOp (pmop, [])) #: None
+            | None -> (AppOp (op, [])) #: None
             | Some args -> (
                 let args = aux args in
                 match args.x with
-                | Tu es -> (AppOp (pmop, es)) #: None
-                | _ -> (AppOp (pmop, [ args ])) #: None)))
+                | Tu es -> (AppOp (op, es)) #: None
+                | _ -> (AppOp (op, [ args ])) #: None)))
     | Pexp_constant _ -> (Const (To_const.expr_to_value expr)) #: None
     | Pexp_let (flag, vbs, e) ->
         List.fold_right
@@ -192,17 +161,18 @@ let expr_of_ocamlexpr expr =
             | [ (_, arg) ] -> (
                 let res = aux arg in
                 match res.x with
-                | App ({ x = Var opname; ty }, rhsargs) ->
-                    (Perform { rhsop = { x = opname; ty }; rhsargs }) #: res.ty
+                | AppOp (_, _) -> res
                 | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: perform")
             | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: perform")
-        | Var name when String.equal name kw_match_with -> (
+        | Var name when String.equal name kw_builtin -> (
             match args with
-            | [ (_, handled_prog); (_, hd) ] ->
-                let handled_prog = aux handled_prog in
-                let handler = hd_aux hd in
-                (CWithH { handler; handled_prog }) #: None
-            | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: match_with")
+            | [ (_, arg) ] -> (
+                let res = aux arg in
+                match res.x with
+                | App ({ x = Var op; ty }, args) ->
+                    (AppOp ({ x = Op.BuiltinOp op; ty }, args)) #: res.ty
+                | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: builtin")
+            | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: builtin")
         | _ -> (App (func, List.map (fun x -> aux @@ snd x) args)) #: None)
     | Pexp_ifthenelse (e1, e2, Some e3) ->
         (Ite (aux e1, aux e2, aux e3)) #: None
@@ -212,9 +182,9 @@ let expr_of_ocamlexpr expr =
           List.map
             (fun case ->
               match (To_pat.pattern_to_term case.pc_lhs).x with
-              | AppOp (pmop, args) ->
+              | AppOp ({ x = Op.DtOp op; ty }, args) ->
                   {
-                    constructor = pmop;
+                    constructor = { x = op; ty };
                     args = List.map to_var args;
                     exp = aux case.pc_rhs;
                   }
@@ -237,43 +207,17 @@ let expr_of_ocamlexpr expr =
         in
         (Lam { lamarg; lambody = aux expr }) #: None
         (* un-curry *)
-    | Pexp_record (_, _) ->
-        let res = hd_aux expr in
-        (VHd res) #: res.ty
     | _ ->
         raise
         @@ failwith
              (Sugar.spf "not imp client parsing:%s"
              @@ Pprintast.string_of_expression expr)
-  and hd_case_aux (name, expr) =
-    let effop = (handle_id name) #: None in
-    let args, hbody = uncurry @@ aux expr in
-    match args with
-    | effk :: effargs -> { effop; effk; effargs; hbody }
-    | _ -> _failatwith __FILE__ __LINE__ "?"
-  and hd_aux expr : handler typed =
-    match expr.pexp_desc with
-    | Pexp_constraint (expr, ty) ->
-        let ty = Type.core_type_to_t ty in
-        update_ty (hd_aux expr) ty
-    | Pexp_record (cases, None) -> (
-        let l = List.map hd_case_aux cases in
-        match List.partition (fun x -> String.equal kw_retc x.effop.x) l with
-        (* | [ { effk; effargs = []; hbody; _ } ], handler_cases -> *)
-        (*     let ret_case = { retarg = effk; retbody = hbody } in *)
-        (*     { ret_case; handler_cases } #: None *)
-        | [ { effk; effargs; hbody; _ } ], handler_cases ->
-            let retbody =
-              List.fold_right
-                (fun lamarg lambody -> (Lam { lamarg; lambody }) #: None)
-                effargs hbody
-            in
-            let ret_case = { retarg = effk; retbody } in
-            { ret_case; handler_cases } #: None
-        | _ -> _failatwith __FILE__ __LINE__ "Syntax Error: hd")
-    | _ -> _failatwith __FILE__ __LINE__ "?"
   in
   aux expr
+
+let id_of_ocamlexpr expr =
+  let x = expr_of_ocamlexpr expr in
+  match x.x with Var id -> id #: x.ty | _ -> _failatwith __FILE__ __LINE__ "?"
 
 let layout x = Pprintast.string_of_expression @@ expr_to_ocamlexpr x
 

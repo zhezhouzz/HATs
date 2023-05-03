@@ -1,8 +1,9 @@
-open Ocaml_parser
+open Ocaml5_parser
 open Parsetree
-module T = Ast.Ty
-module Op = Ast.Pmop
-open Ast.OptTypedTermlang
+module T = Syntax.NTyped
+module Op = Syntax.Op
+open Syntax.OptTypedTermlang
+open Sugar
 
 let layout_ t =
   let _ = Format.flush_str_formatter () in
@@ -19,18 +20,18 @@ let dest_to_pat pat =
 
 let tupdate ty { x; _ } = { x; ty }
 
-type term_or_pmop = C_is_term of term typed | C_is_pmop of Op.t typed
+type term_or_op = C_is_term of term typed | C_is_op of Op.t typed
 
-let constructor_to_term_or_pmop c =
+let constructor_to_term_or_op c : term_or_op =
   match c with
   | "Err" -> C_is_term Err #: (Some T.Ty_any)
   | "true" -> C_is_term (mk_bool true)
   | "false" -> C_is_term (mk_bool false)
   | "()" -> C_is_term mk_unit
   | name -> (
-      match Op.from_source_name name with
-      | None -> failwith "die: pat"
-      | Some pmop -> C_is_pmop pmop #: None)
+      match To_op.string_to_op name with
+      | None -> _failatwith __FILE__ __LINE__ "die: pat"
+      | Some op -> C_is_op op #: None)
 
 let rec pattern_to_term pattern =
   match pattern.ppat_desc with
@@ -40,18 +41,16 @@ let rec pattern_to_term pattern =
       let term = pattern_to_term ident in
       term.x #: (Some (Normalty.Frontend.core_type_to_t tp))
   | Ppat_construct (c, args) -> (
-      match Longident.flatten c.txt with
-      | [ c ] -> (
-          match constructor_to_term_or_pmop c with
-          | C_is_term tm -> tm
-          | C_is_pmop pmop ->
-              let args =
-                match args with
-                | None -> []
-                | Some args -> de_typed_tuple @@ pattern_to_term @@ snd args
-              in
-              (AppOp (pmop, args)) #: None)
-      | _ -> failwith "unimp: long name")
+      let c = To_id.longid_to_id c in
+      match constructor_to_term_or_op c with
+      | C_is_term tm -> tm
+      | C_is_op op ->
+          let args =
+            match args with
+            | None -> []
+            | Some args -> de_typed_tuple @@ pattern_to_term @@ snd args
+          in
+          (AppOp (op, args)) #: None)
   | Ppat_any -> mk_var "_"
   | _ ->
       Pprintast.pattern Format.std_formatter pattern;
@@ -66,11 +65,7 @@ and term_to_pattern_desc_untyped slang =
       pat
   | Tu ss -> Ppat_tuple (List.map term_to_pattern ss)
   | AppOp (name, arg) -> (
-      let c =
-        match Longident.unflatten [ Op.t_to_string @@ name.x ] with
-        | Some x -> Location.mknoloc x
-        | _ -> failwith "die: pat"
-      in
+      let c = To_id.id_to_longid (To_op.op_to_string name.x) in
       match arg with
       | [] -> Ppat_construct (c, None)
       | [ arg ] -> Ppat_construct (c, Some ([], term_to_pattern arg))
