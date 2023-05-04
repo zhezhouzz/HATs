@@ -20,20 +20,20 @@ module type CtxType = sig
   (* val _type_unify : string -> int -> t -> t -> t *)
 end
 
-module F (Id : Id.ID) (Ty : CtxType) = struct
+module F (Ty : CtxType) = struct
   open Zzdatatype.Datatype
 
   (* open Sexplib.Std *)
   open Sugar
   open Ty
 
-  type ctx = Id.id typed list
+  type ctx = string typed list
 
   let empty = []
-  let exists ctx name = List.exists (fun x -> Id.eq x.x name) ctx
+  let exists ctx name = List.exists (fun x -> String.equal x.x name) ctx
 
   let get_ty_opt (ctx : ctx) id : t option =
-    match List.find_opt (fun x -> Id.eq id x.x) ctx with
+    match List.find_opt (fun x -> String.equal id x.x) ctx with
     | None -> None
     | Some x -> Some x.ty
 
@@ -41,12 +41,11 @@ module F (Id : Id.ID) (Ty : CtxType) = struct
     match get_ty_opt ctx id with
     | None ->
         _failatwith __FILE__ __LINE__
-        @@ spf "no such name (%s) in the type context" (Id.layout id)
+        @@ spf "no such name (%s) in the type context" id
     | Some ty -> ty
 
   let new_to_right ctx { x; ty } =
-    if exists ctx x then
-      _failatwith __FILE__ __LINE__ (spf "Add %s" (Id.layout x))
+    if exists ctx x then _failatwith __FILE__ __LINE__ (spf "Add %s" x)
     else ctx @ [ { x; ty } ]
 
   let new_to_rights ctx l = List.fold_left new_to_right ctx l

@@ -27,7 +27,6 @@ module type T = sig
         letbody : comp typed;
       }
     | CLetE of { lhs : string typed; rhs : comp typed; letbody : comp typed }
-    | CIte of { cond : value typed; et : comp typed; ef : comp typed }
     | CMatch of { matched : value typed; match_cases : match_case list }
     | CApp of { appf : value typed; apparg : value typed }
     | CAppOp of { op : Op.t typed; appopargs : value typed list }
@@ -94,7 +93,6 @@ struct
         letbody : comp typed;
       }
     | CLetE of { lhs : string typed; rhs : comp typed; letbody : comp typed }
-    | CIte of { cond : value typed; et : comp typed; ef : comp typed }
     | CMatch of { matched : value typed; match_cases : match_case list }
     | CApp of { appf : value typed; apparg : value typed }
     | CAppOp of { op : Op.t typed; appopargs : value typed list }
@@ -182,13 +180,6 @@ struct
             else do_subst_comp (x, v) letbody
           in
           CLetDeTu { tulhs; turhs = do_subst_value (x, v) turhs; letbody }
-      | CIte { cond; et; ef } ->
-          CIte
-            {
-              cond = do_subst_value (x, v) cond;
-              et = do_subst_comp (x, v) et;
-              ef = do_subst_comp (x, v) ef;
-            }
       | CMatch { matched; match_cases } ->
           CMatch
             {

@@ -10,7 +10,7 @@
    to_pat
    to_expr
    to_lit
-   to_pred
+   ; to_pred
    to_qualifier
    to_type_dec
    to_structure

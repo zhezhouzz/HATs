@@ -12,14 +12,16 @@ let pprint_id Nt.{ x; ty } = spf "%s:%s" x (Nt.layout ty)
 let pprint_phi v (phi : P.t) =
   let open P in
   match phi with
-  | Pred
-      (MethodPred
-        ({ x = "=="; _ }, [ { x = AVar id; _ }; { x = AC (Constant.I i); _ } ]))
+  | Lit
+      (AAppOp
+        ( { x = Op.BuiltinOp "=="; _ },
+          [ { x = AVar id; _ }; { x = AC (Constant.I i); _ } ] ))
     when String.equal v.Nt.x id ->
       spf "%i" i
-  | Pred
-      (MethodPred
-        ({ x = "=="; _ }, [ { x = AVar id; _ }; { x = AC (Constant.B b); _ } ]))
+  | Lit
+      (AAppOp
+        ( { x = Op.BuiltinOp "=="; _ },
+          [ { x = AVar id; _ }; { x = AC (Constant.B b); _ } ] ))
     when String.equal v.Nt.x id ->
       spf "%b" b
   | _ -> To_qualifier.layout phi

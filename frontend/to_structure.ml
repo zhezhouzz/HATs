@@ -1,23 +1,22 @@
 open Ocaml5_parser
 open Parsetree
-module L = Syntax.OptTypedTermlang
 module Type = Normalty.Frontend
 open Syntax.StructureRaw
 open Sugar
 
 let ocaml_structure_to_structure structure =
   match structure.pstr_desc with
-  | Pstr_primitive { pval_name; pval_prim; pval_type; _ } ->
-      if String.equal pval_name.txt "method_predicates" then Mps pval_prim
-      else
-        Func_dec
-          Normalty.Ntyped.(pval_name.txt #: (Type.core_type_to_t pval_type))
+  | Pstr_primitive { pval_name; pval_type; _ } ->
+      (* if String.equal pval_name.txt "method_predicates" then Mps pval_prim *)
+      (* else *)
+      Func_dec
+        Normalty.Ntyped.(pval_name.txt #: (Type.core_type_to_t pval_type))
   | Pstr_type (_, [ type_dec ]) ->
       Type_dec (To_type_dec.of_ocamltypedec type_dec)
   | Pstr_value (flag, [ value_binding ]) -> (
       let name =
         match (To_pat.pattern_to_term value_binding.pvb_pat).x with
-        | L.Var name -> name
+        | Var name -> name
         | _ -> failwith "die"
       in
       match value_binding.pvb_attributes with
@@ -43,9 +42,9 @@ let ocaml_structure_to_structure structure =
 open Zzdatatype.Datatype
 
 let layout_entry = function
-  | Mps mps ->
-      spf "external method_predicates : t = %s"
-        (List.split_by " " (fun x -> x) mps)
+  (* | Mps mps -> *)
+  (*     spf "external method_predicates : t = %s" *)
+  (*       (List.split_by " " (fun x -> x) mps) *)
   | Type_dec d -> To_type_dec.layout [ d ]
   | Func_dec x ->
       let open Normalty.Ntyped in

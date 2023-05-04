@@ -3,8 +3,8 @@ open Ocaml5_parser
 open Parsetree
 open Zzdatatype.Datatype
 module Type = Normalty.Frontend
-module Op = Syntax.Op
-open Syntax.OptTypedTermlang
+open Syntax
+open StructureRaw
 
 let kw_perform = "perform"
 let kw_builtin = "pmop"

@@ -1,5 +1,6 @@
-open Ast.Rty
-module R = Ast.RtyRaw
+open Syntax
+open Rty
+module R = RtyRaw
 open Sugar
 
 let force_typed R.P.{ x; ty } =

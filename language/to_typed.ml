@@ -1,6 +1,7 @@
 open Sugar
-module T = Ast.TypedTermlang
-open Ast.OptTypedTermlang
+open Syntax
+module T = Structure
+open StructureRaw
 
 let rec to_opttyped (type a b) (f : a -> b) (expr : a T.typed) : b typed =
   (f expr.T.x) #: (Some expr.T.ty)

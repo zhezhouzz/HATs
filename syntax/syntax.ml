@@ -1,39 +1,34 @@
-module NTyped = Lit.Ty
-module OptTy = Lit.OptTy
-module L = Lit.Lit
+(* parsing only *)
+module OptNt = Lit.OptTy
 module LRaw = Lit.LitRaw
-module TypedCoreEff = Corelang.F (NTyped)
-module TypedTermlang = Termlang.F (NTyped)
-
-module OptTypedCoreEff = struct
-  include Corelang.F (LRaw)
-end
-
-module OptTypedTermlang = struct
-  include Termlang.F (LRaw)
-  (* open Sugar *)
-
-  let de_typed_tuple { x; ty } = match x with Tu es -> es | _ -> [ { x; ty } ]
-end
-
 module StructureRaw = Structure.F (LRaw)
-module Structure = Structure.F (L)
 module RtyRaw = StructureRaw.R
+(* module QualifierRaw = RtyRaw.P *)
+
+(* module OptTypedCoreEff = struct *)
+(*   include Corelang.F (LRaw) *)
+(* end *)
+
+(* module NTypectx = struct *)
+(*   include Typectx.F (NTyped) *)
+(*   include NTyped *)
+(* end *)
+
+module Nt = Lit.Ty
+module L = Lit.Lit
+module Structure = Structure.F (L)
 module Rty = Structure.R
-module QualifierRaw = RtyRaw.P
 
-module NTypectx = struct
-  include Typectx.F (Id.Id) (NTyped)
-  include NTyped
-end
-
+(* module Qualifier = Rty.P *)
 module Equation = Algebraic.F (L)
 module EquationRaw = Algebraic.F (LRaw)
 
 module Eqctx = struct
-  include Typectx.F (Id.Id) (Equation)
+  include Typectx.F (Equation)
   include Equation
 end
+
+module TypedCoreEff = Corelang.F (Nt)
 
 (* unwrap *)
 module Const = Constant

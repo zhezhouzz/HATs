@@ -2,13 +2,11 @@
  (name syntax)
  (wrapped false)
  (modules
-   id
    constant
    op
    termlang
    corelang
    lit
-   pred
    qualifier
    rty
    algebraic

@@ -1,11 +1,9 @@
 module MetaEnv = Env
 open Ocaml5_parser
 open Parsetree
-
-(* open Zzdatatype.Datatype *)
 module Type = Normalty.Frontend
-module NTyped = Normalty.Ntyped
-open Syntax.QualifierRaw
+open Syntax
+open QualifierRaw
 open Sugar
 
 let typed_to_ocamlexpr_desc f expr =
@@ -22,8 +20,8 @@ let notated (name, t) =
 let quantifier_to_patten (q, u) =
   To_pat.dest_to_pat
     (Ppat_constraint
-       ( To_pat.dest_to_pat (Ppat_var (Location.mknoloc u.NTyped.x)),
-         notated (Q.to_string q, u.NTyped.ty) ))
+       ( To_pat.dest_to_pat (Ppat_var (Location.mknoloc u.Nt.x)),
+         notated (Q.to_string q, u.Nt.ty) ))
 
 type layout_setting = {
   sym_true : string;
@@ -35,7 +33,7 @@ type layout_setting = {
   sym_iff : string;
   sym_forall : string;
   sym_exists : string;
-  layout_typedid : string NTyped.typed -> string;
+  layout_typedid : string Nt.typed -> string;
   layout_mp : string -> string;
 }
 
@@ -100,7 +98,7 @@ let layout_qualifier
       _;
     } =
   let rec layout = function
-    | Pred pred -> To_pred.layout_pred pred
+    | Lit lit -> To_lit.layout_lit lit #: None
     | Implies (p1, p2) -> spf "(%s %s %s)" (layout p1) sym_implies (layout p2)
     | And ps -> spf "(%s)" @@ List.split_by sym_and layout ps
     | Or ps -> spf "(%s)" @@ List.split_by sym_or layout ps
@@ -122,7 +120,7 @@ and qualifier_to_ocamlexpr_desc expr =
   let rec aux e =
     let labeled x = (Asttypes.Nolabel, qualifier_to_ocamlexpr x) in
     match e with
-    | Pred pred -> To_pred.pred_to_ocamlexpr_desc pred
+    | Lit lit -> To_lit.lit_to_ocamlexpr_desc lit #: None
     | Implies (e1, e2) ->
         Pexp_apply
           ( To_expr.id_to_ocamlexpr "implies" #: None,
@@ -175,7 +173,7 @@ let quantifier_of_ocamlexpr arg =
       | Ptyp_extension (name, PTyp ty) ->
           let q = Q.of_string name.txt in
           let ty = Type.core_type_to_t ty in
-          (q, NTyped.(arg #: ty))
+          (q, Nt.(arg #: ty))
       | _ -> _failatwith __FILE__ __LINE__ "quantifier needs type extension")
   | _ -> _failatwith __FILE__ __LINE__ "quantifier needs type notation"
 
@@ -202,7 +200,7 @@ let qualifier_of_ocamlexpr expr =
         | "||", [ a; b ] -> Or [ aux a; aux b ]
         | "||", _ -> failwith "parsing: qualifier wrong or"
         | "=", _ -> failwith "please use == instead of = "
-        | _, _ -> Pred (To_pred.pred_of_ocamlexpr expr))
+        | _, _ -> Lit (To_lit.lit_of_ocamlexpr expr).x)
     | Pexp_ifthenelse (e1, e2, Some e3) -> Ite (aux e1, aux e2, aux e3)
     | Pexp_ifthenelse (_, _, None) -> raise @@ failwith "no else branch in ite"
     | Pexp_fun (_, _, arg, expr) -> (
@@ -210,7 +208,7 @@ let qualifier_of_ocamlexpr expr =
         let body = aux expr in
         match q with Q.Fa -> Forall (arg, body) | Q.Ex -> Exists (arg, body))
     | Pexp_tuple _ | Pexp_ident _ | Pexp_constant _ | Pexp_construct _ ->
-        Pred (To_pred.pred_of_ocamlexpr expr)
+        Lit (To_lit.lit_of_ocamlexpr expr).x
     | _ ->
         raise
         @@ failwith
@@ -220,6 +218,5 @@ let qualifier_of_ocamlexpr expr =
   aux expr
 
 let layout_lit = To_lit.layout_lit
-let layout_pred = To_pred.layout_pred
 let layout_raw x = Pprintast.string_of_expression @@ qualifier_to_ocamlexpr x
 let layout = layout_qualifier psetting

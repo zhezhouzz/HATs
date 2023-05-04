@@ -1,23 +1,24 @@
 module F (L : Lit.T) = struct
-  open Termlang.F (L)
+  include Termlang.F (L)
   module R = Rty.F (L)
 
   type rty_kind = RtyLib | RtyToCheck
 
   type entry =
-    | Mps of string list
+    (* | Mps of string list *)
     | Type_dec of Type_dec.t
     | Func_dec of string Normalty.Ntyped.typed
     | FuncImp of { name : string; if_rec : bool; body : term typed }
     | Rty of { name : string; kind : rty_kind; rty : R.t }
 
-  type t = entry list
+  type structure = entry list
 
   (* open Sugar *)
   open Zzdatatype.Datatype
 
   let mk_normal_top_ctx_ = function
-    | Mps _ | FuncImp _ -> []
+    (* | Mps _ *)
+    | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
         match kind with
         | RtyLib -> [ Normalty.Ntyped.(name #: (R.erase rty)) ]

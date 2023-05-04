@@ -34,6 +34,7 @@ module type T = sig
   val to_var : term typed -> string typed
   val uncurry : term typed -> string typed list * term typed
   val curry : string typed list * term typed -> term typed
+  val de_typed_tuple : term typed -> term typed list
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -87,4 +88,6 @@ struct
       (fun lamarg lambody ->
         (Lam { lamarg; lambody }) #: (mk_arr lamarg.ty lambody.ty))
       args body
+
+  let de_typed_tuple { x; ty } = match x with Tu es -> es | _ -> [ { x; ty } ]
 end

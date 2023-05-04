@@ -10,7 +10,7 @@ module type T = sig
 
   val mk_lit_true : lit
   val mk_lit_false : lit
-  val lit_subst : string * lit -> lit -> lit
+  val subst_lit : string * lit -> lit -> lit
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -28,7 +28,7 @@ struct
   let mk_lit_true = AC (Constant.B true)
   let mk_lit_false = AC (Constant.B false)
 
-  let lit_subst (y, lit) e =
+  let subst_lit (y, lit) e =
     let rec aux e =
       match e with
       | AC _ -> e

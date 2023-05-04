@@ -1,8 +1,8 @@
 module F (L : Lit.T) = struct
-  module Nt = Normalty.Ntyped
-  module P = Qualifier.F (L)
+  module Nt = Lit.Ty
+  include Qualifier.F (L)
 
-  type cty = { v : string Nt.typed; phi : P.t }
+  type cty = { v : string Nt.typed; phi : prop }
   type ou = Over | Under
 
   type pty =
@@ -10,20 +10,21 @@ module F (L : Lit.T) = struct
     | TuplePty of pty list
     | ArrPty of { rarg : string option ptyped; retrty : t }
 
-  and t = Pty of pty | Regty of regty Nt.typed
-  (* | RecRegty *)
+  and t = Pty of pty | Regty of regex Nt.typed
 
   and sevent =
     | RetEvent of pty
-    | EffEvent of { op : string; vs : string Nt.typed list; phi : P.t }
+    | EffEvent of { op : string; vs : string Nt.typed list; phi : prop }
 
-  and regty =
+  and regex =
     | EpsilonA
+    | VarA of string
     | EventA of sevent
-    | LorA of regty * regty
-    | SeqA of regty * regty
-    | StarA of regty
-    | CtxA of { gamma : string ctyped list; regty : regty }
+    | LorA of regex * regex
+    | SeqA of regex * regex
+    | StarA of regex
+    | ExistsA of { localx : string ctyped; regex : regex }
+    | RecA of { mux : string; muA : string; index : lit; regex : regex }
 
   and 'a ctyped = { cx : 'a; cty : cty }
   and 'a ptyped = { px : 'a; pty : pty }
@@ -43,7 +44,7 @@ module F (L : Lit.T) = struct
 
   let subst_cty (y, replacable) { v; phi } =
     if String.equal y v.Nt.x then { v; phi }
-    else { v; phi = P.subst (y, replacable) phi }
+    else { v; phi = subst_prop (y, replacable) phi }
 
   let rec subst_pty (y, z) rty =
     let rec aux rty =
@@ -64,36 +65,55 @@ module F (L : Lit.T) = struct
     | EffEvent { op; vs; phi } ->
         if List.exists (fun x -> String.equal x.Nt.x y) vs then
           EffEvent { op; vs; phi }
-        else EffEvent { op; vs; phi = P.subst (y, z) phi }
+        else EffEvent { op; vs; phi = subst_prop (y, z) phi }
 
-  and subst_regty (y, z) regty =
-    let rec aux regty =
-      match regty with
+  and subst_regex (y, z) regex =
+    let rec aux regex =
+      match regex with
+      | VarA x -> VarA x
       | EpsilonA -> EpsilonA
       | EventA se -> EventA (subst_sevent (y, z) se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
-      | CtxA { gamma; regty } ->
-          if List.exists (fun x -> String.equal x.cx y) gamma then
-            CtxA { gamma; regty }
-          else CtxA { gamma; regty = aux regty }
+      | ExistsA { localx; regex } ->
+          if String.equal y localx.cx then ExistsA { localx; regex }
+          else ExistsA { localx; regex = aux regex }
+      | RecA { mux; muA; index; regex } ->
+          let index = subst_lit (y, z) index in
+          if String.equal y mux then RecA { mux; muA; index; regex }
+          else RecA { mux; muA; index; regex = aux regex }
     in
-    aux regty
+    aux regex
 
   and subst (y, z) = function
     | Pty pty -> Pty (subst_pty (y, z) pty)
-    | Regty regty -> Regty Nt.((subst_regty (y, z)) #-> regty)
+    | Regty regex -> Regty Nt.((subst_regex (y, z)) #-> regex)
 
   let subst_id (y, z) rty =
     let y = y.Nt.x in
-    let z = P.(AVar z) in
+    let z = AVar z in
     subst (y, z) rty
 
   let subst_cty_id (y, z) cty =
     let y = y.Nt.x in
-    let z = P.(AVar z) in
+    let z = AVar z in
     subst_cty (y, z) cty
+
+  let regexsubst (y, z) regex =
+    let rec aux regex =
+      match regex with
+      | VarA x -> if String.equal x y then z else VarA x
+      | EpsilonA | EventA _ -> regex
+      | LorA (t1, t2) -> LorA (aux t1, aux t2)
+      | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
+      | StarA t -> StarA (aux t)
+      | ExistsA { localx; regex } -> ExistsA { localx; regex = aux regex }
+      | RecA { mux; muA; index; regex } ->
+          if String.equal y muA then RecA { mux; muA; index; regex }
+          else RecA { mux; muA; index; regex = aux regex }
+    in
+    aux regex
 
   let erase_cty { v; _ } = v.Nt.ty
 
@@ -109,24 +129,24 @@ module F (L : Lit.T) = struct
     in
     aux rty
 
-  (* and erase_regty regty = *)
+  (* and erase_regex regex = *)
   (*   let open Nt in *)
-  (*   let rec aux regty = *)
-  (*     match regty with *)
+  (*   let rec aux regex = *)
+  (*     match regex with *)
   (*     | EpsilonA -> [] *)
   (*     | EventA (RetEvent pty) -> [ erase_pty pty ] *)
   (*     | EventA (EffEvent _) -> [] *)
   (*     | StarA t -> [] *)
   (*     | LorA (t1, t2) -> aux t1 @@ aux t2 *)
   (*     | SeqA (_, t2) -> aux t2 *)
-  (*     | CtxA { _; regty } -> aux regty *)
+  (*     | ExistsA { _; regex } -> aux regex *)
   (*   in *)
-  (*   match aux regty with *)
+  (*   match aux regex with *)
   (*   | [] -> _failatwith __FILE__ __LINE__ "die" *)
   (*   | h :: t -> *)
   (*     if List.for_all (eq h) t then h else _failatwith __FILE__ __LINE__ "die" *)
 
-  and erase = function Pty pty -> erase_pty pty | Regty regty -> regty.Nt.ty
+  and erase = function Pty pty -> erase_pty pty | Regty regex -> regex.Nt.ty
 
   let ptyped_opt_erase { px; pty } =
     match px with None -> None | Some x -> Some Nt.{ x; ty = erase_pty pty }
@@ -134,8 +154,7 @@ module F (L : Lit.T) = struct
   let typed_erase { x; ty } = Nt.{ x; ty = erase ty }
 
   let default_ty =
-    Pty
-      (BasePty { ou = Over; cty = Nt.{ v = "v" #: Ty_unit; phi = P.mk_true } })
+    Pty (BasePty { ou = Over; cty = Nt.{ v = "v" #: Ty_unit; phi = mk_true } })
 
   let mk_noty x = { x; ty = default_ty }
   let xmap f { x; ty } = { x = f x; ty }
@@ -173,7 +192,7 @@ module F (L : Lit.T) = struct
   let int_ty = default_ty
 
   let unit_ty =
-    BasePty { ou = Under; cty = Nt.{ v = "v" #: Ty_unit; phi = P.mk_true } }
+    BasePty { ou = Under; cty = Nt.{ v = "v" #: Ty_unit; phi = mk_true } }
 
   let to_smtty _ = _failatwith __FILE__ __LINE__ "unimp"
   let sexp_of_t _ = _failatwith __FILE__ __LINE__ "unimp"

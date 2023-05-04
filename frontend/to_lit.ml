@@ -3,9 +3,9 @@ open Ocaml5_parser
 open Parsetree
 open Zzdatatype.Datatype
 module Type = Normalty.Frontend
-module NTyped = Normalty.Ntyped
-module TL = Syntax.OptTypedTermlang
-open Syntax.LRaw
+open Syntax
+open StructureRaw
+open LRaw
 open Sugar
 
 let f_proj = "proj"
@@ -28,7 +28,7 @@ and lit_to_ocamlexpr_desc expr =
         let a = (Asttypes.Nolabel, lit_to_ocamlexpr a) in
         let idx =
           ( Asttypes.Nolabel,
-            lit_to_ocamlexpr (AC (Constant.I idx)) #: (Some NTyped.int_ty) )
+            lit_to_ocamlexpr (AC (Constant.I idx)) #: (Some Nt.int_ty) )
         in
         Pexp_apply (To_expr.id_to_ocamlexpr f_proj #: None, [ a; idx ])
     | AVar x -> (To_expr.id_to_ocamlexpr x #: None).pexp_desc
@@ -40,10 +40,10 @@ let layout_lit lit = Pprintast.string_of_expression @@ lit_to_ocamlexpr lit
 let rec term_to_lit expr =
   (fun e ->
     match e with
-    | TL.Const c -> AC c
-    | TL.Var id -> AVar id
-    | TL.AppOp (op, args) -> AAppOp (op, List.map term_to_lit args)
-    | TL.Tu es -> ATu (List.map term_to_lit es)
+    | Const c -> AC c
+    | Var id -> AVar id
+    | AppOp (op, args) -> AAppOp (op, List.map term_to_lit args)
+    | Tu es -> ATu (List.map term_to_lit es)
     | _ ->
         _failatwith __FILE__ __LINE__
         @@ spf "parsing: not a op (%s)"

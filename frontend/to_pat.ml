@@ -1,8 +1,8 @@
 open Ocaml5_parser
 open Parsetree
-module T = Syntax.NTyped
-module Op = Syntax.Op
-open Syntax.OptTypedTermlang
+module T = Syntax.Nt
+open Syntax
+open StructureRaw
 open Sugar
 
 let layout_ t =
