@@ -9,7 +9,7 @@ open Sugar
 
 let pprint_id Nt.{ x; ty } = spf "%s:%s" x (Nt.layout ty)
 
-let pprint_phi v (phi : P.t) =
+let pprint_phi v (phi : P.prop) =
   let open P in
   match phi with
   | Lit
@@ -41,8 +41,8 @@ let rec pprint_pty rty =
 
 and pprint_rty = function
   | Pty pty -> pprint_pty pty
-  | Regty Nt.{ x = regty; ty } ->
-      spf "⟨%s | %s⟩" (Nt.layout ty) (pprint_regty regty)
+  | Regty Nt.{ x = regex; ty } ->
+      spf "⟨%s | %s⟩" (Nt.layout ty) (pprint_regex regex)
 
 and pprint_sevent = function
   | RetEvent pty -> spf "[Ret %s]" (pprint_pty pty)
@@ -51,18 +51,18 @@ and pprint_sevent = function
         (List.split_by_comma pprint_id vs)
         (To_qualifier.layout phi)
 
-and pprint_regty = function
+and pprint_regex = function
   | EpsilonA -> "ϵ"
+  | VarA x -> x
   | EventA se -> pprint_sevent se
-  | LorA (a1, a2) -> spf "(%s ‖ %s)" (pprint_regty a1) (pprint_regty a2)
-  | SeqA (a1, a2) -> spf "%s%s" (pprint_regty a1) (pprint_regty a2)
-  | StarA a -> spf "(%s)*" (pprint_regty a)
-  | CtxA { gamma; regty } ->
-      spf "Σ(%s),%s"
-        (List.split_by_comma
-           (fun { cx; cty } -> spf "%s:[%s]" cx (pprint_cty cty))
-           gamma)
-        (pprint_regty regty)
+  | LorA (a1, a2) -> spf "(%s ‖ %s)" (pprint_regex a1) (pprint_regex a2)
+  | SeqA (a1, a2) -> spf "%s%s" (pprint_regex a1) (pprint_regex a2)
+  | StarA a -> spf "(%s)*" (pprint_regex a)
+  | ExistsA { localx = { cx; cty }; regex } ->
+      spf "Σ%s:[%s].%s" cx (pprint_cty cty) (pprint_regex regex)
+  | RecA { mux; muA; index; regex } ->
+      spf "(μ%sμ%s.%s %s)" mux muA (pprint_regex regex)
+        (To_lit.layout_lit index)
 
 let get_denote expr =
   match expr.pexp_attributes with
@@ -140,7 +140,7 @@ and sevent_of_ocamlexpr expr =
           EffEvent { op; vs; phi })
   | _ -> _failatwith __FILE__ __LINE__ "die"
 
-and regty_of_ocamlexpr expr =
+and regex_of_ocamlexpr expr =
   let rec aux expr =
     match expr.pexp_desc with
     | Pexp_ident id ->
@@ -149,21 +149,18 @@ and regty_of_ocamlexpr expr =
     | Pexp_apply (func, args) -> (
         let f = To_expr.id_of_ocamlexpr func in
         let args = List.map snd args in
-        match (f.x, args) with
+        match (f, args) with
         | "star", [ e1 ] -> StarA (aux e1)
-        | "sigma", [ { pexp_desc = Pexp_array es; _ }; e2 ] ->
-            let gamma =
-              List.map
-                (fun e ->
-                  match e.pexp_desc with
-                  | Pexp_tuple [ cx; cty ] ->
-                      let cx = (To_expr.id_of_ocamlexpr cx).P.x in
-                      let cty = cty_of_ocamlexpr cty in
-                      { cx; cty }
-                  | _ -> _failatwith __FILE__ __LINE__ "die")
-                es
-            in
-            CtxA { gamma; regty = aux e2 }
+        | "sigma", [ e1; e2; e3 ] ->
+            let cx = To_expr.id_of_ocamlexpr e1 in
+            let cty = cty_of_ocamlexpr e2 in
+            ExistsA { localx = { cx; cty }; regex = aux e3 }
+        | "mu", [ mux; muA; index; regex ] ->
+            let mux = To_expr.id_of_ocamlexpr mux in
+            let muA = To_expr.id_of_ocamlexpr muA in
+            let index = To_lit.lit_of_ocamlexpr index in
+            let regex = aux regex in
+            RecA { mux; muA; index; regex }
         | "||", [ a; b ] -> LorA (aux a, aux b)
         | _, _ -> _failatwith __FILE__ __LINE__ "die")
     | Pexp_sequence (a, b) -> SeqA (aux a, aux b)
@@ -178,7 +175,7 @@ and rty_of_ocamlexpr expr =
       let ty = Type.core_type_to_t ct in
       let kind = get_op expr in
       match kind with
-      | "Regty" -> Regty Nt.{ x = regty_of_ocamlexpr e; ty }
+      | "Regty" -> Regty Nt.{ x = regex_of_ocamlexpr e; ty }
       | _ -> Pty (pty_of_ocamlexpr expr))
   | _ -> Pty (pty_of_ocamlexpr expr)
 
@@ -228,4 +225,4 @@ and rty_of_ocamlexpr expr =
 let layout = pprint_rty
 let layout_cty = pprint_cty
 let layout_pty = pprint_pty
-let layout_regty = pprint_regty
+let layout_regex = pprint_regex

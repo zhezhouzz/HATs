@@ -1,6 +1,7 @@
 module F (L : Lit.T) = struct
   module Nt = Lit.Ty
-  include Qualifier.F (L)
+  module P = Qualifier.F (L)
+  include P
 
   type cty = { v : string Nt.typed; phi : prop }
   type ou = Over | Under
@@ -158,13 +159,13 @@ module F (L : Lit.T) = struct
 
   let mk_noty x = { x; ty = default_ty }
   let xmap f { x; ty } = { x = f x; ty }
-  let is_basic_tp = function BasePty _ -> true | _ -> false
+  let is_basic_tp _ = _failatwith __FILE__ __LINE__ "never happen"
   let is_dt _ = _failatwith __FILE__ __LINE__ "never happen"
 
   (* TODO: imp eq *)
   let eq _ _ = false
   let destruct_arr_tp _ = _failatwith __FILE__ __LINE__ "unimp"
-  let construct_normal_tp _ = _failatwith __FILE__ __LINE__ "unimp"
+  let construct_arr_tp _ = _failatwith __FILE__ __LINE__ "unimp"
   let _type_unify _ _ = _failatwith __FILE__ __LINE__ "unimp"
   let to_smttyped _ = _failatwith __FILE__ __LINE__ "unimp"
   let typed_of_sexp _ = _failatwith __FILE__ __LINE__ "unimp"
@@ -177,12 +178,18 @@ module F (L : Lit.T) = struct
     | _ -> _failatwith __FILE__ __LINE__ ""
 
   let get_argty rty =
-    let rarg, _ = destruct_arr_one rty in
-    rarg.pty
+    match rty with
+    | Pty rty ->
+        let rarg, _ = destruct_arr_one rty in
+        Pty rarg.pty
+    | _ -> _failatwith __FILE__ __LINE__ "die"
 
   let get_retty rty =
-    let _, retrty = destruct_arr_one rty in
-    retrty
+    match rty with
+    | Pty rty ->
+        let _, retrty = destruct_arr_one rty in
+        retrty
+    | _ -> _failatwith __FILE__ __LINE__ "die"
 
   let snd_ty _ = _failatwith __FILE__ __LINE__ "unimp"
   let fst_ty _ = _failatwith __FILE__ __LINE__ "unimp"
@@ -191,9 +198,10 @@ module F (L : Lit.T) = struct
   let mk_arr _ = _failatwith __FILE__ __LINE__ "unimp"
   let int_ty = default_ty
 
-  let unit_ty =
+  let unit_pty =
     BasePty { ou = Under; cty = Nt.{ v = "v" #: Ty_unit; phi = mk_true } }
 
+  let unit_ty = Pty unit_pty
   let to_smtty _ = _failatwith __FILE__ __LINE__ "unimp"
   let sexp_of_t _ = _failatwith __FILE__ __LINE__ "unimp"
   let t_of_sexp _ = _failatwith __FILE__ __LINE__ "unimp"

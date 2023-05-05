@@ -24,3 +24,6 @@ let besome_entry entry =
       Raw.FuncImp { name; if_rec; body = besome_typed_term body }
   | Rty { name; kind; rty } ->
       Raw.Rty { name; kind = besome_kind kind; rty = besome_rty rty }
+
+let force_structure st = List.map force_entry st
+let besome_structure st = List.map besome_entry st

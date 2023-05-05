@@ -3,7 +3,7 @@ open Ocaml5_parser
 open Parsetree
 module Type = Normalty.Frontend
 open Syntax
-open QualifierRaw
+open RtyRaw.P
 open Sugar
 
 let typed_to_ocamlexpr_desc f expr =
@@ -98,7 +98,7 @@ let layout_qualifier
       _;
     } =
   let rec layout = function
-    | Lit lit -> To_lit.layout_lit lit #: None
+    | Lit lit -> To_lit.layout_lit lit
     | Implies (p1, p2) -> spf "(%s %s %s)" (layout p1) sym_implies (layout p2)
     | And ps -> spf "(%s)" @@ List.split_by sym_and layout ps
     | Or ps -> spf "(%s)" @@ List.split_by sym_or layout ps
@@ -107,9 +107,9 @@ let layout_qualifier
     | Ite (p1, p2, p3) ->
         spf "(if %s then %s else %s)" (layout p1) (layout p2) (layout p3)
     | Forall (u, body) ->
-        spf "(%s %s, %s)" sym_forall (layout_typedid u) (layout body)
+        spf "(%s %s. %s)" sym_forall (layout_typedid u) (layout body)
     | Exists (u, body) ->
-        spf "(%s %s, %s)" sym_exists (layout_typedid u) (layout body)
+        spf "(%s %s. %s)" sym_exists (layout_typedid u) (layout body)
   in
   layout
 
@@ -120,32 +120,26 @@ and qualifier_to_ocamlexpr_desc expr =
   let rec aux e =
     let labeled x = (Asttypes.Nolabel, qualifier_to_ocamlexpr x) in
     match e with
-    | Lit lit -> To_lit.lit_to_ocamlexpr_desc lit #: None
+    | Lit lit -> To_lit.lit_to_ocamlexpr_desc lit
     | Implies (e1, e2) ->
         Pexp_apply
-          ( To_expr.id_to_ocamlexpr "implies" #: None,
-            List.map labeled [ e1; e2 ] )
+          (To_expr.id_to_ocamlexpr "implies", List.map labeled [ e1; e2 ])
     | Ite (e1, e2, e3) ->
         Pexp_ifthenelse
           ( qualifier_to_ocamlexpr e1,
             qualifier_to_ocamlexpr e2,
             Some (qualifier_to_ocamlexpr e3) )
-    | Not e ->
-        Pexp_apply
-          (To_expr.id_to_ocamlexpr "not" #: None, List.map labeled [ e ])
+    | Not e -> Pexp_apply (To_expr.id_to_ocamlexpr "not", List.map labeled [ e ])
     | And [] -> failwith "un-imp"
     | And [ x ] -> aux x
     | And (h :: t) ->
-        Pexp_apply
-          (To_expr.id_to_ocamlexpr "&&" #: None, List.map labeled [ h; And t ])
+        Pexp_apply (To_expr.id_to_ocamlexpr "&&", List.map labeled [ h; And t ])
     | Or [] -> failwith "un-imp"
     | Or [ x ] -> aux x
     | Or (h :: t) ->
-        Pexp_apply
-          (To_expr.id_to_ocamlexpr "||" #: None, List.map labeled [ h; Or t ])
+        Pexp_apply (To_expr.id_to_ocamlexpr "||", List.map labeled [ h; Or t ])
     | Iff (e1, e2) ->
-        Pexp_apply
-          (To_expr.id_to_ocamlexpr "iff" #: None, List.map labeled [ e1; e2 ])
+        Pexp_apply (To_expr.id_to_ocamlexpr "iff", List.map labeled [ e1; e2 ])
     | Forall (u, body) ->
         Pexp_fun
           ( Asttypes.Nolabel,
@@ -186,7 +180,7 @@ let qualifier_of_ocamlexpr expr =
     | Pexp_apply (func, args) -> (
         let f = To_expr.id_of_ocamlexpr func in
         let args = List.map snd args in
-        match (f.x, args) with
+        match (f, args) with
         | "not", [ e1 ] -> Not (aux e1)
         | "not", _ -> failwith "parsing: qualifier wrong not"
         | "ite", [ e1; e2; e3 ] -> Ite (aux e1, aux e2, aux e3)
@@ -200,7 +194,7 @@ let qualifier_of_ocamlexpr expr =
         | "||", [ a; b ] -> Or [ aux a; aux b ]
         | "||", _ -> failwith "parsing: qualifier wrong or"
         | "=", _ -> failwith "please use == instead of = "
-        | _, _ -> Lit (To_lit.lit_of_ocamlexpr expr).x)
+        | _, _ -> Lit (To_lit.lit_of_ocamlexpr expr))
     | Pexp_ifthenelse (e1, e2, Some e3) -> Ite (aux e1, aux e2, aux e3)
     | Pexp_ifthenelse (_, _, None) -> raise @@ failwith "no else branch in ite"
     | Pexp_fun (_, _, arg, expr) -> (
@@ -208,7 +202,7 @@ let qualifier_of_ocamlexpr expr =
         let body = aux expr in
         match q with Q.Fa -> Forall (arg, body) | Q.Ex -> Exists (arg, body))
     | Pexp_tuple _ | Pexp_ident _ | Pexp_constant _ | Pexp_construct _ ->
-        Lit (To_lit.lit_of_ocamlexpr expr).x
+        Lit (To_lit.lit_of_ocamlexpr expr)
     | _ ->
         raise
         @@ failwith
@@ -218,5 +212,6 @@ let qualifier_of_ocamlexpr expr =
   aux expr
 
 let layout_lit = To_lit.layout_lit
+let layout_typed_lit = To_lit.layout_typed_lit
 let layout_raw x = Pprintast.string_of_expression @@ qualifier_to_ocamlexpr x
 let layout = layout_qualifier psetting

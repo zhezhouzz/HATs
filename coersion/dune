@@ -1,6 +1,6 @@
 (library
  (name coersion)
- (wrapped false)
+ (wrapped true)
  (modules
    coersion_aux
    coersion_lit

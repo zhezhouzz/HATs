@@ -90,7 +90,7 @@ let equation_of_ocamlexpr expr =
     | Pexp_apply (func, args) -> (
         let f = To_expr.id_of_ocamlexpr func in
         let args = List.map snd args in
-        match (f.x, args) with
+        match (f, args) with
         | "eq", [ e1; e2 ] ->
             EqState (eqterm_of_ocamlexpr e1, eqterm_of_ocamlexpr e2)
         | "eqr", [ e1; e2 ] ->

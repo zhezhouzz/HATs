@@ -13,29 +13,35 @@ let f_proj = "proj"
 let rec lit_to_ocamlexpr expr =
   To_expr.desc_to_ocamlexpr @@ lit_to_ocamlexpr_desc expr
 
-and lit_to_ocamlexpr_desc expr =
+and typed_lit_to_ocamlexpr expr =
+  To_expr.desc_to_ocamlexpr @@ typed_lit_to_ocamlexpr_desc expr
+
+and typed_lit_to_ocamlexpr_desc expr = lit_to_ocamlexpr_desc expr.x
+
+and lit_to_ocamlexpr_desc (expr : lit) =
   let aux expr =
     match expr with
     | AC c -> (To_const.value_to_expr c).pexp_desc
     | AAppOp (op, args) ->
-        let op = To_expr.op_to_ocamlexpr op in
+        let op = To_expr.typed_op_to_ocamlexpr op in
         let args =
-          List.map (fun x -> (Asttypes.Nolabel, lit_to_ocamlexpr x)) args
+          List.map (fun x -> (Asttypes.Nolabel, typed_lit_to_ocamlexpr x)) args
         in
         Pexp_apply (op, args)
-    | ATu l -> Pexp_tuple (List.map lit_to_ocamlexpr l)
+    | ATu l -> Pexp_tuple (List.map typed_lit_to_ocamlexpr l)
     | AProj (a, idx) ->
-        let a = (Asttypes.Nolabel, lit_to_ocamlexpr a) in
+        let a = (Asttypes.Nolabel, typed_lit_to_ocamlexpr a) in
         let idx =
           ( Asttypes.Nolabel,
-            lit_to_ocamlexpr (AC (Constant.I idx)) #: (Some Nt.int_ty) )
+            typed_lit_to_ocamlexpr (AC (Constant.I idx)) #: (Some Nt.int_ty) )
         in
-        Pexp_apply (To_expr.id_to_ocamlexpr f_proj #: None, [ a; idx ])
-    | AVar x -> (To_expr.id_to_ocamlexpr x #: None).pexp_desc
+        Pexp_apply (To_expr.id_to_ocamlexpr f_proj, [ a; idx ])
+    | AVar x -> (To_expr.id_to_ocamlexpr x).pexp_desc
   in
-  aux expr.x
+  aux expr
 
 let layout_lit lit = Pprintast.string_of_expression @@ lit_to_ocamlexpr lit
+let layout_typed_lit lit = layout_lit lit.x
 
 let rec term_to_lit expr =
   (fun e ->
@@ -50,4 +56,5 @@ let rec term_to_lit expr =
         @@ To_expr.layout expr)
   #-> expr
 
-let lit_of_ocamlexpr e = term_to_lit (To_expr.expr_of_ocamlexpr e)
+let typed_lit_of_ocamlexpr e = term_to_lit (To_expr.expr_of_ocamlexpr e)
+let lit_of_ocamlexpr e = (typed_lit_of_ocamlexpr e).x

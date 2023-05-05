@@ -3,21 +3,24 @@ include Syntax
 module StructureRaw = struct
   include StructureRaw
 
-  let layout = To_expr.layout
+  let layout_term = To_expr.layout
   let layout_rty = To_rty.layout
   let layout_cty = To_rty.layout_cty
-  let layout_regty = To_rty.layout_regty
+  let layout_pty = To_rty.layout_pty
+  let layout_regex = To_rty.layout_regex
   let layout_entry = To_structure.layout_entry
   let layout_structure = To_structure.layout
 end
 
 module Rty = struct
+  open Coersion
   include Rty
 
-  let layout rty = RtyRaw.layout (To_typed_rty.to_opt_rty rty)
-  let layout_cty rty = To_rty.layout_cty (To_typed_rty.to_opt_cty rty)
-  let force_typed_rty = To_typed_rty.force_typed_rty
-  let to_opt_rty = To_typed_rty.to_opt_rty
+  let layout_rty rty = StructureRaw.layout_rty (besome_rty rty)
+  let layout_cty rty = StructureRaw.layout_cty (besome_cty rty)
+  let layout_pty rty = StructureRaw.layout_pty (besome_pty rty)
+  let layout_regex rty = StructureRaw.layout_regex (besome_regex rty)
+  let layout = layout_rty
 
   open Sugar
 
@@ -70,14 +73,12 @@ module Rty = struct
 end
 
 module Structure = struct
+  open Coersion
   include Structure
 
-  let layout x = To_expr.layout @@ To_typed.to_opttyped_term x
-
-  let layout_entry x =
-    To_structure.layout_entry @@ To_typed.to_opttyped_struct_one x
-
-  let layout_structure x = To_structure.layout @@ To_typed.to_opttyped_struct x
+  let layout_term x = StructureRaw.layout_term @@ besome_typed_term x
+  let layout_entry x = StructureRaw.layout_entry @@ besome_entry x
+  let layout_structure x = StructureRaw.layout_structure @@ besome_structure x
 end
 
 module RTypectx = struct
@@ -89,7 +90,7 @@ module RTypectx = struct
       (fun code ->
         let open Structure in
         match code with
-        | Mps _ | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        | FuncImp _ | Func_dec _ | Type_dec _ -> None
         | Rty { name; kind; rty } -> f (name, kind, rty))
       code
 
@@ -97,7 +98,7 @@ module RTypectx = struct
     filter_map_rty
       (fun (name, kind, rty) ->
         let open Structure in
-        match kind with RtyLib -> Some name #: rty | RtyToCheck -> None)
+        match kind with RtyLib -> Some R.(name #: rty) | RtyToCheck -> None)
       code
 
   let get_task code =
@@ -108,11 +109,11 @@ module RTypectx = struct
       code
 end
 
-module RTypedTermlang = struct
-  include TypedTermlang
+(* module RTypedTermlang = struct *)
+(*   include TypedTermlang *)
 
-  let layout x = To_expr.layout @@ To_typed.to_opttyped_term x
-end
+(*   let layout x = To_expr.layout @@ force_typed_term x *)
+(* end *)
 
 module RTypedCoreEff = struct
   include Corelang.F (Rty)

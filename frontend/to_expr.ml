@@ -37,8 +37,10 @@ let rec expr_to_ocamlexpr expr =
 and typed_expr_to_ocamlexpr_desc expr =
   typed_to_ocamlexpr_desc expr_to_ocamlexpr_desc expr
 
-and id_to_ocamlexpr id = expr_to_ocamlexpr { ty = id.ty; x = Var id.x }
-and op_to_ocamlexpr op = id_to_ocamlexpr @@ (To_op.op_to_string #-> op)
+and typed_id_to_ocamlexpr id = expr_to_ocamlexpr { ty = id.ty; x = Var id.x }
+
+and typed_op_to_ocamlexpr op =
+  typed_id_to_ocamlexpr @@ (To_op.op_to_string #-> op)
 
 and expr_to_ocamlexpr_desc expr =
   let aux expr =
@@ -66,14 +68,14 @@ and expr_to_ocamlexpr_desc expr =
         let mk_app f args =
           match op.x with
           | Op.BuiltinOp _ ->
-              let kw = id_to_ocamlexpr kw_builtin #: None in
+              let kw = typed_id_to_ocamlexpr kw_builtin #: None in
               Pexp_apply (kw, (Asttypes.Nolabel, f) :: args)
           | Op.DtOp _ -> Pexp_apply (f, args)
           | Op.EffOp _ ->
-              let kw = id_to_ocamlexpr kw_perform #: None in
+              let kw = typed_id_to_ocamlexpr kw_perform #: None in
               Pexp_apply (kw, (Asttypes.Nolabel, f) :: args)
         in
-        let op = op_to_ocamlexpr op in
+        let op = typed_op_to_ocamlexpr op in
         let args =
           List.map (fun x -> (Asttypes.Nolabel, expr_to_ocamlexpr x)) args
         in
@@ -107,6 +109,8 @@ and match_case_aux { constructor; args; exp } =
       (AppOp ((fun x -> Op.DtOp x) #-> constructor, args)) #: None
   in
   { pc_lhs = lhs; pc_guard = None; pc_rhs = expr_to_ocamlexpr exp }
+
+let id_to_ocamlexpr id = typed_id_to_ocamlexpr id #: None
 
 open Sugar
 
@@ -215,10 +219,11 @@ let expr_of_ocamlexpr expr =
   in
   aux expr
 
-let id_of_ocamlexpr expr =
+let typed_id_of_ocamlexpr expr =
   let x = expr_of_ocamlexpr expr in
   match x.x with Var id -> id #: x.ty | _ -> _failatwith __FILE__ __LINE__ "?"
 
+let id_of_ocamlexpr expr = (typed_id_of_ocamlexpr expr).x
 let layout x = Pprintast.string_of_expression @@ expr_to_ocamlexpr x
 
 (* let prim_dt = [ "[]"; "::" ] *)
