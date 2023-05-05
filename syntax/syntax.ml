@@ -9,11 +9,6 @@ module RtyRaw = StructureRaw.R
 (*   include Corelang.F (LRaw) *)
 (* end *)
 
-(* module NTypectx = struct *)
-(*   include Typectx.F (NTyped) *)
-(*   include NTyped *)
-(* end *)
-
 module Nt = Lit.Ty
 module L = Lit.Lit
 module Structure = Structure.F (L)

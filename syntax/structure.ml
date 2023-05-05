@@ -37,6 +37,14 @@ module F (L : Lit.T) = struct
         | _ -> code)
       codes
 
+  let map_rtys f codes =
+    List.map
+      (fun code ->
+        match code with
+        | Rty { name; kind; rty } -> Rty { name; kind; rty = f rty }
+        | _ -> code)
+      codes
+
   let filter_map_imps f codes =
     List.filter_map
       (fun code ->

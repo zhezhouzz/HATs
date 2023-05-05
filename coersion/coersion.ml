@@ -1,3 +1,4 @@
+include Coersion_aux
 include Coersion_lit
 include Coersion_qualifier
 include Coersion_rty

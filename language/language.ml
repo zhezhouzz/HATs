@@ -1,5 +1,10 @@
 include Syntax
 
+module NTypectx = struct
+  include Typectx.F (Nt)
+  include Nt
+end
+
 module StructureRaw = struct
   include StructureRaw
 
