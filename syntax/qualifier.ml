@@ -19,7 +19,19 @@ module F (L : Lit.T) = struct
   let is_false p = match get_cbool p with Some false -> true | _ -> false
   let smart_and l = And (List.filter (fun p -> not (is_true p)) l)
   let smart_or l = Or (List.filter (fun p -> not (is_false p)) l)
-  let smart_implies (a, b) = if is_true a then b else Implies (a, b)
+
+  let smart_add_to a prop =
+    match get_cbool a with
+    | Some true -> prop
+    | Some false -> mk_false
+    | None -> (
+        match prop with And props -> And (a :: props) | _ -> And [ a; prop ])
+
+  let smart_implies a prop =
+    match get_cbool a with
+    | Some true -> prop
+    | Some false -> mk_true
+    | None -> Implies (a, prop)
 
   let subst_prop (y, f) e =
     let rec aux e =
@@ -38,6 +50,36 @@ module F (L : Lit.T) = struct
     in
     aux e
 
+  let fv_prop e =
+    let rec aux e =
+      match e with
+      | Lit lit -> fv_lit lit
+      | Implies (e1, e2) -> aux e1 @ aux e2
+      | Ite (e1, e2, e3) -> aux e1 @ aux e2 @ aux e3
+      | Not e -> aux e
+      | And es -> List.concat_map aux es
+      | Or es -> List.concat_map aux es
+      | Iff (e1, e2) -> aux e1 @ aux e2
+      | Forall (u, body) ->
+          List.filter (fun x -> String.equal x u.x) @@ aux body
+      | Exists (u, body) ->
+          List.filter (fun x -> String.equal x u.x) @@ aux body
+    in
+    aux e
+
   let prop_multisubst = List.fold_right subst_prop
-  let subst_prop_id (y, z) e = subst_prop (y.x, AVar z) e
+  let subst_prop_id (y, z) e = subst_prop (y, AVar z) e
+
+  let get_eqprop_by_name prop x =
+    match prop with Lit lit -> get_eqlit_by_name lit x | _ -> None
+
+  let smart_sigma (x, xprop) prop =
+    match get_eqprop_by_name xprop x.Normalty.Ntyped.x with
+    | None -> Exists (x, smart_add_to xprop prop)
+    | Some z -> subst_prop (x.Normalty.Ntyped.x, z) prop
+
+  let smart_pi (x, xprop) prop =
+    match get_eqprop_by_name xprop x.Normalty.Ntyped.x with
+    | None -> Forall (x, smart_implies xprop prop)
+    | Some z -> subst_prop (x.Normalty.Ntyped.x, z) prop
 end

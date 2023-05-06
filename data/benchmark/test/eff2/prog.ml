@@ -7,18 +7,6 @@ let rec prog (n : int) : unit =
     let (dummy2 : int) = Get n in
     prog (n - 1)
 
-(* let[@assert] prog = *)
-(*   let n = (v >= 0 : [%v: int]) [@over] in *)
-(*   mu x xA n *)
-(*     (Ret *)
-(*        (let n = (v >= 0 : [%v: int]) [@over] in *)
-(*         (mu x xA n *)
-(*            (Put ((v == x && w >= 0 : [%v: int]) : [%w: int]); *)
-(*             Get (v == x : [%v: int]); *)
-(*             Ret (true : [%v: unit])) *)
-(*           : unit) *)
-(*           [@over])) *)
-
 let[@assert] prog =
   let n = (v >= 0 : [%v: int]) [@over] in
   (mu x xA n

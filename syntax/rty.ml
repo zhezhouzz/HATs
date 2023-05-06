@@ -43,6 +43,11 @@ module F (L : Lit.T) = struct
   let ( #--> ) f { px; pty } = { px = f px; pty }
   let ( #---> ) f { cx; cty } = { cx = f cx; cty }
 
+  let cty_typed_to_prop { cx; cty = { v; phi } } =
+    let Nt.{ x; ty } = v in
+    (Nt.{ x = cx; ty }, P.subst_prop_id (cx, x) phi)
+
+  (* subst *)
   let subst_cty (y, replacable) { v; phi } =
     if String.equal y v.Nt.x then { v; phi }
     else { v; phi = subst_prop (y, replacable) phi }
@@ -92,12 +97,10 @@ module F (L : Lit.T) = struct
     | Regty regex -> Regty Nt.((subst_regex (y, z)) #-> regex)
 
   let subst_id (y, z) rty =
-    let y = y.Nt.x in
     let z = AVar z in
     subst (y, z) rty
 
   let subst_cty_id (y, z) cty =
-    let y = y.Nt.x in
     let z = AVar z in
     subst_cty (y, z) cty
 
@@ -115,6 +118,55 @@ module F (L : Lit.T) = struct
           else RecA { mux; muA; index; regex = aux regex }
     in
     aux regex
+
+  (* fv *)
+  let fv_cty { v; phi } =
+    List.filter (fun x -> String.equal x v.x) @@ fv_prop phi
+
+  let rec fv_pty rty =
+    let rec aux rty =
+      match rty with
+      | BasePty { cty; _ } -> fv_cty cty
+      | TuplePty ptys -> List.concat_map aux ptys
+      | ArrPty { rarg; retrty } ->
+          let argfv = aux rarg.pty in
+          let retfv =
+            match rarg.px with
+            | Some u -> List.filter (fun x -> String.equal x u) @@ fv retrty
+            | None -> fv retrty
+          in
+          argfv @ retfv
+    in
+    aux rty
+
+  and fv_sevent sevent =
+    match sevent with
+    | RetEvent pty -> fv_pty pty
+    | EffEvent { vs; phi; _ } ->
+        List.filter (fun y -> List.exists (fun x -> String.equal x.Nt.x y) vs)
+        @@ fv_prop phi
+
+  and fv_regex regex =
+    let rec aux regex =
+      match regex with
+      | VarA _ -> []
+      | EpsilonA -> []
+      | EventA se -> fv_sevent se
+      | LorA (t1, t2) -> aux t1 @ aux t2
+      | SeqA (t1, t2) -> aux t1 @ aux t2
+      | StarA t -> aux t
+      | ExistsA { localx; regex } ->
+          fv_cty localx.cty
+          @ List.filter (fun x -> String.equal x localx.cx)
+          @@ aux regex
+      | RecA { mux; index; regex; _ } ->
+          fv_lit index @ List.filter (fun x -> String.equal x mux) @@ aux regex
+    in
+    aux regex
+
+  and fv = function Pty pty -> fv_pty pty | Regty regex -> fv_regex regex.Nt.x
+
+  (* erase *)
 
   let erase_cty { v; _ } = v.Nt.ty
 
