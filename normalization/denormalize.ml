@@ -1,5 +1,6 @@
-module T = Language.TypedTermlang
-open Language.TypedCoreEff
+open Language
+module T = Structure
+open TypedCoreEff
 
 (* open Sugar *)
 open Zzdatatype.Datatype
@@ -38,19 +39,8 @@ let rec denormalize_comp (comp : comp typed) : T.term T.typed =
             })
     | CApp { appf; apparg } ->
         T.(App (denormalize_value appf, [ denormalize_value apparg ]))
-    | CWithH { handler = { x = handler; ty }; handled_prog } ->
-        T.(
-          CWithH
-            {
-              handler = (denormalize_handler handler) #: ty;
-              handled_prog = denormalize_comp handled_prog;
-            })
     | CAppOp { op; appopargs } ->
         T.(AppOp (op, List.map denormalize_value appopargs))
-    | CAppPerform { effop; appopargs } ->
-        T.(
-          Perform
-            { rhsop = effop; rhsargs = List.map denormalize_value appopargs })
   in
   T.(res #: compty)
 
@@ -70,25 +60,11 @@ and denormalize_value (value : value typed) : T.term T.typed =
         in
         Lam { lamarg = fixname; lambody }
     | VTu vs -> T.(Tu (List.map denormalize_value vs))
-    | VHd { x = hd; ty } -> T.(VHd (denormalize_handler hd) #: ty)
   in
   T.(res #: valuety)
 
 and denormalize_match_case { constructor; args; exp } : T.match_case =
   T.{ constructor; args; exp = denormalize_comp exp }
 
-and denormalize_handler_case { effop; effargs; effk; hbody } : T.handler_case =
-  T.{ effop; effargs; effk; hbody = denormalize_comp hbody }
-
-and denormalize_ret_case { retarg; retbody } : T.ret_case =
-  T.{ retarg; retbody = denormalize_comp retbody }
-
-and denormalize_handler { ret_case; handler_cases } : T.handler =
-  T.
-    {
-      ret_case = denormalize_ret_case ret_case;
-      handler_cases = List.map denormalize_handler_case handler_cases;
-    }
-
-let layout_comp comp = T.layout (denormalize_comp comp)
-let layout_value comp = T.layout (denormalize_value comp)
+let layout_comp comp = T.layout_term (denormalize_comp comp)
+let layout_value comp = T.layout_term (denormalize_value comp)

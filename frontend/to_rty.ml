@@ -64,10 +64,13 @@ and pprint_regex = function
       spf "(μ%sμ%s.%s %s)" mux muA (pprint_regex regex)
         (To_lit.layout_lit index)
 
+let get_denoteopt expr =
+  match expr.pexp_attributes with [ x ] -> Some x.attr_name.txt | _ -> None
+
 let get_denote expr =
-  match expr.pexp_attributes with
-  | [ x ] -> x.attr_name.txt
-  | _ -> _failatwith __FILE__ __LINE__ ""
+  match get_denoteopt expr with
+  | Some x -> x
+  | None -> _failatwith __FILE__ __LINE__ ""
 
 let get_ou expr =
   match get_denote expr with
@@ -75,10 +78,15 @@ let get_ou expr =
   | "under" -> Under
   | _ -> _failatwith __FILE__ __LINE__ ""
 
-let get_op expr =
+let get_opopt expr =
   match To_op.string_to_op (get_denote expr) with
-  | Some (Op.DtOp op) -> op
-  | _ -> _failatwith __FILE__ __LINE__ "die"
+  | Some (Op.DtOp op) -> Some op
+  | _ -> None
+
+let get_op expr =
+  match get_opopt expr with
+  | Some x -> x
+  | None -> _failatwith __FILE__ __LINE__ "die"
 
 let get_self ct =
   let open Nt in
@@ -170,13 +178,14 @@ and regex_of_ocamlexpr expr =
   aux expr
 
 and rty_of_ocamlexpr expr =
-  match expr.pexp_desc with
-  | Pexp_constraint (e, ct) -> (
-      let ty = Type.core_type_to_t ct in
-      let kind = get_op expr in
-      match kind with
-      | "Regty" -> Regty Nt.{ x = regex_of_ocamlexpr e; ty }
-      | _ -> Pty (pty_of_ocamlexpr expr))
+  match get_denoteopt expr with
+  | Some "regex" -> (
+      match expr.pexp_desc with
+      | Pexp_constraint (e, ct) ->
+          (* let _ = Printf.printf "ct: %s\n" (Type.layout_ ct) in *)
+          let ty = Type.core_type_to_t ct in
+          Regty Nt.{ x = regex_of_ocamlexpr e; ty }
+      | _ -> _failatwith __FILE__ __LINE__ "die")
   | _ -> Pty (pty_of_ocamlexpr expr)
 
 (* let rty_of_ocamlexpr expr = *)

@@ -92,6 +92,7 @@ let get_measure () =
 
 let get_randomp_path () = (get_prim_path ()).under_randomp
 let get_qualifier_builtin_type () = (get_prim_path ()).qualifier_builtin_type
+let get_builtin_coverage_type () = (get_prim_path ()).under_basicp
 let known_mp : string list option ref = ref None
 
 let get_known_mp () =
@@ -100,8 +101,8 @@ let get_known_mp () =
 open Yojson.Basic.Util
 
 let load_meta meta_fname =
-  let () = Printf.printf "meta_fname: %s\n" meta_fname in
-  let () = Printf.printf "pwd: %s\n" (Sys.getcwd ()) in
+  (* let () = Printf.printf "meta_fname: %s\n" meta_fname in *)
+  (* let () = Printf.printf "pwd: %s\n" (Sys.getcwd ()) in *)
   let metaj = Yojson.Basic.from_file meta_fname in
   let mode =
     match metaj |> member "mode" |> to_string with

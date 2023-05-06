@@ -1,6 +1,7 @@
 open Language
 open Const
 module Ctx = NTypectx
+module OpCtx = NOpTypectx
 open Nt
 open Sugar
 
@@ -12,13 +13,13 @@ let rec infer_const_ty topctx = function
   | Dt (_, _) -> _failatwith __FILE__ __LINE__ "no dt const"
 (* snd @@ destruct_arr_tp (infer_op topctx op) *)
 
-let infer_id topctx ctx x =
-  match Ctx.get_ty_opt ctx x with Some ty -> ty | None -> Ctx.get_ty topctx x
+let infer_id nctx x = Ctx.get_ty nctx x
+let is_builtop opctx x = OpCtx.exists opctx (Op.BuiltinOp x)
 
-let infer_op topctx x =
+let infer_op opctx x =
   match x with
-  | Op.BuiltinOp op -> Ctx.get_ty topctx op
-  | Op.EffOp op -> Ctx.get_ty topctx op
+  | Op.BuiltinOp _ -> OpCtx.get_ty opctx x
+  | Op.EffOp _ -> OpCtx.get_ty opctx x
   | Op.DtOp x -> (
       match x with
       | "S" -> Ty_arrow (Ty_int, Ty_int)
@@ -34,6 +35,29 @@ let _unify_ = Nt._type_unify_
 
 let _unify_update file line ty' { x; ty } =
   x #: (_unify file line ty (Some ty'))
+
+let infer_op_may_eff opctx op =
+  match op.x with
+  | Op.DtOp x -> (
+      match OpCtx.get_ty_opt opctx (Op.EffOp x) with
+      | Some ty -> ({ x = Op.EffOp x; ty = op.ty }, ty)
+      | None ->
+          let ty = OpCtx.get_ty opctx (Op.DtOp x) in
+          ({ x = Op.DtOp x; ty = op.ty }, ty))
+  | Op.BuiltinOp _ ->
+      let ty = OpCtx.get_ty opctx op.x in
+      (op, ty)
+  | _ ->
+      _failatwith __FILE__ __LINE__
+        (spf "cannot infer the type of operator %s" (Op.to_string op.x))
+
+let check_id nctx (x : string typed) : string typed * Nt.t =
+  let ty = infer_id nctx x.x in
+  (_unify_update __FILE__ __LINE__ ty x, ty)
+
+let check_op opctx (x : Op.t typed) : Op.t typed * Nt.t =
+  let ty = infer_op opctx x.x in
+  (_unify_update __FILE__ __LINE__ ty x, ty)
 
 let _solve_by_retty file line fty retty' =
   let open Nt in
@@ -63,7 +87,3 @@ let _solve_by_argsty file line fty argsty' =
   let argsty = match argsty_ with Ty_tuple argsty -> argsty | t -> [ t ] in
   let retty = subst_m m retty in
   (argsty, retty)
-
-let check_id topctx (x : string typed) : string typed * Nt.t =
-  let ty = Ctx.get_ty topctx x.x in
-  (_unify_update __FILE__ __LINE__ ty x, ty)

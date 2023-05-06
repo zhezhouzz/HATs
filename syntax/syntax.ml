@@ -19,11 +19,9 @@ module Equation = Algebraic.F (L)
 module EquationRaw = Algebraic.F (LRaw)
 
 module Eqctx = struct
-  include Typectx.F (Equation)
+  include Typectx.FString (Equation)
   include Equation
 end
-
-module TypedCoreEff = Corelang.F (Nt)
 
 (* unwrap *)
 module Const = Constant

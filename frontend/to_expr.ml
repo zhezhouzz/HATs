@@ -124,6 +124,7 @@ let expr_of_ocamlexpr expr =
     match expr.pexp_desc with
     | Pexp_tuple es -> (Tu (List.map aux es)) #: None
     | Pexp_constraint (expr, ty) ->
+        (* let _ = Printf.printf "ct: %s\n" (Type.layout_ ty) in *)
         let ty = Type.core_type_to_t ty in
         let res = update_ty (aux expr) ty in
         res

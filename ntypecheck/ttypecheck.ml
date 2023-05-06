@@ -1,5 +1,4 @@
 open Language
-module Typectx = NTypectx
 open Zzdatatype.Datatype
 open Sugar
 open StructureRaw
@@ -66,19 +65,19 @@ let _solve_by_retty file line fty retty' =
   let argsty = List.map (subst m) argsty in
   (argsty, retty)
 
-let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
-    =
-  let rec bidirect_infer (ctx : Typectx.ctx) (x : term typed) :
+let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
+    (tyopt : t) : term typed =
+  let rec bidirect_infer (ctx : NTypectx.ctx) (x : term typed) :
       term typed * Nt.t =
     match x.ty with None -> infer ctx x.x | Some ty -> (check ctx x.x ty, ty)
-  and bidirect_check (ctx : Typectx.ctx) (x : term typed) (ty : Nt.t) :
+  and bidirect_check (ctx : NTypectx.ctx) (x : term typed) (ty : Nt.t) :
       term typed =
     match x.ty with
     | None -> check ctx x.x ty
     | Some ty' ->
         let ty = Nt._type_unify __FILE__ __LINE__ ty' ty in
         check ctx x.x ty
-  and check (ctx : Typectx.ctx) (x : term) (ty : Nt.t) : term typed =
+  and check (ctx : NTypectx.ctx) (x : term) (ty : Nt.t) : term typed =
     let () =
       Env.show_debug_typing @@ fun _ ->
       Ctx.pretty_print_judge ctx (layout_term x #: None, ty)
@@ -95,21 +94,27 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
     | Lam { lamarg; lambody }, Ty_arrow (t1, t2) ->
         let lamarg = _unify_update __FILE__ __LINE__ t1 lamarg in
         let ctx' =
-          Typectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ lamarg)
+          NTypectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ lamarg)
         in
         let lambody = bidirect_check ctx' lambody t2 in
         (Lam { lamarg; lambody }) #: (Some ty)
-    | App (f, args), ty ->
-        let f, fty = bidirect_infer ctx f in
-        (* let () = Printf.printf "F: %s\n" (layout f) in *)
-        (* let () = Printf.printf "ty: %s\n" (Nt.layout ty) in *)
-        let argsty, retty = _solve_by_retty __FILE__ __LINE__ fty ty in
-        let f' = bidirect_check ctx f (Nt.construct_arr_tp (argsty, retty)) in
-        let argsargsty = _safe_combine __FILE__ __LINE__ args argsty in
-        let args =
-          List.map (fun (e, ty) -> bidirect_check ctx e ty) argsargsty
-        in
-        (App (f', args)) #: (Some ty)
+    | App (f, args), ty -> (
+        match f.x with
+        | Var x when is_builtop opctx x ->
+            check ctx (AppOp ({ x = Op.BuiltinOp x; ty = f.ty }, args)) ty
+        | _ ->
+            let f, fty = bidirect_infer ctx f in
+            (* let () = Printf.printf "F: %s\n" (layout f) in *)
+            (* let () = Printf.printf "ty: %s\n" (Nt.layout ty) in *)
+            let argsty, retty = _solve_by_retty __FILE__ __LINE__ fty ty in
+            let f' =
+              bidirect_check ctx f (Nt.construct_arr_tp (argsty, retty))
+            in
+            let argsargsty = _safe_combine __FILE__ __LINE__ args argsty in
+            let args =
+              List.map (fun (e, ty) -> bidirect_check ctx e ty) argsargsty
+            in
+            (App (f', args)) #: (Some ty))
     | Let { if_rec; lhs; rhs; letbody }, _ ->
         let xsty = List.map (fun x -> x.ty) lhs in
         (* let () = *)
@@ -132,14 +137,15 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           match (if_rec, lhs) with
           | true, [ self ] ->
               let ctx' =
-                Typectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ self)
+                NTypectx.new_to_right ctx
+                  (Coersion.force __FILE__ __LINE__ self)
               in
               bidirect_check ctx' rhs rhsty
           | true, _ -> _failatwith __FILE__ __LINE__ "infer: bad let rec"
           | false, _ -> bidirect_check ctx rhs rhsty
         in
         let ctx' =
-          Typectx.new_to_rights ctx
+          NTypectx.new_to_rights ctx
           @@ List.map (Coersion.force __FILE__ __LINE__) lhs
         in
         let letbody = bidirect_check ctx' letbody ty in
@@ -156,7 +162,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
         let handle_case { constructor; args; exp } =
           let constructor =
             _unify_update __FILE__ __LINE__
-              (infer_op topctx Op.(DtOp constructor.x))
+              (infer_op opctx Op.(DtOp constructor.x))
               constructor
           in
           let c = Coersion.force __FILE__ __LINE__ constructor in
@@ -169,7 +175,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
             @@ _safe_combine __FILE__ __LINE__ args argsty
           in
           let ctx' =
-            Typectx.new_to_rights ctx
+            NTypectx.new_to_rights ctx
               (List.map (Coersion.force __FILE__ __LINE__) args)
           in
           let exp = bidirect_check ctx' exp ty in
@@ -182,21 +188,21 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           (spf "check: inconsistent term (%s) and type (%s)"
              (layout_term x #: None)
              (Nt.layout ty))
-  and infer (ctx : Typectx.ctx) (x : term) : term typed * Nt.t =
+  and infer (ctx : NTypectx.ctx) (x : term) : term typed * Nt.t =
     let x, ty =
       match x with
       | Err ->
           failwith
             "Cannot infer the type of the exception, should provide the return \
              type"
-      | Const c -> (x, infer_const_ty topctx c)
-      | Var id -> (x, infer_id topctx ctx id)
+      | Const c -> (x, infer_const_ty opctx c)
+      | Var id -> (x, infer_id ctx id)
       | Tu es ->
           let es, esty = List.split @@ List.map (bidirect_infer ctx) es in
           (Tu es, Nt.mk_tuple esty)
       | Lam { lamarg; lambody } ->
           let ctx' =
-            Typectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ lamarg)
+            NTypectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ lamarg)
           in
           let lambody, lambodyty = bidirect_infer ctx' lambody in
           let ty =
@@ -205,9 +211,8 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           (Lam { lamarg; lambody }, ty)
       | AppOp (op, args) ->
           let args, argsty = List.split @@ List.map (bidirect_infer ctx) args in
-          let argsty, retty =
-            _solve_by_argsty __FILE__ __LINE__ (infer_op topctx op.x) argsty
-          in
+          let op, opty = infer_op_may_eff opctx op in
+          let argsty, retty = _solve_by_argsty __FILE__ __LINE__ opty argsty in
           let op =
             _unify_update __FILE__ __LINE__
               (Nt.construct_arr_tp (argsty, retty))
@@ -218,18 +223,29 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
             @@ _safe_combine __FILE__ __LINE__ args argsty
           in
           (AppOp (op, args), retty)
-      | App (f, args) ->
-          let args, argsty =
-            List.split @@ List.map (fun e -> bidirect_infer ctx e) args
-          in
-          let f, fty = bidirect_infer ctx f in
-          let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
-          let f = bidirect_check ctx f (Nt.construct_arr_tp (argsty, retty)) in
-          let args =
-            List.map (fun (e, ty) -> bidirect_check ctx e ty)
-            @@ _safe_combine __FILE__ __LINE__ args argsty
-          in
-          (App (f, args), retty)
+      | App (f, args) -> (
+          match f.x with
+          | Var x when is_builtop opctx x ->
+              let x, ty =
+                infer ctx (AppOp ({ x = Op.BuiltinOp x; ty = f.ty }, args))
+              in
+              (x.x, ty)
+          | _ ->
+              let f, fty = bidirect_infer ctx f in
+              let args, argsty =
+                List.split @@ List.map (fun e -> bidirect_infer ctx e) args
+              in
+              let argsty, retty =
+                _solve_by_argsty __FILE__ __LINE__ fty argsty
+              in
+              let f =
+                bidirect_check ctx f (Nt.construct_arr_tp (argsty, retty))
+              in
+              let args =
+                List.map (fun (e, ty) -> bidirect_check ctx e ty)
+                @@ _safe_combine __FILE__ __LINE__ args argsty
+              in
+              (App (f, args), retty))
       | Let { if_rec; _ } when if_rec ->
           _failatwith __FILE__ __LINE__
             "cannot infer ret type of recursive function"
@@ -251,7 +267,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
             match (if_rec, lhs) with
             | true, [ self ] ->
                 let ctx' =
-                  Typectx.new_to_right ctx
+                  NTypectx.new_to_right ctx
                     (Coersion.force __FILE__ __LINE__ self)
                 in
                 bidirect_check ctx' rhs rhsty
@@ -259,7 +275,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
             | false, _ -> bidirect_check ctx rhs rhsty
           in
           let ctx' =
-            Typectx.new_to_rights ctx
+            NTypectx.new_to_rights ctx
             @@ List.map (Coersion.force __FILE__ __LINE__) lhs
           in
           let letbody, ty = bidirect_infer ctx' letbody in
@@ -277,7 +293,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
           let handle_case { constructor; args; exp } =
             let constructor =
               _unify_update __FILE__ __LINE__
-                (infer_op topctx Op.(DtOp constructor.x))
+                (infer_op opctx Op.(DtOp constructor.x))
                 constructor
             in
             let c = Coersion.force __FILE__ __LINE__ constructor in
@@ -290,7 +306,7 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
               @@ _safe_combine __FILE__ __LINE__ args argsty
             in
             let ctx' =
-              Typectx.new_to_rights ctx
+              NTypectx.new_to_rights ctx
                 (List.map (Coersion.force __FILE__ __LINE__) args)
             in
             let exp, expty = bidirect_infer ctx' exp in
@@ -315,5 +331,5 @@ let type_check (topctx : Typectx.ctx) (x : term typed) (tyopt : t) : term typed
     (x #: (Some ty), ty)
   in
   match tyopt with
-  | None -> fst (bidirect_infer Typectx.empty x)
-  | Some ty -> bidirect_check Typectx.empty x ty
+  | None -> fst (bidirect_infer nctx x)
+  | Some ty -> bidirect_check nctx x ty

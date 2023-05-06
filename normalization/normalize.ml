@@ -1,5 +1,6 @@
-module T = Language.TypedTermlang
-open Language.TypedCoreEff
+open Language
+module T = Structure
+open TypedCoreEff
 open Sugar
 open Zzdatatype.Datatype
 
@@ -48,17 +49,6 @@ and normalize_get_values (k : vconts) (es : T.term T.typed list) : comp typed =
      k es)
     []
 
-and normalize_handler (hd : T.handler T.typed) : handler typed =
-  let T.{ ret_case = { retarg; retbody }; handler_cases } = hd.x in
-  let ret_case = { retarg; retbody = normalize_term retbody } in
-  let handler_cases =
-    List.map
-      (fun T.{ effop; effargs; effk; hbody } ->
-        { effop; effargs; effk; hbody = normalize_term hbody })
-      handler_cases
-  in
-  { ret_case; handler_cases } #: hd.ty
-
 and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
   let k e = k' e #: expr.ty in
   match expr.x with
@@ -69,7 +59,6 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
       k (CVal (VConst c)) (* NOTE: do we need a name of a function? *)
   | T.Lam { lamarg; lambody } ->
       k (CVal (VLam { lamarg; lambody = normalize_term lambody }))
-  | T.VHd hd -> k (CVal (VHd (normalize_handler hd)))
   | T.(Let { if_rec; lhs; rhs; letbody }) -> (
       match (if_rec, lhs) with
       | true, fixname :: fixarg :: args ->
@@ -97,17 +86,6 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
             rhs)
   | T.(AppOp (op, es)) ->
       normalize_get_values (fun appopargs -> k (CAppOp { op; appopargs })) es
-  | T.(Perform { rhsop; rhsargs }) ->
-      normalize_get_values
-        (fun appopargs -> k (CAppPerform { effop = rhsop; appopargs }))
-        rhsargs
-  | T.(CWithH { handler; handled_prog }) ->
-      k
-        (CWithH
-           {
-             handler = normalize_handler handler;
-             handled_prog = normalize_term handled_prog;
-           })
   | T.(App (func, [ arg ])) ->
       normalize_get_value
         (fun appf -> normalize_get_value (fun arg -> k' (mk_app appf arg)) arg)

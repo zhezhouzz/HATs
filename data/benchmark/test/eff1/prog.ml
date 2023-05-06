@@ -1,3 +1,3 @@
-val dummy : eff:int * int -> eff:int -> unit
+type effect = Dummy of (int -> int -> int)
 
-let x = perform (dummy (2, 3) 2)
+let x = perform (Dummy (2, 3))

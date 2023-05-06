@@ -1,41 +1,43 @@
-let[@library] eq =
+let[@librty] ( == ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (iff v (a == b) : [%v: bool]) [@under]
 
-let[@library] neq =
+let[@librty] ( != ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (iff v (a != b) : [%v: bool]) [@under]
 
-let[@library] lt =
+let[@librty] ( < ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (iff v (a < b) : [%v: bool]) [@under]
 
-let[@library] gt =
+let[@librty] ( > ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (iff v (a > b) : [%v: bool]) [@under]
 
-let[@library] le =
+let[@librty] ( <= ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (iff v (a <= b) : [%v: bool]) [@under]
 
-let[@library] ge =
+let[@librty] ( >= ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (iff v (a >= b) : [%v: bool]) [@under]
 
-let[@library] plus =
+let[@librty] ( + ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (v == a + b : [%v: int]) [@under]
 
-let[@library] minus =
+let[@librty] ( - ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (v == a - b : [%v: int]) [@under]
 
-let[@library] tt = (true : [%v: unit]) [@under]
+let[@librty] int_gen =
+  let _ = (true : [%v: unit]) [@over] in
+  (true : [%v: int]) [@under]

@@ -39,19 +39,4 @@ let[@library] lt_eq_one =
   let s = (true : [%v: int]) [@over] in
   (iff v (s <= 1) && iff (not v) (s > 1) : [%v: bool]) [@under]
 
-(* uniquel  *)
-
-let[@library] gt_eq_int_gen =
-  let x = (true : [%v: int]) [@over] in
-  (true : [%v: int]) [@under]
-
-let[@library] sizecheck =
-  let x = (true : [%v: int]) [@over] in
-  (iff v (x == 0) && iff (not v) (x > 0) : [%v: bool]) [@under]
-
-let[@library] subs =
-  let s = (true : [%v: int]) [@over] in
-  (v == s - 1 : [%v: int]) [@under]
-
 let[@library] dummy = (true : [%v: unit]) [@under]
-

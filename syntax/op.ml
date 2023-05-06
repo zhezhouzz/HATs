@@ -4,6 +4,8 @@ type t = DtOp of string | EffOp of string | BuiltinOp of string
 [@@deriving sexp]
 
 let compare a b = Sexplib.Sexp.compare (sexp_of_t a) (sexp_of_t b)
+let id_is_dt name = String.(equal name @@ capitalize_ascii name)
+let to_string = function DtOp op -> op | EffOp op -> op | BuiltinOp op -> op
 
 let eq a b =
   let aux = function

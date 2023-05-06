@@ -17,16 +17,22 @@ module F (L : Lit.T) = struct
   open Zzdatatype.Datatype
 
   let mk_normal_top_ctx_ = function
-    (* | Mps _ *)
     | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
         match kind with
         | RtyLib -> [ Normalty.Ntyped.(name #: (R.erase rty)) ]
         | RtyToCheck -> [])
     | Func_dec x -> [ x ]
+    | Type_dec _ -> []
+
+  let mk_normal_top_opctx_ = function
+    | FuncImp _ -> []
+    | Rty _ -> []
+    | Func_dec _ -> []
     | Type_dec d -> Type_dec.mk_ctx_ d
 
   let mk_normal_top_ctx es = List.concat @@ List.map mk_normal_top_ctx_ es
+  let mk_normal_top_opctx es = List.concat @@ List.map mk_normal_top_opctx_ es
 
   let map_imps f codes =
     List.map

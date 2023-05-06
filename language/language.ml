@@ -1,8 +1,16 @@
 include Syntax
 
 module NTypectx = struct
-  include Typectx.F (Nt)
+  include Typectx.FString (Nt)
   include Nt
+end
+
+module NOpTypectx = struct
+  include Typectx.FOp (Nt)
+  include Nt
+
+  let to_builtin (ctx : string Nt.typed list) =
+    List.map (fun { x; ty } -> (Op.BuiltinOp x) #: ty) ctx
 end
 
 module StructureRaw = struct
@@ -87,7 +95,7 @@ module Structure = struct
 end
 
 module RTypectx = struct
-  include Typectx.F (Rty)
+  include Typectx.FString (Rty)
   include Rty
 
   let filter_map_rty f code =
@@ -119,6 +127,8 @@ end
 
 (*   let layout x = To_expr.layout @@ force_typed_term x *)
 (* end *)
+
+module TypedCoreEff = Corelang.F (Nt)
 
 module RTypedCoreEff = struct
   include Corelang.F (Rty)
