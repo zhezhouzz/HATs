@@ -16,3 +16,10 @@ let rec layout = function
 let is_bool_opt = function B b -> Some b | _ -> None
 let is_dt_opt = function Dt (op, vs) -> Some (op, vs) | _ -> None
 let mk_dt op vs = Dt (op, vs)
+
+let rec infer_const_ty = function
+  | U -> Nt.unit_ty
+  | I _ -> Nt.int_ty
+  | B _ -> Nt.bool_ty
+  | Tu vs -> Nt.mk_tuple (List.map infer_const_ty vs)
+  | Dt (_, _) -> _failatwith __FILE__ __LINE__ "no dt const"

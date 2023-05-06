@@ -20,6 +20,12 @@ module F (L : Lit.T) = struct
   let smart_and l = And (List.filter (fun p -> not (is_true p)) l)
   let smart_or l = Or (List.filter (fun p -> not (is_false p)) l)
 
+  let multi_exists l prop =
+    List.fold_right (fun u prop -> Exists (u, prop)) l prop
+
+  let multi_forall l prop =
+    List.fold_right (fun u prop -> Forall (u, prop)) l prop
+
   let smart_add_to a prop =
     match get_cbool a with
     | Some true -> prop

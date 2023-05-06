@@ -42,7 +42,24 @@ module Rty = struct
   let layout_typed_l f l =
     Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l
 
-  (* open P *)
+  let mk_lit_var_eq_lit v c =
+    let open L in
+    let eqsym =
+      (Op.BuiltinOp "==") #: (construct_arr_tp ([ v.ty; v.ty ], bool_ty))
+    in
+    AAppOp (eqsym, [ (AVar v.x) #: v.ty; c #: v.ty ])
+
+  let mk_prop_var_eq_lit v c = P.Lit (mk_lit_var_eq_lit v c)
+
+  let mk_cty_var_eq_lit ty c =
+    let v = Nt.{ x = "v"; ty } in
+    { v; phi = mk_prop_var_eq_lit v c }
+
+  let mk_pty_var_eq_lit ty c =
+    BasePty { ou = Under; cty = mk_cty_var_eq_lit ty c }
+
+  let mk_pty_var_eq_c ty c = mk_pty_var_eq_lit ty L.(AC c)
+  let mk_pty_var_eq_var var = mk_pty_var_eq_lit var.L.ty L.(AVar var.L.x)
 
   (* let ty_tr = Normalty.Ntyped.(Ty_constructor ("tr", [])) *)
 
@@ -128,7 +145,9 @@ end
 (*   let layout x = To_expr.layout @@ force_typed_term x *)
 (* end *)
 
-module TypedCoreEff = Corelang.F (Nt)
+module TypedCoreEff = struct
+  include Corelang.F (Nt)
+end
 
 module RTypedCoreEff = struct
   include Corelang.F (Rty)

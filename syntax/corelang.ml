@@ -120,9 +120,9 @@ struct
     | _ -> _failatwith __FILE__ __LINE__ "not a var"
 
   let to_comp_ v = CVal v
-  let to_v = xmap to_v_
-  let to_comp = xmap to_comp_
-  let var_to_str = xmap var_to_str_
+  let to_v x = to_v_ #-> x
+  let to_comp x = to_comp_ #-> x
+  let var_to_str x = var_to_str_ #-> x
 
   let mk_lam lamarg lambody =
     (VLam { lamarg; lambody }) #: (mk_arr lamarg.ty lambody.ty)

@@ -1,220 +1,207 @@
 open Language
 module RCtx = RTypectx
-module Nt = Normalty.Ntyped
-
-(* module T = RTypedCoreEff *)
 module R = Rty
-module P = R.P
+module P = Rty.P
+module ECtx = Eqctx
 open TypedCoreEff
+open Sugar
+
+let layout_comp = Denormalize.layout_comp
+let layout_value = Denormalize.layout_value
+
+type typectx = { eqctx : ECtx.ctx; rctx : RCtx.ctx }
+
+let typectx_new_to_right { rctx; eqctx } binding =
+  { rctx = RCtx.new_to_right rctx binding; eqctx }
+
+let typectx_new_to_rights { rctx; eqctx } binding =
+  { rctx = RCtx.new_to_rights rctx binding; eqctx }
+(* exception TypeErr of string *)
+
+let print_typrctx { eqctx; rctx } =
+  Env.show_debug_typing (fun () ->
+      Pp.printf "@{<bold>E:@} %s\n" "omitted";
+      Pp.printf "@{<bold>R:@} %s\n" (RCtx.layout_typed_l (fun x -> x) rctx))
+
+let print_subtyping typectx (t1, t2) =
+  let () =
+    Env.show_debug_typing (fun () -> Pp.printf "@{<bold>Subtyping:@}\n")
+  in
+  print_typrctx typectx;
+  Env.show_debug_typing (fun () ->
+      Pp.printf "⊢ %s\n<:%s\n" (R.layout_rty t1) (R.layout_rty t2))
 
 let print_typing_rule file line funcname rule =
   Env.show_debug_typing (fun () ->
       Pp.printf "@{<bold>%s::%s@}(%s:%i)\n" funcname rule file line)
 
-let perform_to_trace op lits rty =
-  let open R in
-  let event = P.(AApp (op, lits)) in
-  let new_post =
-    mk_basety ty_tr P.(fun v -> Lit (mk_eq ty_tr (AVar v) event))
-  in
-  match rty with
-  | Traced { h; pre; rty; post } ->
-      let post = Fexists.exists_base_function (Rename.unique h) post new_post in
-      Traced { h; pre; rty; post }
-  | _ ->
-      Traced
-        {
-          h = kw_h.x;
-          pre = mk_basety ty_tr (fun _ -> P.mk_true);
-          rty;
-          post = new_post;
-        }
-
-open Sugar
-
-let layout_comp = Denormalize.layout_comp
-let layout_value = Denormalize.layout_value
-let subtyping_check _ _ _ = ()
+let subtyping_rty_bool { eqctx; rctx; _ } (t1, t2) =
+  if Subtyping.sub_rty_bool rctx eqctx t1 t2 then true
+  else (
+    Env.show_debug_typing (fun () ->
+        Pp.printf "@{<orange> subtyping failed@}\n");
+    false)
 
 let rec _value_to_lit file line v =
-  let vty = v.ty in
   match v.x with
-  | VVar name -> P.AVar name #: vty
+  | VVar name -> P.AVar name
   | VConst c -> P.AC c
   | VLam _ -> _failatwith file line "?"
   | VFix _ -> _failatwith file line "?"
-  | VHd _ -> _failatwith file line "?"
-  | VTu l -> P.ATu (List.map (_value_to_lit file line) l)
+  | VTu _ -> _failatwith file line "?"
 
-let unify_dep v rty =
+let unify_arr_ret v rty =
   let open R in
   match rty with
-  | BaseRty _ -> _failatwith __FILE__ __LINE__ ""
-  | Traced _ -> _failatwith __FILE__ __LINE__ ""
-  | DepRty { dep; label; rarg; retrty } ->
-      let retrty =
-        match rarg.x with
-        | None -> retrty
-        | Some x ->
-            let lit = _value_to_lit __FILE__ __LINE__ v in
-            subst (x, lit) retrty
-      in
-      (dep, label, rarg, retrty)
+  | Pty (ArrPty { rarg; retrty }) -> (
+      let lit = _value_to_lit __FILE__ __LINE__ v in
+      match rarg.px with None -> retrty | Some x -> subst (x, lit) retrty)
+  | _ -> _failatwith __FILE__ __LINE__ ""
 
-let merge_function = Fmerge.merge
-let exists_function = Fexists.exists_function
+(* let layout_mode = TypeInfer -> "TypeInfer" | TypeCheck -> "TypeCheck" *)
+let print_infer_info1 file line rulename typectx str =
+  print_typing_rule file line "Infer%s" rulename;
+  print_typrctx typectx;
+  Env.show_debug_typing (fun () ->
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇨ %s" (short_str 100 @@ str) "?")
 
-let rec value_type_infer (ctx : RCtx.ctx) (a : value typed) : R.t =
-  let aty = a.ty in
-  let line_ref, rule_ref = (ref 0, ref "WrongName") in
-  let update_typing_rule line rule =
-    line_ref := line;
-    rule_ref := rule
+let print_infer_info2 file line rulename typectx str rty =
+  print_typing_rule file line "InferEnd" rulename;
+  print_typrctx typectx;
+  Env.show_debug_typing (fun () ->
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇨" (short_str 100 @@ str);
+      Pp.printf "@{<cyan>%s@}\n\n" @@ R.layout rty)
+
+let print_check_info file line rulename typectx str rty =
+  print_typing_rule file line "Check" rulename;
+  print_typrctx typectx;
+  Env.show_debug_typing (fun () ->
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇦" (short_str 100 @@ str);
+      Pp.printf "@{<cyan>%s@}\n\n" @@ R.layout rty)
+
+let rec value_type_infer { rctx; eqctx } (value : value typed) : R.t =
+  let str = layout_value value in
+  let before_info line rulename =
+    print_infer_info1 __FILE__ line rulename { rctx; eqctx } str
+  in
+  let end_info line rulename rty =
+    print_infer_info2 __FILE__ line rulename { rctx; eqctx } str rty
   in
   let rty =
-    match a.x with
+    match value.x with
     | VConst c ->
-        let () = update_typing_rule __LINE__ "Const" in
+        let () = before_info __LINE__ "Const" in
         let rty =
-          match c with Const.U -> R.unit_ty | _ -> R.mk_ubasety_eq_c aty c
+          match c with
+          | Const.U -> R.unit_ty
+          | _ -> R.Pty (R.mk_pty_var_eq_c value.Nt.ty c)
         in
+        let () = end_info __LINE__ "Const" rty in
         rty
     | VVar x ->
-        let () = update_typing_rule __LINE__ "Var" in
+        let () = before_info __LINE__ "Var" in
+        let rty = RCtx.get_ty rctx x in
         let rty =
-          match RCtx.get_ty_opt ctx x with
-          | None -> _failatwith __FILE__ __LINE__ "cannot find rty"
-          | Some rty -> rty
+          if Nt.is_basic_tp value.ty then
+            R.Pty (R.mk_pty_var_eq_var x #: value.ty)
+          else rty
         in
-        if List.length (fst (destruct_arr_tp aty)) == 0 then
-          R.mk_ubasety_eq_id aty x
-        else rty
+        let () = end_info __LINE__ "Var" rty in
+        rty
     | _ -> _failatwith __FILE__ __LINE__ ""
-  in
-  let () =
-    print_typing_rule __FILE__ !line_ref "InferValue" !rule_ref;
-    RCtx.pretty_print_infer ctx (layout_value a, rty)
   in
   rty
 
-and comp_type_infer (ctx : RCtx.ctx) (a : comp typed) : R.t =
-  let aty = a.ty in
-  let line_ref, rule_ref = (ref 0, ref "WrongName") in
-  let update_typing_rule line rule =
-    line_ref := line;
-    rule_ref := rule
+and comp_type_infer typectx (comp : comp typed) : R.t =
+  let str = layout_comp comp in
+  let before_info line rulename =
+    print_infer_info1 __FILE__ line rulename typectx str
+  in
+  let end_info line rulename rty =
+    print_infer_info2 __FILE__ line rulename typectx str rty
   in
   let rty =
-    match a.x with
-    | CVal v ->
-        let () = update_typing_rule __LINE__ "Val" in
-        value_type_infer ctx v #: aty
+    match comp.x with
+    | CVal v -> value_type_infer typectx v #: comp.ty
     | CApp { appf; apparg } ->
-        let () = update_typing_rule __LINE__ "App" in
-        let f_rty = value_type_infer ctx appf in
+        let () = before_info __LINE__ "App" in
+        let f_rty = value_type_infer typectx appf in
         let f_rty_argty = R.get_argty f_rty in
-        let () = value_type_check ctx apparg f_rty_argty in
-        let _, _, _, retty = unify_dep apparg f_rty in
+        let () = value_type_check typectx apparg f_rty_argty in
+        let retty = unify_arr_ret apparg f_rty in
+        let () = end_info __LINE__ "App" retty in
         retty
-    | CIte { cond; et; ef } ->
-        let () = update_typing_rule __LINE__ "Ite" in
-        let cond_lit = _value_to_lit __FILE__ __LINE__ cond in
-        let handle_case b e =
-          let tmp_id_ty =
-            R.mk_ubasety_eq_lit_lit cond.ty cond_lit (P.AC (Constant.B b))
-          in
-          let tmp_id = R.( #: ) (Rename.unique "a") tmp_id_ty in
-          let ctx' = RCtx.new_to_right ctx tmp_id in
-          let ety = comp_type_infer ctx' e in
-          exists_function tmp_id ety
-        in
-        merge_function [ handle_case true et; handle_case false ef ]
     | CLetE { lhs; rhs; letbody } ->
-        let () = update_typing_rule __LINE__ "LetE" in
-        let rhs_rty = comp_type_infer ctx rhs in
+        let () = before_info __LINE__ "LetE" in
+        let rhs_rty = comp_type_infer typectx rhs in
         let binding = R.( #: ) lhs.x rhs_rty in
-        let ctx' = RCtx.new_to_right ctx binding in
-        let res = comp_type_infer ctx' letbody in
-        Fexists.exists_function binding res
-    | CAppPerform { effop; appopargs } ->
-        let () = update_typing_rule __LINE__ (spf "Perform[%s]" effop.x) in
-        let frty =
-          match RCtx.get_ty_opt ctx effop.x with
-          | None -> _failatwith __FILE__ __LINE__ "cannot find rty"
-          | Some rty -> rty
+        let typectx' =
+          { typectx with rctx = RCtx.new_to_right typectx.rctx binding }
         in
-        let retrty =
-          List.fold_left
-            (fun frty v ->
-              let _, _, _, rty = unify_dep v frty in
-              rty)
-            frty appopargs
-        in
-        let lits = List.map (_value_to_lit __FILE__ __LINE__) appopargs in
-        let retrty = perform_to_trace effop lits retrty in
-        retrty
+        let res = comp_type_infer typectx' letbody in
+        let res = exists_typed binding res in
+        let () = end_info __LINE__ "LetE" res in
+        res
     | _ -> _failatwith __FILE__ __LINE__ ""
-  in
-  let () =
-    print_typing_rule __FILE__ !line_ref "InferComp" !rule_ref;
-    RCtx.pretty_print_infer ctx (layout_comp a, rty)
   in
   rty
 
-and value_type_check (ctx : RCtx.ctx) (a : value typed) (rty : R.t) : unit =
+and value_type_check { rctx; eqctx } (a : value typed) (rty : R.t) : unit =
   let print_typing_rule line rule =
     print_typing_rule __FILE__ line "CheckValue" rule;
-    RCtx.pretty_print_judge ctx (layout_value a, rty)
+    RCtx.pretty_print_judge rctx (layout_value a, rty)
   in
   let aty = a.ty in
   match a.x with
   | VConst _ | VVar _ ->
-      let rty' = value_type_infer ctx a in
+      let rty' = value_type_infer rctx a in
       let () = print_typing_rule __LINE__ "Const|Var" in
-      let () = subtyping_check ctx rty' rty in
+      let () = subtyping_check rctx rty' rty in
       ()
   | VFix { fixname; fixarg; fixbody } ->
       let () = print_typing_rule __LINE__ "Fix" in
       let self = R.( #: ) fixname.x rty in
-      let ctx' = RCtx.new_to_right ctx self in
+      let rctx' = RCtx.new_to_right rctx self in
       let a' = (VLam { lamarg = fixarg; lambody = fixbody }) #: aty in
-      value_type_check ctx' a' rty
+      value_type_check rctx' a' rty
   | VLam { lamarg; lambody } ->
       let () = print_typing_rule __LINE__ "Lam" in
-      let dep, _, rarg, retrty = unify_dep (VVar lamarg.x) #: lamarg.ty rty in
+      let dep, _, rarg, retrty =
+        unify_arr_ret (VVar lamarg.x) #: lamarg.ty rty
+      in
       let () =
         match dep with R.Pi -> () | _ -> _failatwith __FILE__ __LINE__ "?"
       in
       let lamarg = R.( #: ) lamarg.x rarg.ty in
-      let ctx' = RCtx.new_to_right ctx lamarg in
-      comp_type_check ctx' lambody retrty
+      let rctx' = RCtx.new_to_right rctx lamarg in
+      comp_type_check rctx' lambody retrty
   | _ -> _failatwith __FILE__ __LINE__ ""
 
-and comp_type_check (ctx : RCtx.ctx) (a : comp typed) (rty : R.t) : unit =
+and comp_type_check { rctx; eqctx } (a : comp typed) (rty : R.t) : unit =
   let print_typing_rule line rule =
     print_typing_rule __FILE__ line "CheckComp" rule;
-    RCtx.pretty_print_judge ctx (layout_comp a, rty)
+    RCtx.pretty_print_judge rctx (layout_comp a, rty)
   in
   let aty = a.ty in
   match a.x with
-  | CVal v -> value_type_check ctx v #: aty rty
+  | CVal v -> value_type_check rctx v #: aty rty
   | CLetE _ ->
-      let rty' = comp_type_infer ctx a in
+      let rty' = comp_type_infer rctx a in
       let () = print_typing_rule __LINE__ "LetE" in
-      subtyping_check ctx rty' rty
+      subtyping_check rctx rty' rty
   (* | CLetE { lhs; rhs; letbody } -> *)
   (*     let () = print_typing_rule __LINE__ "LetE" in *)
-  (*     let rhs_rty = comp_type_infer ctx rhs in *)
-  (*     let ctx' = RCtx.new_to_right ctx (R.( #: ) lhs.x rhs_rty) in *)
-  (*     comp_type_check ctx' letbody rty *)
+  (*     let rhs_rty = comp_type_infer rctx rhs in *)
+  (*     let rctx' = RCtx.new_to_right rctx (R.( #: ) lhs.x rhs_rty) in *)
+  (*     comp_type_check rctx' letbody rty *)
   | CIte _ ->
-      let rty' = comp_type_infer ctx a in
+      let rty' = comp_type_infer rctx a in
       let () = print_typing_rule __LINE__ "Ite" in
-      subtyping_check ctx rty' rty
+      subtyping_check rctx rty' rty
   | _ -> _failatwith __FILE__ __LINE__ ""
 
 let check code normalized_code =
-  let ctx = RCtx.from_code code in
+  let rctx = RCtx.from_code code in
   let tasks = RCtx.get_task code in
   let () =
     List.iteri
@@ -230,7 +217,7 @@ let check code normalized_code =
         with
         | None -> _failatwith __FILE__ __LINE__ ""
         | Some (_, comp) ->
-            let _ = comp_type_check ctx comp rty in
+            let _ = comp_type_check rctx comp rty in
             ())
       tasks
   in

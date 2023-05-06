@@ -103,7 +103,7 @@ and expr_to_ocamlexpr_desc expr =
   aux expr
 
 and match_case_aux { constructor; args; exp } =
-  let args = List.map (xmap (fun x -> Var x)) args in
+  let args = List.map (fun x -> (fun x -> Var x) #-> x) args in
   let lhs =
     To_pat.term_to_pattern
       (AppOp ((fun x -> Op.DtOp x) #-> constructor, args)) #: None

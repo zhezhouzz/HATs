@@ -1,32 +1,32 @@
 let[@librty] ( == ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
-  (iff v (a == b) : [%v: bool]) [@under]
+  (v == (a == b) : [%v: bool]) [@under]
 
 let[@librty] ( != ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
-  (iff v (a != b) : [%v: bool]) [@under]
+  (v == (a != b) : [%v: bool]) [@under]
 
 let[@librty] ( < ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
-  (iff v (a < b) : [%v: bool]) [@under]
+  (v == (a < b) : [%v: bool]) [@under]
 
 let[@librty] ( > ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
-  (iff v (a > b) : [%v: bool]) [@under]
+  (v == (a > b) : [%v: bool]) [@under]
 
 let[@librty] ( <= ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
-  (iff v (a <= b) : [%v: bool]) [@under]
+  (v == (a <= b) : [%v: bool]) [@under]
 
 let[@librty] ( >= ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
-  (iff v (a >= b) : [%v: bool]) [@under]
+  (v == (a >= b) : [%v: bool]) [@under]
 
 let[@librty] ( + ) =
   let a = (true : [%v: int]) [@over] in
@@ -37,6 +37,16 @@ let[@librty] ( - ) =
   let a = (true : [%v: int]) [@over] in
   let b = (true : [%v: int]) [@over] in
   (v == a - b : [%v: int]) [@under]
+
+let[@librty] ( * ) =
+  let a = (true : [%v: int]) [@over] in
+  let b = (true : [%v: int]) [@over] in
+  (v == a * b : [%v: int]) [@under]
+
+let[@librty] ( / ) =
+  let a = (true : [%v: int]) [@over] in
+  let b = (true : [%v: int]) [@over] in
+  (v == a / b : [%v: int]) [@under]
 
 (* randomness operators *)
 
@@ -77,6 +87,6 @@ let[@librty] decrement =
 
 let[@librty] lt_eq_one =
   let s = (true : [%v: int]) [@over] in
-  (iff v (s <= 1) && iff (not v) (s > 1) : [%v: bool]) [@under]
+  (v == (s <= 1) && iff (not v) (s > 1) : [%v: bool]) [@under]
 
 (* let[@librty] dummy = (true : [%v: unit]) [@under] *)

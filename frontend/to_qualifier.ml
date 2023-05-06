@@ -21,7 +21,7 @@ let quantifier_to_patten (q, u) =
   To_pat.dest_to_pat
     (Ppat_constraint
        ( To_pat.dest_to_pat (Ppat_var (Location.mknoloc u.Nt.x)),
-         notated (Q.to_string q, u.Nt.ty) ))
+         notated (Qn.to_string q, u.Nt.ty) ))
 
 type layout_setting = {
   sym_true : string;
@@ -144,13 +144,13 @@ and qualifier_to_ocamlexpr_desc expr =
         Pexp_fun
           ( Asttypes.Nolabel,
             None,
-            quantifier_to_patten (Q.Fa, u),
+            quantifier_to_patten (Qn.Fa, u),
             qualifier_to_ocamlexpr body )
     | Exists (u, body) ->
         Pexp_fun
           ( Asttypes.Nolabel,
             None,
-            quantifier_to_patten (Q.Ex, u),
+            quantifier_to_patten (Qn.Ex, u),
             qualifier_to_ocamlexpr body )
   in
   aux expr
@@ -165,7 +165,7 @@ let quantifier_of_ocamlexpr arg =
       in
       match ct.ptyp_desc with
       | Ptyp_extension (name, PTyp ty) ->
-          let q = Q.of_string name.txt in
+          let q = Qn.of_string name.txt in
           let ty = Type.core_type_to_t ty in
           (q, Nt.(arg #: ty))
       | _ -> _failatwith __FILE__ __LINE__ "quantifier needs type extension")
@@ -200,7 +200,7 @@ let qualifier_of_ocamlexpr expr =
     | Pexp_fun (_, _, arg, expr) -> (
         let q, arg = quantifier_of_ocamlexpr arg in
         let body = aux expr in
-        match q with Q.Fa -> Forall (arg, body) | Q.Ex -> Exists (arg, body))
+        match q with Qn.Fa -> Forall (arg, body) | Qn.Ex -> Exists (arg, body))
     | Pexp_tuple _ | Pexp_ident _ | Pexp_constant _ | Pexp_construct _ ->
         Lit (To_lit.lit_of_ocamlexpr expr)
     | _ ->

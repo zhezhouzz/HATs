@@ -1,9 +1,9 @@
 (library
  (name typecheck)
  (wrapped true)
- (libraries utils language core env ocolor normalization)
+ (libraries utils language core env auxtyping subtyping normalization)
  (modules
-   ; typeinfer
+   typeinfer
    ; fexists
    ; fmerge
 ))

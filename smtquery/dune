@@ -1,0 +1,11 @@
+(library
+ (name smtquery)
+ (wrapped true)
+ (libraries utils language core env z3)
+ (modules
+   z3aux
+   litencoding
+   propencoding
+   check
+   smtquery
+))

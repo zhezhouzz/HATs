@@ -36,6 +36,18 @@ and close_to_regex x regex =
   | SigmaTy localx -> ExistsA { localx; regex }
   | _ -> _failatwith __FILE__ __LINE__ "die"
 
-let exists_function x rty =
+let exists_typed x rty =
   let x = typed_to_dep_quantifer x in
   close_to_rty x rty
+
+let exists_ptyped x rty =
+  let x = ptyped_to_dep_quantifer x in
+  close_to_rty x rty
+
+let exists_typed_to_cty x rty =
+  let x = typed_to_dep_quantifer x in
+  close_to_cty x rty
+
+let exists_ptyped_to_cty x rty =
+  let x = ptyped_to_dep_quantifer x in
+  close_to_cty x rty

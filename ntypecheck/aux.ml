@@ -5,16 +5,9 @@ module OpCtx = NOpTypectx
 open Nt
 open Sugar
 
-let rec infer_const_ty topctx = function
-  | U -> unit_ty
-  | I _ -> int_ty
-  | B _ -> bool_ty
-  | Tu vs -> mk_tuple (List.map (infer_const_ty topctx) vs)
-  | Dt (_, _) -> _failatwith __FILE__ __LINE__ "no dt const"
-(* snd @@ destruct_arr_tp (infer_op topctx op) *)
-
 let infer_id nctx x = Ctx.get_ty nctx x
 let is_builtop opctx x = OpCtx.exists opctx (Op.BuiltinOp x)
+let infer_const_ty _ = Const.infer_const_ty
 
 let infer_op opctx x =
   match x with

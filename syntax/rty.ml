@@ -9,9 +9,9 @@ module F (L : Lit.T) = struct
   type pty =
     | BasePty of { ou : ou; cty : cty }
     | TuplePty of pty list
-    | ArrPty of { rarg : string option ptyped; retrty : t }
+    | ArrPty of { rarg : string option ptyped; retrty : rty }
 
-  and t = Pty of pty | Regty of regex Nt.typed
+  and rty = Pty of pty | Regty of regex Nt.typed
 
   and sevent =
     | RetEvent of pty
@@ -30,6 +30,7 @@ module F (L : Lit.T) = struct
   and 'a ctyped = { cx : 'a; cty : cty }
   and 'a ptyped = { px : 'a; pty : pty }
 
+  type t = rty
   type 'a typed = { x : 'a; ty : t }
 
   let ou_eq a b =
@@ -95,6 +96,8 @@ module F (L : Lit.T) = struct
   and subst (y, z) = function
     | Pty pty -> Pty (subst_pty (y, z) pty)
     | Regty regex -> Regty Nt.((subst_regex (y, z)) #-> regex)
+
+  let subst_rty = subst
 
   let subst_id (y, z) rty =
     let z = AVar z in
@@ -206,9 +209,15 @@ module F (L : Lit.T) = struct
 
   let typed_erase { x; ty } = Nt.{ x; ty = erase ty }
 
+  let typed_force_to_ptyped file line { x; ty } =
+    match ty with
+    | Pty pty -> { px = x; pty }
+    | _ -> _failatwith file line "die"
+
   let default_ty =
     Pty (BasePty { ou = Over; cty = Nt.{ v = "v" #: Ty_unit; phi = mk_true } })
 
+  let mk_bot_cty nt = Nt.{ v = "v" #: nt; phi = mk_false }
   let mk_noty x = { x; ty = default_ty }
   let xmap f { x; ty } = { x = f x; ty }
   let is_basic_tp _ = _failatwith __FILE__ __LINE__ "never happen"
