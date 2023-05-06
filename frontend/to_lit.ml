@@ -23,7 +23,7 @@ and lit_to_ocamlexpr_desc (expr : lit) =
     match expr with
     | AC c -> (To_const.value_to_expr c).pexp_desc
     | AAppOp (op, args) ->
-        let op = To_expr.typed_op_to_ocamlexpr op in
+        let op = To_expr.typed_op_to_ocamlexpr op.x #: None in
         let args =
           List.map (fun x -> (Asttypes.Nolabel, typed_lit_to_ocamlexpr x)) args
         in

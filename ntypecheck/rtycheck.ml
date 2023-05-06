@@ -14,7 +14,7 @@ let cty_check opctx ctx { v; phi } =
 let rec rty_check opctx ctx (rty : t) : t =
   match rty with
   | Pty pty -> Pty (pty_check opctx ctx pty)
-  | Regty regex -> Regty Nt.((regex_check opctx ctx regex.ty) #-> regex)
+  | Regty regex -> Regty Nt.((regex_check opctx ctx [] regex.ty) #-> regex)
 
 and pty_check opctx ctx (rty : pty) : pty =
   let rec aux ctx rty =
@@ -54,24 +54,36 @@ and sevent_check opctx ctx retbty sevent =
       let phi = type_check_qualifier opctx ctx' phi in
       EffEvent { op; vs; phi }
 
-and regex_check opctx ctx retbty (regex : regex) : regex =
-  let rec aux regex =
-    match regex with
-    | VarA x -> VarA x
-    | EpsilonA -> EpsilonA
-    | EventA se -> EventA (sevent_check opctx ctx retbty se)
-    | LorA (t1, t2) -> LorA (aux t1, aux t2)
-    | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
-    | StarA t -> StarA (aux t)
-    | ExistsA { localx = { cx; cty }; regex } ->
-        let cty = cty_check opctx ctx cty in
-        let ctx' = Typectx.new_to_right ctx Nt.(cx #: (erase_cty cty)) in
-        ExistsA
-          { localx = { cx; cty }; regex = regex_check opctx ctx' retbty regex }
-    | RecA { mux; muA; index; regex } ->
-        let indty = Nt.Ty_int in
-        let index = (type_check_lit opctx ctx (index, indty)).x in
-        let ctx' = Typectx.new_to_right ctx Nt.(mux #: indty) in
-        RecA { mux; muA; index; regex = regex_check opctx ctx' retbty regex }
-  in
-  aux regex
+and regex_check opctx ctx actx retbty (regex : regex) : regex =
+  match regex with
+  | VarA x ->
+      let _ =
+        _check_equality __FILE__ __LINE__ Nt.eq retbty (Aux.infer_id actx x)
+      in
+      VarA x
+  | EpsilonA -> EpsilonA
+  | EventA se -> EventA (sevent_check opctx ctx retbty se)
+  | LorA (t1, t2) ->
+      LorA
+        ( regex_check opctx ctx actx retbty t1,
+          regex_check opctx ctx actx retbty t2 )
+  | SeqA (t1, t2) ->
+      SeqA
+        ( regex_check opctx ctx actx retbty t1,
+          regex_check opctx ctx actx retbty t2 )
+  | StarA t -> StarA (regex_check opctx ctx actx retbty t)
+  | ExistsA { localx = { cx; cty }; regex } ->
+      let cty = cty_check opctx ctx cty in
+      let ctx' = Typectx.new_to_right ctx Nt.(cx #: (erase_cty cty)) in
+      ExistsA
+        {
+          localx = { cx; cty };
+          regex = regex_check opctx ctx' actx retbty regex;
+        }
+  | RecA { mux; muA; index; regex } ->
+      let indty = Nt.Ty_int in
+      let index = (type_check_lit opctx ctx (index, indty)).x in
+      let ctx' = Typectx.new_to_right ctx Nt.(mux #: indty) in
+      let actx' = Typectx.new_to_right actx Nt.(muA #: retbty) in
+      RecA
+        { mux; muA; index; regex = regex_check opctx ctx' actx' retbty regex }

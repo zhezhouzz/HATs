@@ -73,9 +73,10 @@ let get_denote expr =
   | None -> _failatwith __FILE__ __LINE__ ""
 
 let get_ou expr =
-  match get_denote expr with
-  | "over" -> Over
-  | "under" -> Under
+  match get_denoteopt expr with
+  | Some "over" -> Over
+  | Some "under" -> Under
+  | None -> Under
   | _ -> _failatwith __FILE__ __LINE__ ""
 
 let get_opopt expr =
@@ -137,23 +138,36 @@ let rec pty_of_ocamlexpr expr =
 
 and sevent_of_ocamlexpr expr =
   match expr.pexp_desc with
-  | Pexp_constraint _ -> (
-      let op = get_op expr in
+  | Pexp_construct (op, Some e) -> (
+      let op = To_id.longid_to_id op in
       match op with
       | "Ret" ->
-          let pty = pty_of_ocamlexpr expr in
+          let pty = pty_of_ocamlexpr e in
           RetEvent pty
       | _ ->
-          let vs, phi = vars_phi_of_ocamlexpr expr in
+          let vs, phi = vars_phi_of_ocamlexpr e in
           EffEvent { op; vs; phi })
+  (* | Pexp_constraint _ -> ( *)
+  (*     let _ = *)
+  (*       Printf.printf "expr: %s\n" (Pprintast.string_of_expression expr) *)
+  (*     in *)
+  (*     let op = get_op expr in *)
+  (*     let () = Printf.printf "op: %s\n" op in *)
+  (*     match op with *)
+  (*     | "Ret" -> *)
+  (*         let pty = pty_of_ocamlexpr expr in *)
+  (*         RetEvent pty *)
+  (*     | _ -> *)
+  (*         let vs, phi = vars_phi_of_ocamlexpr expr in *)
+  (*         EffEvent { op; vs; phi }) *)
   | _ -> _failatwith __FILE__ __LINE__ "die"
 
 and regex_of_ocamlexpr expr =
   let rec aux expr =
     match expr.pexp_desc with
     | Pexp_ident id ->
-        if String.equal "epsilon" @@ To_id.longid_to_id id then EpsilonA
-        else _failatwith __FILE__ __LINE__ "die"
+        let id = To_id.longid_to_id id in
+        if String.equal "epsilon" id then EpsilonA else VarA id
     | Pexp_apply (func, args) -> (
         let f = To_expr.id_of_ocamlexpr func in
         let args = List.map snd args in
@@ -169,10 +183,10 @@ and regex_of_ocamlexpr expr =
             let index = To_lit.lit_of_ocamlexpr index in
             let regex = aux regex in
             RecA { mux; muA; index; regex }
-        | "||", [ a; b ] -> LorA (aux a, aux b)
+        | "lorA", [ a; b ] -> LorA (aux a, aux b)
         | _, _ -> _failatwith __FILE__ __LINE__ "die")
     | Pexp_sequence (a, b) -> SeqA (aux a, aux b)
-    | Pexp_constraint _ -> EventA (sevent_of_ocamlexpr expr)
+    | Pexp_construct _ -> EventA (sevent_of_ocamlexpr expr)
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux expr
