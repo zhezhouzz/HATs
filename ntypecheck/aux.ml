@@ -1,5 +1,6 @@
 open Language
-open Const
+
+(* open Const *)
 module Ctx = NTypectx
 module OpCtx = NOpTypectx
 open Nt
@@ -11,8 +12,15 @@ let infer_const_ty _ = Const.infer_const_ty
 
 let infer_op opctx x =
   match x with
-  | Op.BuiltinOp _ -> OpCtx.get_ty opctx x
-  | Op.EffOp _ -> OpCtx.get_ty opctx x
+  | Op.BuiltinOp _ ->
+      (* let () = Printf.printf "infer op %s: %s\n" "BuiltinOp" op in *)
+      (* let () = *)
+      (*   Printf.printf "%s\n" (NOpTypectx.layout_typed_l Op.to_string opctx) *)
+      (* in *)
+      OpCtx.get_ty opctx x
+  | Op.EffOp _ ->
+      (* let () = Printf.printf "infer op %s: %s\n" "EffOp" op in *)
+      OpCtx.get_ty opctx x
   | Op.DtOp x -> (
       match x with
       | "S" -> Ty_arrow (Ty_int, Ty_int)

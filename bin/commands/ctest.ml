@@ -9,8 +9,16 @@ let init_builtinctx () =
   let qfile = Env.get_builtin_coverage_type () in
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:qfile in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
-  let topnctx = StructureRaw.mk_normal_top_ctx code in
-  NOpTypectx.to_builtin topnctx
+  let topnopctx =
+    NOpTypectx.to_builtin @@ StructureRaw.mk_normal_top_ctx code
+  in
+  (* let () = *)
+  (*   Printf.printf "%s\n" (NOpTypectx.layout_typed_l Op.to_string topnopctx) *)
+  (* in *)
+  (* let () = failwith "end" in *)
+  let code = Ntypecheck.opt_to_typed_structure topnopctx [] code in
+  let oprctx = ROpTypectx.from_rctx @@ RTypectx.from_code code in
+  (oprctx, topnopctx)
 
 let print_source_code_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
@@ -19,7 +27,8 @@ let print_source_code_ meta_config_file source_file =
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
   let topnctx = StructureRaw.mk_normal_top_ctx code in
   let topnopctx = StructureRaw.mk_normal_top_opctx code in
-  let topnopctx = NOpTypectx.new_to_rights topnopctx @@ init_builtinctx () in
+  let oprctx, opnctx = init_builtinctx () in
+  let topnopctx = NOpTypectx.new_to_rights topnopctx @@ opnctx in
   let () =
     Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout topnctx
   in
@@ -28,18 +37,18 @@ let print_source_code_ meta_config_file source_file =
     @@ NOpTypectx.pretty_layout topnopctx
   in
   let () = Printf.printf "%s\n" @@ StructureRaw.layout_structure code in
-  (topnctx, topnopctx, code)
+  (oprctx, topnctx, topnopctx, code)
 
 let print_typed_source_code_ meta_config_file source_file =
-  let topnctx, topnopctx, code =
+  let oprctx, topnctx, topnopctx, code =
     print_source_code_ meta_config_file source_file
   in
   let code = Ntypecheck.opt_to_typed_structure topnopctx topnctx code in
   let () = Printf.printf "%s\n" @@ Structure.layout_structure code in
-  (topnctx, topnopctx, code)
+  (oprctx, topnctx, topnopctx, code)
 
 let print_typed_normalized_source_code_ meta_config_file source_file =
-  let topnctx, topnopctx, code =
+  let oprctx, topnctx, topnopctx, code =
     print_typed_source_code_ meta_config_file source_file
   in
   let normalized = Normalize.get_normalized_code code in
@@ -49,13 +58,13 @@ let print_typed_normalized_source_code_ meta_config_file source_file =
         Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp e))
       normalized
   in
-  (code, normalized)
+  (oprctx, code, normalized)
 
 let type_check_ meta_config_file source_file =
-  let code, normalized =
+  let oprctx, code, normalized =
     print_typed_normalized_source_code_ meta_config_file source_file
   in
-  (* let () = Typecheck.Typeinfer.check code normalized in *)
+  let ress = Typecheck.check oprctx code normalized in
   ()
 
 let cmd_config_source summary f =

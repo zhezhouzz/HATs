@@ -18,11 +18,6 @@ module Rty = Structure.R
 module Equation = Algebraic.F (L)
 module EquationRaw = Algebraic.F (LRaw)
 
-module Eqctx = struct
-  include Typectx.FString (Equation)
-  include Equation
-end
-
 (* unwrap *)
 module Const = Constant
 module Op = Op

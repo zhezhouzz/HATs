@@ -92,10 +92,20 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
         func
   | T.(App (func, args)) -> normalize_get_comp k' (decurry (func, args))
   | T.(Ite (cond, et, ef)) ->
-      normalize_get_value
-        (fun cond ->
-          k (CIte { cond; et = normalize_term et; ef = normalize_term ef }))
-        cond
+      normalize_get_comp k'
+        T.(
+          (Match
+             ( cond,
+               [
+                 { constructor = "True" #: bool_ty; args = []; exp = et };
+                 { constructor = "False" #: bool_ty; args = []; exp = ef };
+               ] ))
+          #: expr.ty)
+  (* | T.(Ite (cond, et, ef)) -> *)
+  (*     normalize_get_value *)
+  (*       (fun cond -> *)
+  (*         k (CIte { cond; et = normalize_term et; ef = normalize_term ef })) *)
+  (*       cond *)
   | T.(Match (matched, match_cases)) ->
       normalize_get_value
         (fun matched ->

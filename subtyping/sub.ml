@@ -37,3 +37,7 @@ and sub_rty_bool rctx eqctx rty1 rty2 =
   | _, _ -> _failatwith __FILE__ __LINE__ "die"
 
 and sub_regex_bool _ _ _ _ = _failatwith __FILE__ __LINE__ "unimp sub regex"
+
+let is_bot_rty rctx _ = function
+  | Pty pty -> Subcty.is_bot_pty rctx pty
+  | Regty _ -> _failatwith __FILE__ __LINE__ "die"

@@ -4,7 +4,7 @@
     "debug_info": {
         "show_preprocess": false,
         "show_typing": true,
-        "show_queries": false,
+        "show_queries": true,
         "show_stat": false,
         "show_others": false,
         "show_debug": false

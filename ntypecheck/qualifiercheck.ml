@@ -83,7 +83,7 @@ and type_check_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit, ty) :
         List.split @@ List.map (fun x -> type_infer_lit opctx ctx x.x) args
       in
       let f, fty = check_op opctx f in
-      (* let () = Printf.printf "%s:%s\n" f.x (Nt.layout fty) in *)
+      (* let () = Printf.printf ">> %s:%s\n" (Op.to_string f.x) (Nt.layout fty) in *)
       let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
       let argsty, retty =
         _solve_by_retty __FILE__ __LINE__

@@ -20,14 +20,15 @@ let rec typed_lit_to_z3 ctx lit =
   | AAppOp (op, args) -> (
       let args = List.map (typed_lit_to_z3 ctx) args in
       match (op.x, args) with
-      | Op.DtOp "==", [ a; b ] -> Boolean.mk_eq ctx a b
-      | Op.DtOp "!=", [ a; b ] -> Boolean.mk_not ctx @@ Boolean.mk_eq ctx a b
-      | Op.DtOp "<=", [ a; b ] -> Arithmetic.mk_le ctx a b
-      | Op.DtOp ">=", [ a; b ] -> Arithmetic.mk_ge ctx a b
-      | Op.DtOp "<", [ a; b ] -> Arithmetic.mk_lt ctx a b
-      | Op.DtOp ">", [ a; b ] -> Arithmetic.mk_gt ctx a b
-      | Op.DtOp "+", [ a; b ] -> Arithmetic.mk_add ctx [ a; b ]
-      | Op.DtOp "-", [ a; b ] -> Arithmetic.mk_sub ctx [ a; b ]
-      | Op.DtOp "*", [ a; b ] -> Arithmetic.mk_mul ctx [ a; b ]
-      | Op.DtOp "/", [ a; b ] -> Arithmetic.mk_div ctx a b
+      | Op.BuiltinOp "==", [ a; b ] -> Boolean.mk_eq ctx a b
+      | Op.BuiltinOp "!=", [ a; b ] ->
+          Boolean.mk_not ctx @@ Boolean.mk_eq ctx a b
+      | Op.BuiltinOp "<=", [ a; b ] -> Arithmetic.mk_le ctx a b
+      | Op.BuiltinOp ">=", [ a; b ] -> Arithmetic.mk_ge ctx a b
+      | Op.BuiltinOp "<", [ a; b ] -> Arithmetic.mk_lt ctx a b
+      | Op.BuiltinOp ">", [ a; b ] -> Arithmetic.mk_gt ctx a b
+      | Op.BuiltinOp "+", [ a; b ] -> Arithmetic.mk_add ctx [ a; b ]
+      | Op.BuiltinOp "-", [ a; b ] -> Arithmetic.mk_sub ctx [ a; b ]
+      | Op.BuiltinOp "*", [ a; b ] -> Arithmetic.mk_mul ctx [ a; b ]
+      | Op.BuiltinOp "/", [ a; b ] -> Arithmetic.mk_div ctx a b
       | _ -> failwith @@ spf "unknown operator: %s" (Op.to_string op.x))

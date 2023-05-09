@@ -33,10 +33,21 @@ module F (L : Lit.T) = struct
   type t = rty
   type 'a typed = { x : 'a; ty : t }
 
+  open Sugar
+
   let ou_eq a b =
     match (a, b) with Over, Over | Under, Under -> true | _ -> false
 
   let ou_flip = function Over -> Under | Under -> Over
+
+  let pty_flip = function
+    | BasePty { ou; cty } -> BasePty { ou = ou_flip ou; cty }
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  let rty_flip = function
+    | Pty pty -> Pty (pty_flip pty)
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
   let ( #: ) x ty = { x; ty }
   let ( #:: ) px pty = { px; pty }
   let ( #::: ) cx cty = { cx; cty }
@@ -46,7 +57,7 @@ module F (L : Lit.T) = struct
 
   let cty_typed_to_prop { cx; cty = { v; phi } } =
     let Nt.{ x; ty } = v in
-    (Nt.{ x = cx; ty }, P.subst_prop_id (cx, x) phi)
+    (Nt.{ x = cx; ty }, P.subst_prop_id (x, cx) phi)
 
   (* subst *)
   let subst_cty (y, replacable) { v; phi } =
@@ -173,8 +184,6 @@ module F (L : Lit.T) = struct
 
   let erase_cty { v; _ } = v.Nt.ty
 
-  open Sugar
-
   let rec erase_pty rty =
     let open Nt in
     let rec aux rty =
@@ -214,17 +223,31 @@ module F (L : Lit.T) = struct
     | Pty pty -> { px = x; pty }
     | _ -> _failatwith file line "die"
 
-  let default_ty =
-    Pty (BasePty { ou = Over; cty = Nt.{ v = "v" #: Ty_unit; phi = mk_true } })
+  let mk_unit_under_rty_from_prop phi =
+    Pty (BasePty { ou = Under; cty = Nt.{ v = "v" #: Ty_unit; phi } })
 
+  let default_ty = mk_unit_under_rty_from_prop mk_true
   let mk_bot_cty nt = Nt.{ v = "v" #: nt; phi = mk_false }
   let mk_noty x = { x; ty = default_ty }
   let xmap f { x; ty } = { x = f x; ty }
+  let is_base_pty = function BasePty _ -> true | _ -> false
+  let is_overbase_pty = function BasePty { ou = Over; _ } -> true | _ -> false
+
+  let is_underbase_pty = function
+    | BasePty { ou = Under; _ } -> true
+    | _ -> false
+
+  let is_arr_pty = function ArrPty _ -> true | _ -> false
   let is_basic_tp _ = _failatwith __FILE__ __LINE__ "never happen"
   let is_dt _ = _failatwith __FILE__ __LINE__ "never happen"
 
   (* TODO: imp eq *)
   let eq _ _ = false
+
+  (* let destruct_arr_rty = function *)
+  (*   | Pty pty -> destruct_arr_pty [] pty *)
+  (*   | _ -> _failatwith __FILE__ __LINE__ "unimp" *)
+
   let destruct_arr_tp _ = _failatwith __FILE__ __LINE__ "unimp"
   let construct_arr_tp _ = _failatwith __FILE__ __LINE__ "unimp"
   let _type_unify _ _ = _failatwith __FILE__ __LINE__ "unimp"

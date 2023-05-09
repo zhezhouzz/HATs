@@ -20,9 +20,9 @@ let rec denormalize_comp (comp : comp typed) : T.term T.typed =
               rhs = denormalize_value turhs;
               letbody = denormalize_comp letbody;
             })
-    | CIte { cond; et; ef } ->
-        T.(
-          Ite (denormalize_value cond, denormalize_comp et, denormalize_comp ef))
+    (* | CIte { cond; et; ef } -> *)
+    (*     T.( *)
+    (*       Ite (denormalize_value cond, denormalize_comp et, denormalize_comp ef)) *)
     | CMatch { matched; match_cases } ->
         T.(
           Match

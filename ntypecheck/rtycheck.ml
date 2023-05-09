@@ -23,6 +23,16 @@ and pty_check opctx ctx (rty : pty) : pty =
     | TuplePty ptys -> TuplePty (List.map (aux ctx) ptys)
     | ArrPty { rarg; retrty } ->
         let rarg = { px = rarg.px; pty = aux ctx rarg.pty } in
+        let () =
+          match rarg.px with
+          | None ->
+              _assert __FILE__ __LINE__
+                (spf "syntax error: argument type %s" (To_rty.layout_pty rty))
+              @@ (is_overbase_pty rarg.pty || is_arr_pty rarg.pty)
+          | Some _ ->
+              _assert __FILE__ __LINE__ "syntax error: argument type"
+              @@ is_overbase_pty rarg.pty
+        in
         let ctx' =
           match rarg.px with
           | None -> ctx

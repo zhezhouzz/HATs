@@ -79,13 +79,21 @@ module F (L : Lit.T) = struct
   let get_eqprop_by_name prop x =
     match prop with Lit lit -> get_eqlit_by_name lit x | _ -> None
 
-  let smart_sigma (x, xprop) prop =
-    match get_eqprop_by_name xprop x.Normalty.Ntyped.x with
-    | None -> Exists (x, smart_add_to xprop prop)
-    | Some z -> subst_prop (x.Normalty.Ntyped.x, z) prop
+  let smart_sigma (u, xprop) prop =
+    let Normalty.Ntyped.{ x; ty } = u in
+    match ty with
+    | Normalty.Ntyped.Ty_unit -> smart_add_to xprop prop
+    | _ -> (
+        match get_eqprop_by_name xprop x with
+        | None -> Exists (u, smart_add_to xprop prop)
+        | Some z -> subst_prop (x, z) prop)
 
-  let smart_pi (x, xprop) prop =
-    match get_eqprop_by_name xprop x.Normalty.Ntyped.x with
-    | None -> Forall (x, smart_implies xprop prop)
-    | Some z -> subst_prop (x.Normalty.Ntyped.x, z) prop
+  let smart_pi (u, xprop) prop =
+    let Normalty.Ntyped.{ x; ty } = u in
+    match ty with
+    | Normalty.Ntyped.Ty_unit -> smart_implies xprop prop
+    | _ -> (
+        match get_eqprop_by_name xprop x with
+        | None -> Forall (u, smart_implies xprop prop)
+        | Some z -> subst_prop (x, z) prop)
 end

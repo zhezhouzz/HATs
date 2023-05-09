@@ -107,9 +107,9 @@ let layout_qualifier
     | Ite (p1, p2, p3) ->
         spf "(if %s then %s else %s)" (layout p1) (layout p2) (layout p3)
     | Forall (u, body) ->
-        spf "(%s %s. %s)" sym_forall (layout_typedid u) (layout body)
+        spf "(%s%s. %s)" sym_forall (layout_typedid u) (layout body)
     | Exists (u, body) ->
-        spf "(%s %s. %s)" sym_exists (layout_typedid u) (layout body)
+        spf "(%s%s. %s)" sym_exists (layout_typedid u) (layout body)
   in
   layout
 
@@ -193,7 +193,7 @@ let qualifier_of_ocamlexpr expr =
         | "&&", _ -> failwith "parsing: qualifier wrong and"
         | "||", [ a; b ] -> Or [ aux a; aux b ]
         | "||", _ -> failwith "parsing: qualifier wrong or"
-        | "=", _ -> failwith "please use == instead of = "
+        | "=", _ -> failwith "please use == instead of ="
         | _, _ -> Lit (To_lit.lit_of_ocamlexpr expr))
     | Pexp_ifthenelse (e1, e2, Some e3) -> Ite (aux e1, aux e2, aux e3)
     | Pexp_ifthenelse (_, _, None) -> raise @@ failwith "no else branch in ite"

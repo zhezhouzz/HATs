@@ -29,6 +29,7 @@ module Rty = struct
   open Coersion
   include Rty
 
+  let layout_prop prop = To_qualifier.layout (besome_qualifier prop)
   let layout_rty rty = StructureRaw.layout_rty (besome_rty rty)
   let layout_cty rty = StructureRaw.layout_cty (besome_cty rty)
   let layout_pty rty = StructureRaw.layout_pty (besome_pty rty)
@@ -137,6 +138,30 @@ module RTypectx = struct
         let open Structure in
         match kind with RtyLib -> None | RtyToCheck -> Some (name, rty))
       code
+
+  let op_and_rctx_from_code code =
+    let opctx = Structure.mk_normal_top_opctx code in
+    let rctx = from_code code in
+    let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l (fun x -> x) rctx) in
+    let opctx, rctx =
+      List.partition
+        (fun { x; _ } -> NOpTypectx.exists opctx (Op.BuiltinOp x))
+        rctx
+    in
+    let opctx = List.map (fun x -> (fun x -> Op.BuiltinOp x) #-> x) opctx in
+    (* let () = *)
+    (*   Pp.printf "@{<bold>Op:@} %s\n" *)
+    (*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *)
+    (* in *)
+    (opctx, rctx)
+end
+
+module ROpTypectx = struct
+  include Typectx.FOp (Rty)
+  include Rty
+
+  let from_rctx rctx = List.map (fun x -> (fun x -> Op.BuiltinOp x) #-> x) rctx
+  let to_nctx rctx = List.map (fun { x; ty } -> Nt.{ x; ty = erase ty }) rctx
 end
 
 (* module RTypedTermlang = struct *)
@@ -147,6 +172,28 @@ end
 
 module TypedCoreEff = struct
   include Corelang.F (Nt)
+  open Sugar
+
+  let _value_to_lit file line v =
+    match v.x with
+    | VVar name -> Rty.P.AVar name
+    | VConst c -> Rty.P.AC c
+    | VLam _ -> _failatwith file line "?"
+    | VFix _ -> _failatwith file line "?"
+    | VTu _ -> _failatwith file line "?"
+end
+
+module Eqctx = struct
+  include Typectx.FString (Equation)
+  include Equation
+
+  let from_code _ = []
+  (* let from_code code = *)
+  (* filter_map_rty *)
+  (*   (fun (name, kind, rty) -> *)
+  (*     let open Structure in *)
+  (*     match kind with RtyLib -> Some R.(name #: rty) | RtyToCheck -> None) *)
+  (*   code *)
 end
 
 module RTypedCoreEff = struct
