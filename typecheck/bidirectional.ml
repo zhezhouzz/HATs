@@ -153,7 +153,8 @@ let rec value_type_infer typectx (value : value typed) : R.t option =
           else rty
         in
         end_info __LINE__ "Var" (Some rty)
-    | _ -> _failatwith __FILE__ __LINE__ ""
+    | VTu _ -> _failatwith __FILE__ __LINE__ "unimp"
+    | VLam _ | VFix _ -> _failatwith __FILE__ __LINE__ "die"
   in
   rty
 
@@ -168,6 +169,14 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
   in
   let rty =
     match comp.x with
+    | CErr ->
+        let () = before_info __LINE__ "Err" in
+        let res =
+          if is_basic_tp comp.ty then
+            Some R.(Pty (BasePty { ou = Under; cty = mk_bot_cty comp.ty }))
+          else _failatwith __FILE__ __LINE__ "die"
+        in
+        end_info __LINE__ "Err" res
     | CVal v -> value_type_infer typectx v #: comp.ty
     | CLetE { lhs; rhs; letbody } -> (
         match rhs.x with
@@ -240,7 +249,7 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
           | _ -> _failatwith __FILE__ __LINE__ ""
         in
         end_info __LINE__ "Match" res
-    | _ -> _failatwith __FILE__ __LINE__ "?"
+    | CLetDeTu _ -> _failatwith __FILE__ __LINE__ "unimp"
   in
   rty
 
@@ -382,7 +391,7 @@ and value_type_check typectx (value : value typed) (rty : R.t) : bool =
         | Some typectx' -> comp_type_check typectx' lambody retrty
       in
       end_info __LINE__ "Lam" b
-  | _ -> _failatwith __FILE__ __LINE__ ""
+  | VTu _ -> _failatwith __FILE__ __LINE__ "die"
 
 and comp_type_check typectx (comp : comp typed) (rty : R.t) : bool =
   let str = layout_comp comp in
@@ -396,7 +405,7 @@ and comp_type_check typectx (comp : comp typed) (rty : R.t) : bool =
   in
   match comp.x with
   | CVal v -> value_type_check typectx v #: comp.ty rty
-  | CLetE _ | CAppOp _ | CApp _ ->
+  | CLetE _ | CAppOp _ | CApp _ | CLetDeTu _ | CMatch _ | CErr ->
       let () = before_info __LINE__ "Sub" in
       let res = comp_type_infer typectx comp in
       let b =
@@ -405,8 +414,3 @@ and comp_type_check typectx (comp : comp typed) (rty : R.t) : bool =
         | Some rty' -> subtyping_rty_bool __FILE__ __LINE__ typectx (rty', rty)
       in
       end_info __LINE__ "Sub" b
-  (* | CIte _ -> *)
-  (*     let rty' = comp_type_infer rctx a in *)
-  (*     let () = print_typing_rule __LINE__ "Ite" in *)
-  (*     subtyping_check rctx rty' rty *)
-  | _ -> _failatwith __FILE__ __LINE__ ""
