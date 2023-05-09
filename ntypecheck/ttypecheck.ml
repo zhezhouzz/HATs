@@ -130,7 +130,8 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           | _ -> (
               match mk_tuple xsty with
               | None ->
-                  _failatwith __FILE__ __LINE__ "infer: let binding lhs is none"
+                  _failatwith __FILE__ __LINE__
+                    "infer: let binding lhs is not typed"
               | Some ty -> ty)
         in
         let rhs =

@@ -1,39 +1,21 @@
-val ( <= ) : int -> int -> bool
-val ( - ) : int -> int -> int
-val set_empty : (int * int) set
-val set_insert : (int * int) set -> int * int -> (int * int) set
-val set_mem : (int * int) set -> int * int -> bool
-val mk_put : eff:int * int -> eff:unit -> unit
+type effect = Put of (int -> int -> unit) | Get of (int -> int)
 
-(* val mk_put : eff:int * int -> eff:bool -> unit *)
-(* val mk_get : eff:int -> eff:int -> unit *)
-val check_in : eff:int * int -> bool
-val get' : eff:int -> int option
-
-let rec prog (n : int) : unit =
-  if n <= 0 then ()
+let prog (n : int) : int =
+  if n <= 0 then 1
   else
-    let (_ : unit) = perform (mk_put (n, n) ()) in
-    prog (n - 1)
+    let (m : int) = int_gen () in
+    if n == m then Err
+    else
+      let (dummy1 : unit) = perform (Put (n, m)) in
+      let (dummy2 : int) = perform (Get n) in
+      2
 
-let handler (prog : unit -> unit) =
-  (match_with (prog ())
-     ({
-        retc = (fun (tt : unit) (s : (int * int) set) -> s);
-        mk_put =
-          (fun (k : unit -> (int * int) set -> (int * int) set)
-               (input : int * int) (output : unit) (s : (int * int) set) ->
-            let (s' : (int * int) set) = set_insert s input in
-            k () s');
-        mk_get =
-          (fun (k : unit -> (int * int) set -> (int * int) set) (input : int)
-               (output : int) ->
-            k ());
-        check_in =
-          (fun (k : bool -> (int * int) set -> (int * int) set)
-               (input : int * int) (s : (int * int) set) ->
-            let (b : bool) = set_mem s input in
-            k b s);
-      }
-       : hd:unit -> (int * int) set -> (int * int) set))
-    set_empty
+let[@assert] prog =
+  let n = (v >= 0 : [%v: int]) [@over] in
+  (lorA
+     (Ret (v1 == 1 : [%v1: int]))
+     (Put ((v1 == n && v2 != n : [%v1: int]) : [%v2: int]);
+      Get (v1 == n : [%v1: int]);
+      Ret (v1 == 2 : [%v1: int]))
+    : int)
+    [@regex]

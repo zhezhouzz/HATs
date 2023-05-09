@@ -218,6 +218,9 @@ module F (L : Lit.T) = struct
 
   let typed_erase { x; ty } = Nt.{ x; ty = erase ty }
 
+  let pty_to_ret_rty pty =
+    Regty Nt.{ x = EventA (RetEvent pty); ty = erase_pty pty }
+
   let typed_force_to_ptyped file line { x; ty } =
     match ty with
     | Pty pty -> { px = x; pty }

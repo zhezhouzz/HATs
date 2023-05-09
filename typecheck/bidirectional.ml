@@ -54,6 +54,18 @@ let wellformedness_rty_bool typectx tau =
     false)
   else true
 
+let is_under_unit_top rty =
+  let open R in
+  match rty with
+  | Pty (BasePty { ou = Under; cty = { v; phi } }) -> (
+      match (v.Nt.ty, get_cbool phi) with
+      | Nt.Ty_unit, Some true -> true
+      | _, _ -> false)
+  | _ -> false
+
+let simplify_bindings xs =
+  List.filter (fun x -> not (is_under_unit_top x.R.ty)) xs
+
 let typectx_new_to_right typectx (binding : string R.typed) =
   if wellformedness_rty_bool typectx binding.ty then
     Some { typectx with rctx = RCtx.new_to_right typectx.rctx binding }
@@ -102,13 +114,16 @@ let print_infer_info1 file line rulename typectx str =
   print_typing_rule file line "Infer" rulename;
   print_typectx typectx;
   Env.show_debug_typing (fun () ->
-      Pp.printf "⊢ @{<hi_magenta>%s@} ⇨ %s\n\n" (short_str 100 @@ str) "?")
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇨ %s\n\n"
+        (short_str (Env.get_max_printing_size ()) @@ str)
+        "?")
 
 let print_infer_info2 file line rulename typectx str rty =
   print_typing_rule file line "InferEnd" rulename;
   print_typectx typectx;
   Env.show_debug_typing (fun () ->
-      Pp.printf "⊢ @{<hi_magenta>%s@} ⇨" (short_str 100 @@ str);
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇨"
+        (short_str (Env.get_max_printing_size ()) @@ str);
       Pp.printf "@{<cyan>%s@}\n\n"
         (match rty with None -> "BOT" | Some rty -> R.layout rty))
 
@@ -116,7 +131,8 @@ let print_check_info file line rulename typectx str rty =
   print_typing_rule file line "Check" rulename;
   print_typectx typectx;
   Env.show_debug_typing (fun () ->
-      Pp.printf "⊢ @{<hi_magenta>%s@} ⇦" (short_str 100 @@ str);
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇦"
+        (short_str (Env.get_max_printing_size ()) @@ str);
       Pp.printf "@{<cyan>%s@}\n\n" @@ R.layout rty)
 
 let case_cond_mapping =
@@ -186,7 +202,9 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
               let* (bindings : string R.typed list), rhs_rty =
                 app_type_infer typectx appf apparg
               in
-              let bindings = bindings @ [ R.( #: ) lhs.x rhs_rty ] in
+              let bindings =
+                simplify_bindings @@ bindings @ [ R.( #: ) lhs.x rhs_rty ]
+              in
               let* typectx' = typectx_new_to_rights typectx bindings in
               let* res = comp_type_infer typectx' letbody in
               let res = multi_exists_typed bindings res in
@@ -199,7 +217,9 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
               let* (bindings : string R.typed list), rhs_rty =
                 appop_type_infer typectx op appopargs
               in
-              let bindings = bindings @ [ R.( #: ) lhs.x rhs_rty ] in
+              let bindings =
+                simplify_bindings @@ bindings @ [ R.( #: ) lhs.x rhs_rty ]
+              in
               let* typectx' = typectx_new_to_rights typectx bindings in
               let* res = comp_type_infer typectx' letbody in
               let res = multi_exists_typed bindings res in
@@ -210,7 +230,7 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
             let () = before_info __LINE__ "LetE" in
             let res =
               let* rhs_rty = comp_type_infer typectx rhs in
-              let bindings = [ R.( #: ) lhs.x rhs_rty ] in
+              let bindings = simplify_bindings @@ [ R.( #: ) lhs.x rhs_rty ] in
               let* typectx' = typectx_new_to_rights typectx bindings in
               let* res = comp_type_infer typectx' letbody in
               let res = multi_exists_typed bindings res in
@@ -282,7 +302,7 @@ and handle_match_case typectx matched { constructor; args; exp } =
         { x = Rename.unique "a"; ty = mk_unit_under_rty_from_prop phi }
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
-  let bindings = xs @ [ a ] in
+  let bindings = simplify_bindings @@ xs @ [ a ] in
   let* typectx' = typectx_new_to_rights typectx bindings in
   let* res = comp_type_infer typectx' exp in
   let res = multi_exists_typed bindings res in

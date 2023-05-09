@@ -14,10 +14,10 @@ let rec merge_pty t1 t2 =
   match (t1, t2) with
   | BasePty { ou = Over; cty = cty1 }, BasePty { ou = Over; cty = cty2 } ->
       let v, phis = unify_cty cty1 cty2 in
-      BasePty { ou = Over; cty = { v; phi = smart_or phis } }
+      BasePty { ou = Over; cty = { v; phi = smart_and phis } }
   | BasePty { ou = Under; cty = cty1 }, BasePty { ou = Under; cty = cty2 } ->
       let v, phis = unify_cty cty1 cty2 in
-      BasePty { ou = Under; cty = { v; phi = smart_and phis } }
+      BasePty { ou = Under; cty = { v; phi = smart_or phis } }
   | ( ArrPty { rarg = rarg1; retrty = retrty1 },
       ArrPty { rarg = rarg2; retrty = retrty2 } ) ->
       let pty = merge_pty rarg1.pty rarg2.pty in

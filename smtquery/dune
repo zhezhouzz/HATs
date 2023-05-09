@@ -6,6 +6,9 @@
    z3aux
    litencoding
    propencoding
+   regencoding
    check
    smtquery
-))
+)
+ (inline_tests)
+ (preprocess (pps ppx_inline_test)))

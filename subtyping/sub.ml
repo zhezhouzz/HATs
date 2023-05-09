@@ -34,7 +34,8 @@ and sub_rty_bool rctx eqctx rty1 rty2 =
   match (rty1, rty2) with
   | Pty pty1, Pty pty2 -> sub_pty_bool rctx eqctx pty1 pty2
   | Regty regex1, Regty regex2 -> sub_regex_bool rctx eqctx regex1 regex2
-  | _, _ -> _failatwith __FILE__ __LINE__ "die"
+  | Pty pty1, Regty _ -> sub_rty_bool rctx eqctx (pty_to_ret_rty pty1) rty2
+  | Regty _, Pty pty2 -> sub_rty_bool rctx eqctx rty1 (pty_to_ret_rty pty2)
 
 and sub_regex_bool _ _ _ _ = _failatwith __FILE__ __LINE__ "unimp sub regex"
 

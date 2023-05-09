@@ -104,7 +104,8 @@ let vars_phi_of_ocamlexpr expr =
         (v :: vs, phi)
     | _ -> ([], To_qualifier.qualifier_of_ocamlexpr expr)
   in
-  aux expr
+  let vs, prop = aux expr in
+  (List.rev vs, prop)
 
 let cty_of_ocamlexpr expr =
   match vars_phi_of_ocamlexpr expr with

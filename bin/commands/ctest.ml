@@ -98,4 +98,8 @@ let test =
         cmd_config_source "type check" (fun meta_config_file source_file () ->
             let x = type_check_ meta_config_file source_file in
             ()) );
+      ( "test-reg",
+        cmd_config_source "test reg" (fun meta_config_file _ () ->
+            let () = Env.load_meta meta_config_file in
+            Smtquery.test0 ()) );
     ]

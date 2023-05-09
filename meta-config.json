@@ -1,6 +1,6 @@
 {
     "mode": "debug",
-    "max_printing_size": 300,
+    "max_printing_size": 1000,
     "debug_info": {
         "show_preprocess": false,
         "show_typing": true,

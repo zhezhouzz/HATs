@@ -19,6 +19,7 @@ module Equation = Algebraic.F (L)
 module EquationRaw = Algebraic.F (LRaw)
 
 (* unwrap *)
+module NRegex = Nregex.T
 module Const = Constant
 module Op = Op
 module Type_dec = Type_dec

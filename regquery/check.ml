@@ -42,14 +42,19 @@ let get_unknown_fv ctx m unknown_fv =
 (* let ctx = *)
 (*   mk_context [ ("model", "true"); ("proof", "false"); ("timeout", "1999") ] *)
 
-let smt_solve ctx assertions =
+let smt_neg_and_solve ctx pre vc =
   (* let _ = printf "check\n" in *)
   let solver = mk_solver ctx None in
   let g = mk_goal ctx true false false in
+  let () = Printf.printf "Q: %s\n" @@ Language.Rty.layout_prop vc in
   (* let () = Printf.printf "Q: %s\n" @@ Frontend.coq_layout vc in *)
   (* let () = failwith "zz" in *)
+  let time_t, q =
+    Sugar.clock (fun () -> Boolean.mk_not ctx @@ Propencoding.to_z3 ctx vc)
+  in
+  let () = Env.show_debug_stat @@ fun _ -> Pp.printf "to_Z3: %0.4fs\n" time_t in
   (* let () = exit 0 in *)
-  let _ = Goal.add g assertions in
+  let _ = Goal.add g (List.map (Propencoding.to_z3 ctx) pre @ [ q ]) in
   (* let g = Goal.simplify g None in *)
   (* let g = *)
   (*   Tactic.(ApplyResult.get_subgoal (apply (mk_tactic ctx "snf") g None) 0) *)
@@ -61,32 +66,3 @@ let smt_solve ctx assertions =
   (* in *)
   let _ = Solver.add solver (get_formulas g) in
   solver_result solver
-
-let smt_neg_and_solve ctx pre vc =
-  let () =
-    Env.show_debug_queries @@ fun _ ->
-    Printf.printf "Query: %s\n" @@ Language.Rty.layout_prop vc
-  in
-  let assertions =
-    List.map (Propencoding.to_z3 ctx) (pre @ [ Language.Rty.Not vc ])
-  in
-  let time_t, res = Sugar.clock (fun () -> smt_solve ctx assertions) in
-  let () =
-    Env.show_debug_stat @@ fun _ -> Pp.printf "Z3 solving time: %0.4fs\n" time_t
-  in
-  res
-
-let inclusion_query ctx r1 r2 =
-  (* let open Sugar in *)
-  let r1 = Regencoding.to_z3 ctx r1 in
-  let r2 = Regencoding.to_z3 ctx r2 in
-  let () =
-    Env.show_debug_queries @@ fun _ ->
-    Printf.printf "Query: %s ⊆ %s\n" (Expr.to_string r1) (Expr.to_string r2)
-  in
-  let sequence =
-    Expr.mk_const_s ctx "a" (Seq.mk_seq_sort ctx @@ Seq.mk_string_sort ctx)
-  in
-  let q1 = Seq.mk_seq_in_re ctx sequence r1 in
-  let q2 = Seq.mk_seq_in_re ctx sequence r2 in
-  smt_solve ctx [ q1; Boolean.mk_not ctx q2 ]
