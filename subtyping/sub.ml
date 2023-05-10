@@ -37,7 +37,12 @@ and sub_rty_bool rctx eqctx rty1 rty2 =
   | Pty pty1, Regty _ -> sub_rty_bool rctx eqctx (pty_to_ret_rty pty1) rty2
   | Regty _, Pty pty2 -> sub_rty_bool rctx eqctx rty1 (pty_to_ret_rty pty2)
 
-and sub_regex_bool _ _ _ _ = _failatwith __FILE__ __LINE__ "unimp sub regex"
+and sub_regex_bool rctx eqctx regex1 regex2 =
+  let nty = regex1.Nt.ty in
+  let regex1 = regex1.Nt.x in
+  let regex2 = regex2.Nt.x in
+  let ctx = Minterm.minterm_init (LorA (regex1, regex2)) in
+  ()
 
 let is_bot_rty rctx _ = function
   | Pty pty -> Subcty.is_bot_pty rctx pty

@@ -7,6 +7,7 @@ module type T = sig
     | ATu of lit typed list
     | AProj of lit typed * int
     | AAppOp of Op.t typed * lit typed list
+  [@@deriving sexp]
 
   val mk_lit_true : lit
   val mk_lit_false : lit
@@ -15,10 +16,13 @@ module type T = sig
   val fv_typed_lit : lit typed -> string list
   val fv_typed_lits : lit typed list -> string list
   val get_eqlit_by_name : lit -> string -> lit option
+  val compare : lit -> lit -> int
+  val eq_lit : lit -> lit -> bool
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
 struct
+  open Sexplib.Std
   module T = Ty
   include Ty
 
@@ -28,7 +32,10 @@ struct
     | ATu of lit typed list
     | AProj of lit typed * int
     | AAppOp of Op.t typed * lit typed list
+  [@@deriving sexp]
 
+  let compare l1 l2 = Sexplib.Sexp.compare (sexp_of_lit l1) (sexp_of_lit l2)
+  let eq_lit l1 l2 = 0 == compare l1 l2
   let mk_lit_true = AC (Constant.B true)
   let mk_lit_false = AC (Constant.B false)
   let get_var_opt = function AVar x -> Some x | _ -> None

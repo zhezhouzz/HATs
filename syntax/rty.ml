@@ -1,10 +1,11 @@
 module F (L : Lit.T) = struct
+  open Sexplib.Std
   module Nt = Lit.Ty
   module P = Qualifier.F (L)
   include P
 
-  type cty = { v : string Nt.typed; phi : prop }
-  type ou = Over | Under
+  type cty = { v : string Nt.typed; phi : prop } [@@deriving sexp]
+  type ou = Over | Under [@@deriving sexp]
 
   type pty =
     | BasePty of { ou : ou; cty : cty }
@@ -28,12 +29,15 @@ module F (L : Lit.T) = struct
     | RecA of { mux : string; muA : string; index : lit; regex : regex }
 
   and 'a ctyped = { cx : 'a; cty : cty }
-  and 'a ptyped = { px : 'a; pty : pty }
+  and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
 
   type t = rty
   type 'a typed = { x : 'a; ty : t }
 
   open Sugar
+
+  let compare_pty l1 l2 = Sexplib.Sexp.compare (sexp_of_pty l1) (sexp_of_pty l2)
+  let eq_pty l1 l2 = 0 == compare_pty l1 l2
 
   let ou_eq a b =
     match (a, b) with Over, Over | Under, Under -> true | _ -> false
@@ -181,6 +185,55 @@ module F (L : Lit.T) = struct
   and fv = function Pty pty -> fv_pty pty | Regty regex -> fv_regex regex.Nt.x
 
   (* erase *)
+
+  open Zzdatatype.Datatype
+
+  let get_lits_from_sevent sevent =
+    match sevent with
+    | RetEvent _ -> None
+    | EffEvent { op; phi; _ } -> Some (op, P.get_lits phi)
+
+  let get_lits_from_regex regex =
+    let update m (op, lits) =
+      StrMap.update op
+        (fun lits' ->
+          match lits' with
+          | None -> Some lits
+          | Some lits' -> Some (List.slow_rm_dup P.eq_lit (lits @ lits')))
+        m
+    in
+    let rec aux regex res =
+      match regex with
+      | VarA _ -> res
+      | EpsilonA -> res
+      | EventA se -> (
+          match get_lits_from_sevent se with
+          | None -> res
+          | Some (op, lits) -> update res (op, lits))
+      | LorA (t1, t2) -> aux t1 @@ aux t2 res
+      | SeqA (t1, t2) -> aux t1 @@ aux t2 res
+      | StarA t -> aux t res
+      | ExistsA _ -> _failatwith __FILE__ __LINE__ "die"
+      | RecA _ -> _failatwith __FILE__ __LINE__ "die"
+    in
+    aux regex StrMap.empty
+
+  let get_ptys_from_sevent sevent =
+    match sevent with RetEvent pty -> [ pty ] | _ -> []
+
+  let get_ptys_from_regex regex =
+    let rec aux regex res =
+      match regex with
+      | VarA _ -> res
+      | EpsilonA -> res
+      | EventA se -> res @ get_ptys_from_sevent se
+      | LorA (t1, t2) -> aux t1 @@ aux t2 res
+      | SeqA (t1, t2) -> aux t1 @@ aux t2 res
+      | StarA t -> aux t res
+      | ExistsA _ -> _failatwith __FILE__ __LINE__ "die"
+      | RecA _ -> _failatwith __FILE__ __LINE__ "die"
+    in
+    List.slow_rm_dup eq_pty @@ aux regex []
 
   let erase_cty { v; _ } = v.Nt.ty
 

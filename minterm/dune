@@ -1,0 +1,7 @@
+(library
+ (name minterm)
+ (wrapped true)
+ (libraries utils language core env)
+ (modules
+   minterm
+))
