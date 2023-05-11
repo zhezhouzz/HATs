@@ -1,7 +1,7 @@
 (library
  (name minterm)
  (wrapped true)
- (libraries utils language core env)
+ (libraries utils language core env auxtyping)
  (modules
    minterm
 ))

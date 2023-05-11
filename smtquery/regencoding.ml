@@ -10,9 +10,9 @@ let to_z3 ctx reg =
     | Epslion ->
         Seq.mk_re_empty ctx
           (Seq.mk_re_sort ctx (Seq.mk_seq_sort ctx (Seq.mk_string_sort ctx)))
-    | Minterm (op, n) ->
+    | Minterm { op; gobal_embedding; local_embedding } ->
         Seq.mk_seq_to_re ctx @@ Seq.mk_seq_unit ctx
-        @@ Seq.mk_string ctx (spf "%s_%i" op n)
+        @@ Seq.mk_string ctx (spf "%s_%i_%i" op gobal_embedding local_embedding)
     | Union rs -> Seq.mk_re_union ctx @@ List.map aux rs
     | Concat rs -> Seq.mk_re_concat ctx @@ List.map aux rs
     | Star r -> Seq.mk_re_star ctx @@ aux r

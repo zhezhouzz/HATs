@@ -191,10 +191,21 @@ module F (L : Lit.T) = struct
   let get_lits_from_sevent sevent =
     match sevent with
     | RetEvent _ -> None
-    | EffEvent { op; phi; _ } -> Some (op, P.get_lits phi)
+    | EffEvent { op; phi; vs } ->
+        let vs = List.map (fun x -> X.Nt.x) vs in
+        let is_contain_local_free lit =
+          match List.interset ( == ) vs @@ P.fv_lit lit with
+          | [] -> false
+          | _ -> true
+        in
+        let lits = P.get_lits phi in
+        let global_lits, local_lits =
+          List.partition is_contain_local_free lits
+        in
+        Some (op, global_lits, local_lits)
 
   let get_lits_from_regex regex =
-    let update m (op, lits) =
+    let update_local m (op, lits) =
       StrMap.update op
         (fun lits' ->
           match lits' with
@@ -202,21 +213,24 @@ module F (L : Lit.T) = struct
           | Some lits' -> Some (List.slow_rm_dup P.eq_lit (lits @ lits')))
         m
     in
-    let rec aux regex res =
+    let update_global m lits = List.slow_rm_dup P.eq_lit (lits @ m) in
+    let rec aux regex (global_m, local_m) =
       match regex with
-      | VarA _ -> res
-      | EpsilonA -> res
+      | VarA _ -> (global_m, local_m)
+      | EpsilonA -> (global_m, local_m)
       | EventA se -> (
           match get_lits_from_sevent se with
-          | None -> res
-          | Some (op, lits) -> update res (op, lits))
+          | None -> (global_m, local_m)
+          | Some (op, global_lits, local_lits) ->
+              ( update global_m global_lits,
+                update local_m local_m (op, local_lits) ))
       | LorA (t1, t2) -> aux t1 @@ aux t2 res
       | SeqA (t1, t2) -> aux t1 @@ aux t2 res
       | StarA t -> aux t res
       | ExistsA _ -> _failatwith __FILE__ __LINE__ "die"
       | RecA _ -> _failatwith __FILE__ __LINE__ "die"
     in
-    aux regex StrMap.empty
+    aux regex ([], StrMap.empty)
 
   let get_ptys_from_sevent sevent =
     match sevent with RetEvent pty -> [ pty ] | _ -> []
