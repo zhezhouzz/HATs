@@ -19,6 +19,8 @@ let mk_empty ctx =
 let mk_full ctx =
   Seq.mk_re_full ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))
 
+(* NOTE: z3 will timeout over regular expression of language of (String String), e.g., ("AB" | "BC")("A")*. Thus we encoding the (String String) into String, i.g., (AB | BC)A*. To make the encoding to be efficient, distinguished string will be encodinged as distinguish char, e.g., (1 | 2)3*. *)
+
 let int_range_start = 48
 let int_range_len = 10
 let upper_range_start = 65
