@@ -6,7 +6,7 @@ let force_ou = function Raw.Over -> Over | Raw.Under -> Under
 let besome_ou = function Over -> Raw.Over | Under -> Raw.Under
 
 open Coersion_qualifier
-open Coersion_lit
+(* open Coersion_lit *)
 
 let force_cty Raw.{ v; phi } = { v; phi = force_qualifier phi }
 let besome_cty { v; phi } = Raw.{ v; phi = besome_qualifier phi }
@@ -33,16 +33,17 @@ and force_sevent = function
 and force_regex regex =
   let rec aux regex =
     match regex with
-    | Raw.VarA x -> VarA x
+    (* | Raw.VarA x -> VarA x *)
     | Raw.EpsilonA -> EpsilonA
     | Raw.EventA se -> EventA (force_sevent se)
     | Raw.LorA (t1, t2) -> LorA (aux t1, aux t2)
+    | Raw.LandA (t1, t2) -> LandA (aux t1, aux t2)
     | Raw.SeqA (t1, t2) -> SeqA (aux t1, aux t2)
     | Raw.StarA t -> StarA (aux t)
     | Raw.ExistsA { localx = { cx; cty }; regex } ->
         ExistsA { localx = { cx; cty = force_cty cty }; regex = aux regex }
-    | Raw.RecA { mux; muA; index; regex } ->
-        RecA { mux; muA; index = force_lit index; regex = aux regex }
+    (* | Raw.RecA { mux; muA; index; regex } -> *)
+    (* RecA { mux; muA; index = force_lit index; regex = aux regex } *)
   in
   aux regex
 
@@ -69,15 +70,16 @@ and besome_sevent = function
 and besome_regex regex =
   let rec aux regex =
     match regex with
-    | VarA x -> Raw.VarA x
+    (* | VarA x -> Raw.VarA x *)
     | EpsilonA -> Raw.EpsilonA
     | EventA se -> Raw.EventA (besome_sevent se)
     | LorA (t1, t2) -> Raw.LorA (aux t1, aux t2)
+    | LandA (t1, t2) -> Raw.LandA (aux t1, aux t2)
     | SeqA (t1, t2) -> Raw.SeqA (aux t1, aux t2)
     | StarA t -> Raw.StarA (aux t)
     | ExistsA { localx = { cx; cty }; regex } ->
         Raw.ExistsA { localx = { cx; cty = besome_cty cty }; regex = aux regex }
-    | RecA { mux; muA; index; regex } ->
-        Raw.RecA { mux; muA; index = besome_lit index; regex = aux regex }
+    (* | RecA { mux; muA; index; regex } -> *)
+    (* Raw.RecA { mux; muA; index = besome_lit index; regex = aux regex } *)
   in
   aux regex

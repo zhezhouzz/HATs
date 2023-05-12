@@ -70,6 +70,9 @@ let smt_neg_and_solve ctx pre vc =
   let assertions =
     List.map (Propencoding.to_z3 ctx) (pre @ [ Language.Rty.Not vc ])
   in
+  (* let () = *)
+  (*   List.iter (fun q -> Printf.printf "SMT: %s\n" (Expr.to_string q)) assertions *)
+  (* in *)
   let time_t, res = Sugar.clock (fun () -> smt_solve ctx assertions) in
   let () =
     Env.show_debug_stat @@ fun _ -> Pp.printf "Z3 solving time: %0.4fs\n" time_t
@@ -78,14 +81,16 @@ let smt_neg_and_solve ctx pre vc =
 
 let inclusion_query ctx r1 r2 =
   (* let open Sugar in *)
-  let r1 = Regencoding.to_z3 ctx r1 in
-  let r2 = Regencoding.to_z3 ctx r2 in
+  let r1, r2 = Regencoding.to_z3_two_reg ctx (r1, r2) in
   let () =
     Env.show_debug_queries @@ fun _ ->
     Printf.printf "Query: %s ⊆ %s\n" (Expr.to_string r1) (Expr.to_string r2)
   in
+  (* let sequence = *)
+  (*   Expr.mk_const_s ctx "reg_query_string" (Seq.mk_seq_sort ctx @@ Seq.mk_string_sort ctx) *)
+  (* in *)
   let sequence =
-    Expr.mk_const_s ctx "a" (Seq.mk_seq_sort ctx @@ Seq.mk_string_sort ctx)
+    Expr.mk_const_s ctx "reg_query_string" (Seq.mk_string_sort ctx)
   in
   let q1 = Seq.mk_seq_in_re ctx sequence r1 in
   let q2 = Seq.mk_seq_in_re ctx sequence r2 in

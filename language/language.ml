@@ -29,6 +29,7 @@ module Rty = struct
   open Coersion
   include Rty
 
+  let layout_lit lit = To_lit.layout_lit (besome_lit lit)
   let layout_prop prop = To_qualifier.layout (besome_qualifier prop)
   let layout_rty rty = StructureRaw.layout_rty (besome_rty rty)
   let layout_cty rty = StructureRaw.layout_cty (besome_cty rty)
@@ -53,7 +54,7 @@ module Rty = struct
   let mk_prop_var_eq_lit v c = P.Lit (mk_lit_var_eq_lit v c)
 
   let mk_cty_var_eq_lit ty c =
-    let v = Nt.{ x = "v"; ty } in
+    let v = Nt.{ x = v_name; ty } in
     { v; phi = mk_prop_var_eq_lit v c }
 
   let mk_pty_var_eq_lit ty c =
@@ -83,7 +84,7 @@ module Rty = struct
   (* let subst_cty_by_id id { v; phi } = P.subst_typed_id (v, id) phi *)
   (* let kw_h = "h" #: ty_tr *)
   (* let kw_h_prev = "h_prev" #: ty_tr *)
-  (* let kw_v ty = "v" #: ty *)
+  (* let kw_v ty = v_name #: ty *)
 
   (* let mk_cty ty phif = *)
   (*   let v = kw_v ty in *)

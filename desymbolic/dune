@@ -1,7 +1,8 @@
 (library
- (name minterm)
+ (name desymbolic)
  (wrapped true)
  (libraries utils language core env auxtyping)
  (modules
-   minterm
+   head
+   desymbolic
 ))

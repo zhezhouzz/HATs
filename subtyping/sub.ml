@@ -38,11 +38,27 @@ and sub_rty_bool rctx eqctx rty1 rty2 =
   | Regty _, Pty pty2 -> sub_rty_bool rctx eqctx rty1 (pty_to_ret_rty pty2)
 
 and sub_regex_bool rctx eqctx regex1 regex2 =
-  let nty = regex1.Nt.ty in
+  (* let nty = regex1.Nt.ty in *)
   let regex1 = regex1.Nt.x in
   let regex2 = regex2.Nt.x in
-  let ctx = Minterm.minterm_init (LorA (regex1, regex2)) in
-  ()
+  let ctx, mts = Desymbolic.ctx_init (LorA (regex1, regex2)) in
+  let mts =
+    NRegex.mts_filter_map
+      (fun mt ->
+        let b =
+          Desymbolic.minterm_verify_bool
+            (fun bindings (tau1, tau2) ->
+              sub_pty_bool (rctx @ bindings) eqctx tau1 tau2)
+            ctx mt
+        in
+        if b then Some mt.NRegex.local_embedding else None)
+      mts
+  in
+  let () = NRegex.pprint_mts mts in
+  (* let () = failwith "end" in *)
+  let regex1 = Desymbolic.desymbolic ctx mts regex1 in
+  let regex2 = Desymbolic.desymbolic ctx mts regex2 in
+  Smtquery.check_inclusion_bool (regex1, regex2)
 
 let is_bot_rty rctx _ = function
   | Pty pty -> Subcty.is_bot_pty rctx pty

@@ -1,7 +1,7 @@
 (library
  (name subtyping)
  (wrapped true)
- (libraries utils language core env auxtyping smtquery minterm)
+ (libraries utils language core env auxtyping smtquery desymbolic)
  (modules
    subcty
    sub

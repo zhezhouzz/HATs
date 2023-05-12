@@ -265,7 +265,7 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
               let tys =
                 List.filter_map (handle_match_case typectx matched) match_cases
               in
-              match tys with [] -> None | _ -> Some (Auxtyping.merge_rtys tys))
+              match tys with [] -> None | _ -> Some (Auxtyping.disj_rtys tys))
           | _ -> _failatwith __FILE__ __LINE__ ""
         in
         end_info __LINE__ "Match" res

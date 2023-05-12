@@ -66,15 +66,19 @@ and sevent_check opctx ctx retbty sevent =
 
 and regex_check opctx ctx actx retbty (regex : regex) : regex =
   match regex with
-  | VarA x ->
-      let _ =
-        _check_equality __FILE__ __LINE__ Nt.eq retbty (Aux.infer_id actx x)
-      in
-      VarA x
+  (* | VarA x -> *)
+  (*     let _ = *)
+  (*       _check_equality __FILE__ __LINE__ Nt.eq retbty (Aux.infer_id actx x) *)
+  (*     in *)
+  (*     VarA x *)
   | EpsilonA -> EpsilonA
   | EventA se -> EventA (sevent_check opctx ctx retbty se)
   | LorA (t1, t2) ->
       LorA
+        ( regex_check opctx ctx actx retbty t1,
+          regex_check opctx ctx actx retbty t2 )
+  | LandA (t1, t2) ->
+      LandA
         ( regex_check opctx ctx actx retbty t1,
           regex_check opctx ctx actx retbty t2 )
   | SeqA (t1, t2) ->
@@ -90,10 +94,10 @@ and regex_check opctx ctx actx retbty (regex : regex) : regex =
           localx = { cx; cty };
           regex = regex_check opctx ctx' actx retbty regex;
         }
-  | RecA { mux; muA; index; regex } ->
-      let indty = Nt.Ty_int in
-      let index = (type_check_lit opctx ctx (index, indty)).x in
-      let ctx' = Typectx.new_to_right ctx Nt.(mux #: indty) in
-      let actx' = Typectx.new_to_right actx Nt.(muA #: retbty) in
-      RecA
-        { mux; muA; index; regex = regex_check opctx ctx' actx' retbty regex }
+(* | RecA { mux; muA; index; regex } -> *)
+(*     let indty = Nt.Ty_int in *)
+(*     let index = (type_check_lit opctx ctx (index, indty)).x in *)
+(*     let ctx' = Typectx.new_to_right ctx Nt.(mux #: indty) in *)
+(*     let actx' = Typectx.new_to_right actx Nt.(muA #: retbty) in *)
+(*     RecA *)
+(*       { mux; muA; index; regex = regex_check opctx ctx' actx' retbty regex } *)

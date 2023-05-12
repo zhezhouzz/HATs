@@ -18,7 +18,7 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   let query =
     match v1.ty with Nt.Ty_unit -> query | _ -> Forall (v1, query)
   in
-  Smtquery.check query
+  Smtquery.check_bool query
 
 let sub_cty rctx cty1 cty2 =
   let rec aux rctx uqvs cty1 cty2 =
@@ -39,8 +39,8 @@ let sub_cty rctx cty1 cty2 =
   in
   aux rctx [] cty1 cty2
 
-let sub_cty_bool rctx cty1 cty2 =
-  match sub_cty rctx cty1 cty2 with None -> true | Some _ -> false
+let sub_cty_bool rctx cty1 cty2 = sub_cty rctx cty1 cty2
+(* match sub_cty rctx cty1 cty2 with None -> true | Some _ -> false *)
 
 let is_bot_cty rctx cty =
   let bot_cty = mk_bot_cty (erase_cty cty) in

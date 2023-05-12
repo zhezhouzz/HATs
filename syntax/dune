@@ -13,6 +13,7 @@
    type_dec
    typectx
    structure
+   minterm
    nregex
    syntax
  )
