@@ -27,6 +27,7 @@ module F (L : Lit.T) = struct
   let get_lits prop =
     let rec aux e res =
       match e with
+      | Lit (AC _) -> res
       | Lit lit -> lit :: res
       | Implies (e1, e2) -> aux e1 @@ aux e2 res
       | Ite (e1, e2, e3) -> aux e1 @@ aux e2 @@ aux e3 res

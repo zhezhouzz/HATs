@@ -72,10 +72,10 @@ let minterm_verify_bool sub_pty_bool ctx mt =
   let model = minterm_to_op_model ctx mt in
   model_verify_bool sub_pty_bool model
 
-let op_models (global_m, local_m) prop =
-  let m = merge_global_to_local global_m local_m in
+let op_models m prop =
   let rec aux prop =
     match prop with
+    | Lit (AC (Const.B b)) -> b
     | Lit lit -> tab_models_lit m lit
     | Implies (a, b) -> (not (aux a)) || aux b
     | Ite (a, b, c) -> if aux a then aux b else aux c
@@ -116,31 +116,61 @@ let models_event ctx mt = function
         let _, local_m = minterm_to_op_model ctx mt in
         ret_models local_m pty
       else false
+  | GuardEvent _ ->
+      _failatwith __FILE__ __LINE__ "die"
+      (* | GuardEvent phi -> *)
+      (* let global_m, _ = minterm_to_op_model ctx mt in *)
+      (* op_models global_m phi *)
   | EffEvent { op; phi; _ } ->
       if String.equal mt.NRegex.op op then
         let global_m, local_m = minterm_to_op_model ctx mt in
-        op_models (global_m, local_m) phi
+        let m = merge_global_to_local global_m local_m in
+        op_models m phi
       else false
 
 let desymbolic_sevent ctx mts se =
-  let op = se_get_op se in
-  let mts =
-    NRegex.mts_fold_on_op op
-      (fun mt res ->
-        if models_event ctx mt se then NRegex.Minterm mt :: res else res)
-      mts []
-  in
-  NRegex.Union mts
+  match se with
+  | GuardEvent phi ->
+      let l = NRegex.mts_to_global_m mts in
+      let l =
+        List.filter
+          (fun global_embedding ->
+            let m = tab_i_to_b ctx.global_tab global_embedding in
+            op_models m phi)
+          l
+      in
+      if List.length l > 0 then Some NRegex.Epslion else None
+  | _ ->
+      let op = se_get_op se in
+      let mts =
+        NRegex.mts_fold_on_op op
+          (fun mt res ->
+            if models_event ctx mt se then NRegex.Minterm mt :: res else res)
+          mts []
+      in
+      Some (NRegex.Union mts)
 
 let desymbolic ctx mts regex =
   let rec aux regex =
     match regex with
-    | EpsilonA -> NRegex.Epslion
-    | EventA se -> desymbolic_sevent ctx mts se
-    | LorA (t1, t2) -> NRegex.Union (List.map aux [ t1; t2 ])
-    | LandA (t1, t2) -> NRegex.Intersect (List.map aux [ t1; t2 ])
-    | SeqA (t1, t2) -> NRegex.Concat (List.map aux [ t1; t2 ])
-    | StarA t -> NRegex.Star (aux t)
-    | ExistsA _ -> _failatwith __FILE__ __LINE__ "die"
+    | EpsilonA -> Some NRegex.Epslion
+    | EventA se ->
+        let* r = desymbolic_sevent ctx mts se in
+        Some r
+    | LorA (t1, t2) ->
+        let* r1 = aux t1 in
+        let* r2 = aux t2 in
+        Some (NRegex.Union [ r1; r2 ])
+    | LandA (t1, t2) ->
+        let* r1 = aux t1 in
+        let* r2 = aux t2 in
+        Some (NRegex.Intersect [ r1; r2 ])
+    | SeqA (t1, t2) ->
+        let* r1 = aux t1 in
+        let* r2 = aux t2 in
+        Some (NRegex.Concat [ r1; r2 ])
+    | StarA t ->
+        let* r = aux t in
+        Some (NRegex.Star r)
   in
-  aux regex
+  match aux regex with None -> NRegex.Epslion | Some r -> r

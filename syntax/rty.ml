@@ -1,10 +1,7 @@
 module F (L : Lit.T) = struct
   open Sexplib.Std
-  module Nt = Lit.Ty
-  module P = Qualifier.F (L)
-  include P
+  include Cty.F (L)
 
-  type cty = { v : string Nt.typed; phi : prop } [@@deriving sexp]
   type ou = Over | Under [@@deriving sexp]
 
   type pty =
@@ -12,9 +9,14 @@ module F (L : Lit.T) = struct
     | TuplePty of pty list
     | ArrPty of { rarg : string option ptyped; retrty : rty }
 
-  and rty = Pty of pty | Regty of regex Nt.typed
+  and rty =
+    | Pty of pty
+    | Regty of regex Nt.typed
+    | Sigmaty of { localx : string typed; rty : rty }
+  [@@deriving sexp]
 
   and sevent =
+    | GuardEvent of prop
     | RetEvent of pty
     | EffEvent of { op : string; vs : string Nt.typed list; phi : prop }
 
@@ -25,20 +27,25 @@ module F (L : Lit.T) = struct
     | LandA of regex * regex
     | SeqA of regex * regex
     | StarA of regex
-    | ExistsA of { localx : string ctyped; regex : regex }
 
-  and 'a ctyped = { cx : 'a; cty : cty }
+  and 'a typed = { x : 'a; ty : rty }
   and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
 
   type t = rty
-  type 'a typed = { x : 'a; ty : t }
+  type 'a rtyped = 'a typed
 
   open Sugar
 
   let ret_name = "Ret"
-  let v_name = "v"
+  let guard_name = "Guard"
   let vs_names n = List.init n (fun i -> spf "%s%i" v_name i)
-  let se_get_op = function RetEvent _ -> ret_name | EffEvent { op; _ } -> op
+
+  (* NOTE: Gurad is not a real event, thus it has no op name *)
+  let se_get_op = function
+    | RetEvent _ -> ret_name
+    | GuardEvent _ -> _failatwith __FILE__ __LINE__ "die"
+    | EffEvent { op; _ } -> op
+
   let compare_pty l1 l2 = Sexplib.Sexp.compare (sexp_of_pty l1) (sexp_of_pty l2)
   let eq_pty l1 l2 = 0 == compare_pty l1 l2
 
@@ -57,19 +64,10 @@ module F (L : Lit.T) = struct
 
   let ( #: ) x ty = { x; ty }
   let ( #:: ) px pty = { px; pty }
-  let ( #::: ) cx cty = { cx; cty }
   let ( #-> ) f { x; ty } = { x = f x; ty }
   let ( #--> ) f { px; pty } = { px = f px; pty }
-  let ( #---> ) f { cx; cty } = { cx = f cx; cty }
-
-  let cty_typed_to_prop { cx; cty = { v; phi } } =
-    let Nt.{ x; ty } = v in
-    (Nt.{ x = cx; ty }, P.subst_prop_id (x, cx) phi)
 
   (* subst *)
-  let subst_cty (y, replacable) { v; phi } =
-    if String.equal y v.Nt.x then { v; phi }
-    else { v; phi = subst_prop (y, replacable) phi }
 
   let rec subst_pty (y, z) rty =
     let rec aux rty =
@@ -86,6 +84,7 @@ module F (L : Lit.T) = struct
 
   and subst_sevent (y, z) sevent =
     match sevent with
+    | GuardEvent phi -> GuardEvent (subst_prop (y, z) phi)
     | RetEvent pty -> RetEvent (subst_pty (y, z) pty)
     | EffEvent { op; vs; phi } ->
         if List.exists (fun x -> String.equal x.Nt.x y) vs then
@@ -101,15 +100,16 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
-      | ExistsA { localx; regex } ->
-          if String.equal y localx.cx then ExistsA { localx; regex }
-          else ExistsA { localx; regex = aux regex }
     in
     aux regex
 
   and subst (y, z) = function
     | Pty pty -> Pty (subst_pty (y, z) pty)
     | Regty regex -> Regty Nt.((subst_regex (y, z)) #-> regex)
+    | Sigmaty { localx; rty } ->
+        let localx = localx.x #: (subst (y, z) localx.ty) in
+        let rty = if String.equal y localx.x then rty else subst (y, z) rty in
+        Sigmaty { localx; rty }
 
   let subst_rty = subst
 
@@ -117,28 +117,7 @@ module F (L : Lit.T) = struct
     let z = AVar z in
     subst (y, z) rty
 
-  let subst_cty_id (y, z) cty =
-    let z = AVar z in
-    subst_cty (y, z) cty
-
-  (* let regexsubst (y, z) regex = *)
-  (*   let rec aux regex = *)
-  (*     match regex with *)
-  (*     | VarA x -> if String.equal x y then z else VarA x *)
-  (*     | EpsilonA | EventA _ -> regex *)
-  (*     | LorA (t1, t2) -> LorA (aux t1, aux t2) *)
-  (*     | SeqA (t1, t2) -> SeqA (aux t1, aux t2) *)
-  (*     | StarA t -> StarA (aux t) *)
-  (*     | ExistsA { localx; regex } -> ExistsA { localx; regex = aux regex } *)
-  (*     | RecA { mux; muA; index; regex } -> *)
-  (*         if String.equal y muA then RecA { mux; muA; index; regex } *)
-  (*         else RecA { mux; muA; index; regex = aux regex } *)
-  (*   in *)
-  (*   aux regex *)
-
   (* fv *)
-  let fv_cty { v; phi } =
-    List.filter (fun x -> String.equal x v.x) @@ fv_prop phi
 
   let rec fv_pty rty =
     let rec aux rty =
@@ -158,6 +137,7 @@ module F (L : Lit.T) = struct
 
   and fv_sevent sevent =
     match sevent with
+    | GuardEvent phi -> fv_prop phi
     | RetEvent pty -> fv_pty pty
     | EffEvent { vs; phi; _ } ->
         List.filter (fun y -> List.exists (fun x -> String.equal x.Nt.x y) vs)
@@ -172,21 +152,54 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> aux t1 @ aux t2
       | SeqA (t1, t2) -> aux t1 @ aux t2
       | StarA t -> aux t
-      | ExistsA { localx; regex } ->
-          fv_cty localx.cty
-          @ List.filter (fun x -> String.equal x localx.cx)
-          @@ aux regex
     in
     aux regex
 
-  and fv = function Pty pty -> fv_pty pty | Regty regex -> fv_regex regex.Nt.x
+  and fv = function
+    | Pty pty -> fv_pty pty
+    | Regty regex -> fv_regex regex.Nt.x
+    | Sigmaty { localx; rty } ->
+        fv localx.ty @ List.filter (fun x -> String.equal x localx.x) @@ fv rty
 
   (* erase *)
+
+  let rec erase_pty rty =
+    let open Nt in
+    let rec aux rty =
+      match rty with
+      | BasePty { cty; _ } -> erase_cty cty
+      | TuplePty ptys -> Ty_tuple (List.map aux ptys)
+      | ArrPty { rarg; retrty } -> mk_arr (aux rarg.pty) (erase retrty)
+    in
+    aux rty
+
+  and erase = function
+    | Pty pty -> erase_pty pty
+    | Regty regex -> regex.Nt.ty
+    | Sigmaty { rty; _ } -> erase rty
+
+  let ptyped_opt_erase { px; pty } =
+    match px with None -> None | Some x -> Some Nt.{ x; ty = erase_pty pty }
+
+  let typed_erase { x; ty } = Nt.{ x; ty = erase ty }
+
+  let pty_to_ret_rty pty =
+    Regty Nt.{ x = EventA (RetEvent pty); ty = erase_pty pty }
+
+  let typed_force_to_ptyped file line { x; ty } =
+    match ty with
+    | Pty pty -> { px = x; pty }
+    | _ -> _failatwith file line "die"
+
+  (* gather lits/rtys *)
 
   open Zzdatatype.Datatype
 
   let get_lits_from_sevent sevent =
     match sevent with
+    | GuardEvent phi ->
+        let global_lits = P.get_lits phi in
+        Some (guard_name, global_lits, [])
     | RetEvent _ -> None
     | EffEvent { op; phi; vs } ->
         let vs = List.map (fun x -> x.Nt.x) vs in
@@ -217,6 +230,8 @@ module F (L : Lit.T) = struct
       | EventA se -> (
           match get_lits_from_sevent se with
           | None -> (global_m, local_m)
+          | Some (op, global_lits, _) when String.equal op guard_name ->
+              (update_global global_m global_lits, local_m)
           | Some (op, global_lits, local_lits) ->
               ( update_global global_m global_lits,
                 update_local local_m (op, local_lits) ))
@@ -224,7 +239,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
       | SeqA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
       | StarA t -> aux t (global_m, local_m)
-      | ExistsA _ -> _failatwith __FILE__ __LINE__ "die"
     in
     aux regex ([], StrMap.empty)
 
@@ -240,58 +254,10 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> aux t1 @@ aux t2 res
       | SeqA (t1, t2) -> aux t1 @@ aux t2 res
       | StarA t -> aux t res
-      | ExistsA _ -> _failatwith __FILE__ __LINE__ "die"
     in
     List.slow_rm_dup eq_pty @@ aux regex []
 
-  let erase_cty { v; _ } = v.Nt.ty
-
-  let rec erase_pty rty =
-    let open Nt in
-    let rec aux rty =
-      match rty with
-      | BasePty { cty; _ } -> erase_cty cty
-      | TuplePty ptys -> Ty_tuple (List.map aux ptys)
-      | ArrPty { rarg; retrty } -> mk_arr (aux rarg.pty) (erase retrty)
-    in
-    aux rty
-
-  (* and erase_regex regex = *)
-  (*   let open Nt in *)
-  (*   let rec aux regex = *)
-  (*     match regex with *)
-  (*     | EpsilonA -> [] *)
-  (*     | EventA (RetEvent pty) -> [ erase_pty pty ] *)
-  (*     | EventA (EffEvent _) -> [] *)
-  (*     | StarA t -> [] *)
-  (*     | LorA (t1, t2) -> aux t1 @@ aux t2 *)
-  (*     | SeqA (_, t2) -> aux t2 *)
-  (*     | ExistsA { _; regex } -> aux regex *)
-  (*   in *)
-  (*   match aux regex with *)
-  (*   | [] -> _failatwith __FILE__ __LINE__ "die" *)
-  (*   | h :: t -> *)
-  (*     if List.for_all (eq h) t then h else _failatwith __FILE__ __LINE__ "die" *)
-
-  and erase = function Pty pty -> erase_pty pty | Regty regex -> regex.Nt.ty
-
-  let ptyped_opt_erase { px; pty } =
-    match px with None -> None | Some x -> Some Nt.{ x; ty = erase_pty pty }
-
-  let typed_erase { x; ty } = Nt.{ x; ty = erase ty }
-
-  let pty_to_ret_rty pty =
-    Regty Nt.{ x = EventA (RetEvent pty); ty = erase_pty pty }
-
-  let typed_force_to_ptyped file line { x; ty } =
-    match ty with
-    | Pty pty -> { px = x; pty }
-    | _ -> _failatwith file line "die"
-
-  let normalize_name_cty { v; phi } =
-    let phi = P.(subst_prop_id (v.x, v_name) phi) in
-    let v = Nt.{ x = v_name; ty = v.ty } in
-    { v; phi }
+  (* normalize name *)
 
   let rec normalize_name_pty tau1 =
     match tau1 with
@@ -303,6 +269,7 @@ module F (L : Lit.T) = struct
         ArrPty { rarg; retrty }
 
   and normalize_name_sevent = function
+    | GuardEvent phi -> GuardEvent phi
     | RetEvent pty -> RetEvent (normalize_name_pty pty)
     | EffEvent { op; vs; phi } ->
         let vs' = vs_names (List.length vs) in
@@ -324,8 +291,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
-      | ExistsA { localx; regex } ->
-          ExistsA { localx; regex = noralize_name_regex regex }
     in
     aux regex
 
@@ -333,6 +298,11 @@ module F (L : Lit.T) = struct
     match tau with
     | Pty tau -> Pty (normalize_name_pty tau)
     | Regty regex -> Regty Nt.(noralize_name_regex #-> regex)
+    | Sigmaty { localx; rty } ->
+        let localx = localx.x #: (normalize_name_rty localx.ty) in
+        Sigmaty { localx; rty = normalize_name_rty rty }
+
+  (* unify name *)
 
   let rec unify_name_pty (tau1, tau2) =
     match (tau1, tau2) with
@@ -368,12 +338,10 @@ module F (L : Lit.T) = struct
     | _, _ -> _failatwith __FILE__ __LINE__ "?"
 
   let mk_unit_under_pty_from_prop phi =
-    BasePty { ou = Under; cty = Nt.{ v = v_name #: Ty_unit; phi } }
+    BasePty { ou = Under; cty = mk_unit_cty_from_prop phi }
 
   let mk_unit_under_rty_from_prop phi = Pty (mk_unit_under_pty_from_prop phi)
   let default_ty = mk_unit_under_rty_from_prop mk_true
-  let mk_bot_cty nt = Nt.{ v = v_name #: nt; phi = mk_false }
-  let mk_top_cty nt = Nt.{ v = v_name #: nt; phi = mk_true }
   let mk_noty x = { x; ty = default_ty }
   let xmap f { x; ty } = { x = f x; ty }
   let is_base_pty = function BasePty _ -> true | _ -> false
@@ -383,17 +351,44 @@ module F (L : Lit.T) = struct
     | BasePty { ou = Under; _ } -> true
     | _ -> false
 
+  (* mk bot/top *)
+
+  let rec mk_bot_pty t =
+    match t with
+    | Nt.Ty_arrow (t1, t2) ->
+        let px =
+          match t1 with
+          | Nt.Ty_arrow (_, _) -> None
+          | _ -> Some (Rename.unique "x")
+        in
+        let pty = mk_top_pty t1 in
+        let retrty = Pty (mk_bot_pty t2) in
+        ArrPty { rarg = { px; pty }; retrty }
+    | Nt.Ty_tuple tys -> TuplePty (List.map mk_bot_pty tys)
+    | _ -> BasePty { ou = Under; cty = mk_bot_cty t }
+
+  and mk_top_pty t =
+    match t with
+    | Nt.Ty_arrow (t1, t2) ->
+        let px =
+          match t1 with
+          | Nt.Ty_arrow (_, _) -> None
+          | _ -> Some (Rename.unique "x")
+        in
+        let pty = mk_bot_pty t1 in
+        let retrty = Pty (mk_top_pty t2) in
+        ArrPty { rarg = { px; pty }; retrty }
+    | Nt.Ty_tuple tys -> TuplePty (List.map mk_top_pty tys)
+    | _ -> BasePty { ou = Under; cty = mk_top_cty t }
+
+  let eq tau1 tau2 =
+    0 == Sexplib.Sexp.compare (sexp_of_rty tau1) (sexp_of_rty tau2)
+
   let is_arr_pty = function ArrPty _ -> true | _ -> false
+
+  (* dummy interfaces *)
   let is_basic_tp _ = _failatwith __FILE__ __LINE__ "never happen"
   let is_dt _ = _failatwith __FILE__ __LINE__ "never happen"
-
-  (* TODO: imp eq *)
-  let eq _ _ = false
-
-  (* let destruct_arr_rty = function *)
-  (*   | Pty pty -> destruct_arr_pty [] pty *)
-  (*   | _ -> _failatwith __FILE__ __LINE__ "unimp" *)
-
   let destruct_arr_tp _ = _failatwith __FILE__ __LINE__ "unimp"
   let construct_arr_tp _ = _failatwith __FILE__ __LINE__ "unimp"
   let _type_unify _ _ = _failatwith __FILE__ __LINE__ "unimp"
@@ -427,40 +422,9 @@ module F (L : Lit.T) = struct
   let mk_tuple _ = _failatwith __FILE__ __LINE__ "unimp"
   let mk_arr _ = _failatwith __FILE__ __LINE__ "unimp"
   let int_ty = default_ty
-
-  let unit_pty =
-    BasePty { ou = Under; cty = Nt.{ v = v_name #: Ty_unit; phi = mk_true } }
-
+  let unit_pty = BasePty { ou = Under; cty = mk_unit_cty_from_prop mk_true }
   let unit_ty = Pty unit_pty
   let to_smtty _ = _failatwith __FILE__ __LINE__ "unimp"
   let sexp_of_t _ = _failatwith __FILE__ __LINE__ "unimp"
   let t_of_sexp _ = _failatwith __FILE__ __LINE__ "unimp"
-
-  let rec mk_bot_pty t =
-    match t with
-    | Nt.Ty_arrow (t1, t2) ->
-        let px =
-          match t1 with
-          | Nt.Ty_arrow (_, _) -> None
-          | _ -> Some (Rename.unique "x")
-        in
-        let pty = mk_top_pty t1 in
-        let retrty = Pty (mk_bot_pty t2) in
-        ArrPty { rarg = { px; pty }; retrty }
-    | Nt.Ty_tuple tys -> TuplePty (List.map mk_bot_pty tys)
-    | _ -> BasePty { ou = Under; cty = mk_bot_cty t }
-
-  and mk_top_pty t =
-    match t with
-    | Nt.Ty_arrow (t1, t2) ->
-        let px =
-          match t1 with
-          | Nt.Ty_arrow (_, _) -> None
-          | _ -> Some (Rename.unique "x")
-        in
-        let pty = mk_bot_pty t1 in
-        let retrty = Pty (mk_top_pty t2) in
-        ArrPty { rarg = { px; pty }; retrty }
-    | Nt.Ty_tuple tys -> TuplePty (List.map mk_top_pty tys)
-    | _ -> BasePty { ou = Under; cty = mk_top_cty t }
 end

@@ -22,31 +22,33 @@ let rec close_to_pty (x : dep_quantifer) = function
         _failatwith __FILE__ __LINE__ "quantifer_alternation"
       else ArrPty { rarg; retrty = close_to_rty x retrty }
 
-and close_to_rty (x : dep_quantifer) = function
+and close_to_rty (x : dep_quantifer) rty =
+  match rty with
   | Pty pty -> Pty (close_to_pty x pty)
-  | Regty regex -> Regty Nt.{ x = close_to_regex x regex.x; ty = regex.ty }
+  | Regty _ | Sigmaty _ -> Sigmaty { localx = dep_quantifer_to_typed x; rty }
 
-and close_to_sevent x sevent =
-  match sevent with
-  | RetEvent pty -> RetEvent (close_to_pty x pty)
-  | EffEvent { op; vs; phi } -> EffEvent { op; vs; phi = close_to_prop x phi }
+(* and close_to_sevent x sevent = *)
+(*   match sevent with *)
+(*   | RetEvent pty -> RetEvent (close_to_pty x pty) *)
+(*   | EffEvent { op; vs; phi } -> EffEvent { op; vs; phi = close_to_prop x phi } *)
 
-and close_to_regex x regex =
-  match x with
-  | SigmaTy localx -> ExistsA { localx; regex }
-  | _ -> _failatwith __FILE__ __LINE__ "die"
+(* and close_to_regex x regex = *)
+(*   match x with *)
+(*   | SigmaTy localx -> ExistsA { localx; regex } *)
+(*   | _ -> _failatwith __FILE__ __LINE__ "die" *)
 
 let exists_typed x rty =
-  let x = typed_to_dep_quantifer x in
-  close_to_rty x rty
+  match typed_to_dep_quantifer_opt x with
+  | Some x -> close_to_rty x rty
+  | None -> Sigmaty { localx = x; rty }
 
 let exists_ptyped x rty =
   let x = ptyped_to_dep_quantifer x in
   close_to_rty x rty
 
-let exists_typed_to_cty x rty =
-  let x = typed_to_dep_quantifer x in
-  close_to_cty x rty
+(* let exists_typed_to_cty x rty = *)
+(*   let x = typed_to_dep_quantifer x in *)
+(*   close_to_cty x rty *)
 
 let exists_ptyped_to_cty x rty =
   let x = ptyped_to_dep_quantifer x in

@@ -24,8 +24,11 @@ and force_rty rty =
   match rty with
   | Raw.Pty pty -> Pty (force_pty pty)
   | Raw.Regty regex -> Regty Nt.(force_regex #-> regex)
+  | Raw.Sigmaty { localx = { x; ty }; rty } ->
+      Sigmaty { localx = { x; ty = force_rty ty }; rty = force_rty rty }
 
 and force_sevent = function
+  | Raw.GuardEvent phi -> GuardEvent (force_qualifier phi)
   | Raw.RetEvent pty -> RetEvent (force_pty pty)
   | Raw.EffEvent { op; vs; phi } ->
       EffEvent { op; vs; phi = force_qualifier phi }
@@ -33,17 +36,12 @@ and force_sevent = function
 and force_regex regex =
   let rec aux regex =
     match regex with
-    (* | Raw.VarA x -> VarA x *)
     | Raw.EpsilonA -> EpsilonA
     | Raw.EventA se -> EventA (force_sevent se)
     | Raw.LorA (t1, t2) -> LorA (aux t1, aux t2)
     | Raw.LandA (t1, t2) -> LandA (aux t1, aux t2)
     | Raw.SeqA (t1, t2) -> SeqA (aux t1, aux t2)
     | Raw.StarA t -> StarA (aux t)
-    | Raw.ExistsA { localx = { cx; cty }; regex } ->
-        ExistsA { localx = { cx; cty = force_cty cty }; regex = aux regex }
-    (* | Raw.RecA { mux; muA; index; regex } -> *)
-    (* RecA { mux; muA; index = force_lit index; regex = aux regex } *)
   in
   aux regex
 
@@ -61,8 +59,11 @@ and besome_rty rty =
   match rty with
   | Pty pty -> Raw.Pty (besome_pty pty)
   | Regty regex -> Raw.Regty Nt.(besome_regex #-> regex)
+  | Sigmaty { localx = { x; ty }; rty } ->
+      Raw.Sigmaty { localx = { x; ty = besome_rty ty }; rty = besome_rty rty }
 
 and besome_sevent = function
+  | GuardEvent phi -> Raw.GuardEvent (besome_qualifier phi)
   | RetEvent pty -> Raw.RetEvent (besome_pty pty)
   | EffEvent { op; vs; phi } ->
       Raw.EffEvent { op; vs; phi = besome_qualifier phi }
@@ -70,16 +71,11 @@ and besome_sevent = function
 and besome_regex regex =
   let rec aux regex =
     match regex with
-    (* | VarA x -> Raw.VarA x *)
     | EpsilonA -> Raw.EpsilonA
     | EventA se -> Raw.EventA (besome_sevent se)
     | LorA (t1, t2) -> Raw.LorA (aux t1, aux t2)
     | LandA (t1, t2) -> Raw.LandA (aux t1, aux t2)
     | SeqA (t1, t2) -> Raw.SeqA (aux t1, aux t2)
     | StarA t -> Raw.StarA (aux t)
-    | ExistsA { localx = { cx; cty }; regex } ->
-        Raw.ExistsA { localx = { cx; cty = besome_cty cty }; regex = aux regex }
-    (* | RecA { mux; muA; index; regex } -> *)
-    (* Raw.RecA { mux; muA; index = besome_lit index; regex = aux regex } *)
   in
   aux regex

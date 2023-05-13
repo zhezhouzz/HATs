@@ -8,6 +8,7 @@
    corelang
    lit
    qualifier
+   cty
    rty
    algebraic
    type_dec

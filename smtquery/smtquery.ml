@@ -52,7 +52,7 @@ let check_inclusion (r1, r2) =
   handle_check_res (fun () -> Check.inclusion_query ctx r1 r2)
 
 let check_inclusion_bool (r1, r2) =
-  match check_inclusion (r2, r1) with
+  match check_inclusion (r1, r2) with
   | None -> true
   | Some _ ->
       (* | Some model -> *)
@@ -68,19 +68,18 @@ open Language.NRegex
 (*   let x = (StrMap.map (fun x -> x + 1) m, m) in *)
 
 let test0 () =
-  let r1 = Epslion in
-  (* let r1 = Minterm ("Put", 3) in *)
+  (* let r1 = Epslion in *)
+  let r1 = Minterm { op = "Put"; global_embedding = 1; local_embedding = 3 } in
+  (* let r2 = Concat [ Epslion; r1 ] in *)
   let r2 =
-    Concat
-      [
-        Union
-          [ Minterm { op = "Put"; global_embedding = 1; local_embedding = 3 } ];
-      ]
+    Language.Rty.(
+      SeqA
+        ( EventA (GuardEvent mk_false),
+          EventA (EffEvent { op = "Put"; vs = []; phi = mk_true }) ))
   in
-  match check_inclusion (r2, r1) with
-  | None ->
-      let () = Printf.printf "true" in
-      ()
-  | _ ->
-      let () = Printf.printf "false" in
-      ()
+  let dctx, mts = Desymbolic.ctx_init r2 in
+  let () =
+    Printf.printf "%b"
+      (check_inclusion_bool (r1, Desymbolic.desymbolic dctx mts r2))
+  in
+  ()

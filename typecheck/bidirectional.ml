@@ -170,7 +170,9 @@ let rec value_type_infer typectx (value : value typed) : R.t option =
         in
         end_info __LINE__ "Var" (Some rty)
     | VTu _ -> _failatwith __FILE__ __LINE__ "unimp"
-    | VLam _ | VFix _ -> _failatwith __FILE__ __LINE__ "die"
+    | VLam _ | VFix _ ->
+        _failatwith __FILE__ __LINE__
+          "type synthesis of functions are disallowed"
   in
   rty
 
@@ -188,8 +190,7 @@ and comp_type_infer typectx (comp : comp typed) : R.t option =
     | CErr ->
         let () = before_info __LINE__ "Err" in
         let res =
-          if is_basic_tp comp.ty then
-            Some R.(Pty (BasePty { ou = Under; cty = mk_bot_cty comp.ty }))
+          if is_basic_tp comp.ty then Some R.(Pty (R.mk_bot_pty comp.ty))
           else _failatwith __FILE__ __LINE__ "die"
         in
         end_info __LINE__ "Err" res
@@ -355,11 +356,41 @@ and multi_app_type_infer_aux typectx (f_rty : R.t) (appargs : value typed list)
 
 and appop_type_infer typectx (op : Op.t typed) (appopargs : value typed list) :
     (string R.typed list * R.t) option =
-  let* bindings, res =
-    let* f_rty = ROpCtx.get_ty_opt typectx.opctx op.x in
-    multi_app_type_infer_aux typectx f_rty appopargs
-  in
-  Some (bindings, res)
+  match op.x with
+  | Op.EffOp effname ->
+      let argsnt, retnt = Nt.destruct_arr_tp op.ty in
+      let vs = R.vs_names (List.length argsnt) in
+      let vs =
+        List.map (fun (x, ty) -> { x; ty })
+        @@ _safe_combine __FILE__ __LINE__ vs argsnt
+      in
+      let args = List.map (_value_to_lit __FILE__ __LINE__) appopargs in
+      let props =
+        List.map (fun (x, lit) ->
+            let open P in
+            let x_lit = AVar x.x in
+            match x.ty with
+            | Nt.Ty_bool -> Iff (Lit x_lit, Lit lit)
+            | Nt.Ty_int -> Lit (mk_int_l1_eq_l2 x_lit lit)
+            | _ -> _failatwith __FILE__ __LINE__ "die")
+        @@ _safe_combine __FILE__ __LINE__ vs args
+      in
+      let regex =
+        R.(EventA (EffEvent { op = effname; vs; phi = P.And props }))
+      in
+      Some ([], R.Regty regex #: retnt)
+  | Op.DtOp _ -> _failatwith __FILE__ __LINE__ "use +1 for S and 0 for O"
+  | Op.BuiltinOp _ -> (
+      match ROpCtx.get_ty_opt typectx.opctx op.x with
+      | None ->
+          _failatwith __FILE__ __LINE__
+            (spf "die: rty of the built-in operation %s is missing"
+               (Op.to_string op.x))
+      | Some f_rty ->
+          let* bindings, res =
+            multi_app_type_infer_aux typectx f_rty appopargs
+          in
+          Some (bindings, res))
 
 and value_type_check typectx (value : value typed) (rty : R.t) : bool =
   let str = layout_value value in

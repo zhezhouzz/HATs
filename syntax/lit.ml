@@ -18,6 +18,7 @@ module type T = sig
   val get_eqlit_by_name : lit -> string -> lit option
   val compare : lit -> lit -> int
   val eq_lit : lit -> lit -> bool
+  val mk_int_l1_eq_l2 : lit -> lit -> lit
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -39,6 +40,12 @@ struct
   let mk_lit_true = AC (Constant.B true)
   let mk_lit_false = AC (Constant.B false)
   let get_var_opt = function AVar x -> Some x | _ -> None
+
+  let mk_int_l1_eq_l2 l1 l2 =
+    let mk_eq_typed_op =
+      Op.mk_eq_op #: T.(mk_arr (mk_arr int_ty int_ty) int_ty)
+    in
+    AAppOp (mk_eq_typed_op, [ l1 #: T.int_ty; l2 #: T.int_ty ])
 
   let get_subst_pair a b =
     match get_var_opt a with Some a -> [ (a, b) ] | None -> []

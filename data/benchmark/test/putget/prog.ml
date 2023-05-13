@@ -10,12 +10,9 @@ let prog (n : int) : int =
       let (dummy2 : int) = perform (Get n) in
       2
 
-let[@assert] prog =
-  let n = (v >= 0 : [%v: int]) [@over] in
-  (lorA
-     (Ret (v1 == 1 : [%v1: int]))
-     (Put ((v1 == n && v2 != n : [%v1: int]) : [%v2: int]);
-      Get (v1 == n : [%v1: int]);
-      Ret (v1 == 2 : [%v1: int]))
-    : int)
-    [@regex]
+let[@assert] prog ?l:(n = (v >= 0 : [%v: int]) [@over]) : (int[@regex]) =
+  lorA
+    (Ret (v1 == 1 : [%v1: int]))
+    (Put ((v1 == n && v2 != n : [%v1: int]) : [%v2: int]);
+     Get (v1 == n : [%v1: int]);
+     Ret (v1 == 2 : [%v1: int]))
