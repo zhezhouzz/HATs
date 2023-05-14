@@ -73,6 +73,7 @@ module F (I : CtxId) (Ty : CtxType) = struct
 
   let new_to_rights ctx l = List.fold_left new_to_right ctx l
   let fold_right = List.fold_right
+  let fold_left = List.fold_left
   let filter_map = List.filter_map
   let pretty_layout ctx = List.split_by "\n" (layout_typed I.layout) ctx
 

@@ -25,7 +25,9 @@ let rec close_to_pty (x : dep_quantifer) = function
 and close_to_rty (x : dep_quantifer) rty =
   match rty with
   | Pty pty -> Pty (close_to_pty x pty)
-  | Regty _ | Sigmaty _ -> Sigmaty { localx = dep_quantifer_to_typed x; rty }
+  | Regty regex ->
+      let localx, xA = dep_quantifer_to_regex x in
+      Regty (Nt.( #-> ) (fun body -> SigmaA { localx; xA; body }) regex)
 
 (* and close_to_sevent x sevent = *)
 (*   match sevent with *)
@@ -37,19 +39,28 @@ and close_to_rty (x : dep_quantifer) rty =
 (*   | SigmaTy localx -> ExistsA { localx; regex } *)
 (*   | _ -> _failatwith __FILE__ __LINE__ "die" *)
 
-let exists_typed x rty =
-  match typed_to_dep_quantifer_opt x with
-  | Some x -> close_to_rty x rty
-  | None -> Sigmaty { localx = x; rty }
+let rec exists_typed x rty =
+  match (x.ty, rty) with
+  | Regty regex_x, Regty regex ->
+      let localx = Nt.( #: ) x.x regex_x.Nt.ty in
+      Regty
+        (Nt.( #-> ) (fun body -> SigmaA { localx; xA = regex_x.x; body }) regex)
+  | Regty _, Pty pty -> exists_typed x (pty_to_ret_rty pty)
+  | Pty _, _ -> (
+      match typed_to_dep_quantifer_opt x with
+      | Some x -> close_to_rty x rty
+      | None -> rty)
 
 let exists_ptyped x rty =
-  let x = ptyped_to_dep_quantifer x in
-  close_to_rty x rty
+  match ptyped_to_dep_quantifer_opt x with
+  | Some x -> close_to_rty x rty
+  | None -> rty
 
 (* let exists_typed_to_cty x rty = *)
 (*   let x = typed_to_dep_quantifer x in *)
 (*   close_to_cty x rty *)
 
 let exists_ptyped_to_cty x rty =
-  let x = ptyped_to_dep_quantifer x in
-  close_to_cty x rty
+  match ptyped_to_dep_quantifer_opt x with
+  | Some x -> close_to_cty x rty
+  | None -> rty

@@ -19,6 +19,7 @@ module type T = sig
   val compare : lit -> lit -> int
   val eq_lit : lit -> lit -> bool
   val mk_int_l1_eq_l2 : lit -> lit -> lit
+  val find_assignment_of_intvar : lit -> string -> lit option
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -55,6 +56,15 @@ struct
     | AAppOp (op, [ a; b ]) when Op.id_eq_op op.x ->
         get_subst_pair a.x b.x @ get_subst_pair b.x a.x
     | _ -> []
+
+  let find_assignment_of_intvar lit x =
+    match lit with
+    | AAppOp (op, [ a; b ]) when Op.id_eq_op op.x -> (
+        match (a.x, b.x) with
+        | AVar y, _ when String.equal x y -> Some b.x
+        | _, AVar y when String.equal x y -> Some a.x
+        | _, _ -> None)
+    | _ -> None
 
   open Sugar
 

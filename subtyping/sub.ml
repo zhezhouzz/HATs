@@ -5,6 +5,40 @@ open Sugar
 (* open Auxtyping *)
 open Rty
 
+let merge_effect_binding rctx (rty1, rty2) =
+  let rctx =
+    List.filter
+      (fun x -> match x.ty with Pty (ArrPty _) -> false | _ -> true)
+      rctx
+  in
+  let rec aux gamma1 gamma2 (rty1, rty2) =
+    match List.last_destruct_opt gamma1 with
+    | None -> (gamma2, (rty1, rty2))
+    | Some (gamma1, binding) -> (
+        match binding with
+        | { ty = Pty (ArrPty _); _ } -> _failatwith __FILE__ __LINE__ "die"
+        | { ty = Pty (TuplePty _); _ } -> _failatwith __FILE__ __LINE__ "die"
+        | { ty = Pty (BasePty { ou = Under; _ }); _ } ->
+            aux gamma1 (binding :: gamma2) (rty1, rty2)
+        | { ty = Pty (BasePty { ou = Over; _ }); _ } ->
+            (gamma1 @ [ binding ] @ gamma2, (rty1, rty2))
+        | { ty = Regty _; _ } ->
+            let rty1 = Auxtyping.exists_typed binding rty1 in
+            let rty2 = Auxtyping.exists_typed binding rty2 in
+            aux gamma1 gamma2 (rty1, rty2))
+  in
+  aux rctx [] (rty1, rty2)
+
+let sub_regex_purify gamma eqctx regex1 regex2 =
+  let check gamma prop =
+    Subcty.is_bot_pty gamma (mk_unit_under_pty_from_prop prop)
+  in
+  let topl1, regex1 = Auxtyping.purify eqctx gamma check regex1 in
+  let topl2, regex2 = Auxtyping.purify eqctx gamma check regex2 in
+  let topl2 = List.map (fun x -> x.x #: (rty_flip x.ty)) topl2 in
+  let gamma = topl2 @ gamma @ topl1 in
+  (gamma, eqctx, regex1, regex2)
+
 let rec sub_pty_bool rctx eqctx pty1 pty2 =
   match (pty1, pty2) with
   | BasePty { ou = Over; cty = cty1 }, BasePty { ou = Under; cty = cty2 } ->
@@ -36,11 +70,17 @@ and sub_rty_bool rctx eqctx rty1 rty2 =
   | Regty regex1, Regty regex2 -> sub_regex_bool rctx eqctx regex1 regex2
   | Pty pty1, Regty _ -> sub_rty_bool rctx eqctx (pty_to_ret_rty pty1) rty2
   | Regty _, Pty pty2 -> sub_rty_bool rctx eqctx rty1 (pty_to_ret_rty pty2)
-  | Sigmaty _, _ | _, Sigmaty _ -> _failatwith __FILE__ __LINE__ "die"
+(* | Sigmaty _, _ | _, Sigmaty _ -> _failatwith __FILE__ __LINE__ "die" *)
 
 and sub_regex_bool rctx eqctx regex1 regex2 =
-  let regex1 = regex1.Nt.x in
-  let regex2 = regex2.Nt.x in
+  let rctx, (regex1, regex2) =
+    match merge_effect_binding rctx (Regty regex1, Regty regex2) with
+    | rctx, (Regty regex1, Regty regex2) -> (rctx, (regex1, regex2))
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+  in
+  let rctx, eqctx, regex1, regex2 = sub_regex_purify rctx eqctx regex1 regex2 in
+  (* let regex1 = regex1.Nt.x in *)
+  (* let regex2 = regex2.Nt.x in *)
   let ctx, mts = Desymbolic.ctx_init (LorA (regex1, regex2)) in
   let mts =
     NRegex.mts_filter_map
@@ -62,5 +102,6 @@ and sub_regex_bool rctx eqctx regex1 regex2 =
 
 let is_bot_rty rctx _ = function
   | Pty pty -> Subcty.is_bot_pty rctx pty
-  | Regty _ -> false (* NOTE: cannot decide if it is botton at this point *)
-  | Sigmaty _ -> _failatwith __FILE__ __LINE__ "die"
+  | Regty _ -> false
+(* NOTE: cannot decide if it is botton at this point *)
+(* | Sigmaty _ -> _failatwith __FILE__ __LINE__ "die" *)

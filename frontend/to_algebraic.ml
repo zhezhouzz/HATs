@@ -7,28 +7,29 @@ module L = Syntax.LRaw
 open Syntax.EquationRaw
 open Sugar
 
-let pprint_id id = spf "%s" id.L.x
-(* (Nt.layout ty) *)
+let pprint_id id = id
+(* spf "%s" id.L.x *)
 
 let rec pprint_eqterm = function
-  | EqtRet id -> id.x
+  | EqtRet id -> id
   | EqtDo { dolhs; effop; effargs; body } ->
       spf "%s <- %s (%s); %s" (pprint_id dolhs) (pprint_id effop)
         (List.split_by_comma pprint_id effargs)
         (pprint_eqterm body)
 
 let pprint_equation = function
-  | EqState (eta1, eta2) ->
-      spf "%s ≃ %s" (pprint_eqterm eta1) (pprint_eqterm eta2)
-  | EqObv (eta1, eta2) ->
-      spf "%s ≃r %s" (pprint_eqterm eta1) (pprint_eqterm eta2)
+  | EqState { elhs; erhs } ->
+      spf "%s ≃ %s" (pprint_eqterm elhs) (pprint_eqterm erhs)
+  | EqObv { elhs; erhs; cond } ->
+      let cond = List.split_by ";" To_lit.layout_lit cond in
+      spf "%s ≃r %s when %s" (pprint_eqterm elhs) (pprint_eqterm erhs) cond
 
-let pprint_eqspace { domain; equationset } =
-  spf "{%s}:{%s}"
-    (List.split_by ";"
-       (fun (k, v) -> spf "%s:%s" k (Nt.layout v))
-       (StrMap.to_kv_list domain))
-    (List.split_by ";" pprint_equation equationset)
+(* let pprint_eqspace { domain; equationset } = *)
+(*   spf "{%s}:{%s}" *)
+(*     (List.split_by ";" *)
+(*        (fun (k, v) -> spf "%s:%s" k (Nt.layout v)) *)
+(*        (StrMap.to_kv_list domain)) *)
+(*     (List.split_by ";" pprint_equation equationset) *)
 
 let ids_of_ocamlexpr expr =
   let rec aux expr =
@@ -39,9 +40,7 @@ let ids_of_ocamlexpr expr =
   in
   aux expr
 
-type parset =
-  | PRetEvent of eqterm
-  | PEqtDo of string L.typed * string L.typed list
+type parset = PRetEvent of eqterm | PEqtDo of string * string list
 
 let eqevent_of_ocamlexpr expr =
   let aux expr =
@@ -49,13 +48,11 @@ let eqevent_of_ocamlexpr expr =
     | Pexp_construct (op, Some e) -> (
         let op = To_id.longid_to_id op in
         let args = ids_of_ocamlexpr e in
-        let open L in
+        (* let open L in *)
         match (op, args) with
-        | "Ret", [ v ] -> PRetEvent (EqtRet v #: None)
+        | "Ret", [ v ] -> PRetEvent (EqtRet v)
         | "Ret", _ -> _failatwith __FILE__ __LINE__ "die"
-        | _, args ->
-            let args = List.map (fun x -> x #: None) args in
-            PEqtDo (op #: None, args))
+        | _, args -> PEqtDo (op, args))
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux expr
@@ -70,7 +67,7 @@ let eqterm_of_ocamlexpr expr =
     | Pexp_let (_, [ vb ], body) -> (
         let dolhs =
           match To_pat.patten_to_typed_ids vb.pvb_pat with
-          | [ id ] -> id
+          | [ id ] -> id.x
           | _ -> failwith "rty_of_ocamlexpr"
         in
         match eqevent_of_ocamlexpr vb.pvb_expr with
@@ -92,14 +89,25 @@ let equation_of_ocamlexpr expr =
         let args = List.map snd args in
         match (f, args) with
         | "eq", [ e1; e2 ] ->
-            EqState (eqterm_of_ocamlexpr e1, eqterm_of_ocamlexpr e2)
-        | "eqr", [ e1; e2 ] ->
-            EqObv (eqterm_of_ocamlexpr e1, eqterm_of_ocamlexpr e2)
+            EqState
+              { elhs = eqterm_of_ocamlexpr e1; erhs = eqterm_of_ocamlexpr e2 }
+        | "eqr", [ e1; e2; e3 ] ->
+            let cond =
+              match To_lit.lit_of_ocamlexpr e3 with
+              | L.ATu args -> List.map (fun x -> x.L.x) args
+              | _ -> _failatwith __FILE__ __LINE__ "die"
+            in
+            EqObv
+              {
+                elhs = eqterm_of_ocamlexpr e1;
+                erhs = eqterm_of_ocamlexpr e2;
+                cond;
+              }
         | _, _ -> _failatwith __FILE__ __LINE__ "die")
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux expr
 
-let layout = pprint_eqspace
+(* let layout = pprint_eqspace *)
 let layout_equation = pprint_equation
 let layout_eqterm = pprint_eqterm

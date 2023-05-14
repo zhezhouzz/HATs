@@ -117,4 +117,27 @@ module F (L : Lit.T) = struct
         match get_eqprop_by_name xprop x with
         | None -> Forall (u, smart_implies xprop prop)
         | Some z -> subst_prop (x, z) prop)
+
+  let find_boollit_assignment_from_prop prop x =
+    let rec aux e =
+      match e with
+      | And es -> (
+          match List.filter_map aux es with [ s ] -> Some s | _ -> None)
+      | Iff (Lit (AVar y), Lit lit) when String.equal x y -> Some lit
+      | Iff (Lit lit, Lit (AVar y)) when String.equal x y -> Some lit
+      | Iff _ -> None
+      | Implies _ | Ite _ | Not _ | Forall _ | Exists _ | Or _ ->
+          _failatwith __FILE__ __LINE__ "die"
+      | Lit _ -> None
+    in
+    match aux prop with
+    | None -> _failatwith __FILE__ __LINE__ "die"
+    | Some s -> s
+
+  let find_intlit_assignment_from_prop prop x =
+    let lits = get_lits prop in
+    match List.filter_map (fun lit -> find_assignment_of_intvar lit x) lits with
+    | [] -> _failatwith __FILE__ __LINE__ "die"
+    | [ s ] -> s
+    | _ -> _failatwith __FILE__ __LINE__ "die"
 end

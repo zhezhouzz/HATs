@@ -24,8 +24,6 @@ and force_rty rty =
   match rty with
   | Raw.Pty pty -> Pty (force_pty pty)
   | Raw.Regty regex -> Regty Nt.(force_regex #-> regex)
-  | Raw.Sigmaty { localx = { x; ty }; rty } ->
-      Sigmaty { localx = { x; ty = force_rty ty }; rty = force_rty rty }
 
 and force_sevent = function
   | Raw.GuardEvent phi -> GuardEvent (force_qualifier phi)
@@ -42,6 +40,8 @@ and force_regex regex =
     | Raw.LandA (t1, t2) -> LandA (aux t1, aux t2)
     | Raw.SeqA (t1, t2) -> SeqA (aux t1, aux t2)
     | Raw.StarA t -> StarA (aux t)
+    | Raw.SigmaA { localx; xA; body } ->
+        SigmaA { localx; xA = aux xA; body = aux body }
   in
   aux regex
 
@@ -59,8 +59,6 @@ and besome_rty rty =
   match rty with
   | Pty pty -> Raw.Pty (besome_pty pty)
   | Regty regex -> Raw.Regty Nt.(besome_regex #-> regex)
-  | Sigmaty { localx = { x; ty }; rty } ->
-      Raw.Sigmaty { localx = { x; ty = besome_rty ty }; rty = besome_rty rty }
 
 and besome_sevent = function
   | GuardEvent phi -> Raw.GuardEvent (besome_qualifier phi)
@@ -77,5 +75,7 @@ and besome_regex regex =
     | LandA (t1, t2) -> Raw.LandA (aux t1, aux t2)
     | SeqA (t1, t2) -> Raw.SeqA (aux t1, aux t2)
     | StarA t -> Raw.StarA (aux t)
+    | SigmaA { localx; xA; body } ->
+        Raw.SigmaA { localx; xA = aux xA; body = aux body }
   in
   aux regex

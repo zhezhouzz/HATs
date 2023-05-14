@@ -63,45 +63,11 @@ module Rty = struct
   let mk_pty_var_eq_c ty c = mk_pty_var_eq_lit ty L.(AC c)
   let mk_pty_var_eq_var var = mk_pty_var_eq_lit var.L.ty L.(AVar var.L.x)
 
-  (* let ty_tr = Normalty.Ntyped.(Ty_constructor ("tr", [])) *)
-
-  (* let mk_eq ty lit1 lit2 = *)
-  (*   let f = "==" #: (construct_normal_tp ([ ty; ty ], bool_ty)) in *)
-  (*   AApp (f, [ lit1; lit2 ]) *)
-
-  (* let mk_select lit1 lit2 = *)
-  (*   let f = "select" #: (construct_normal_tp ([ ty_tr; int_ty ], unit_ty)) in *)
-  (*   AApp (f, [ lit1; lit2 ]) *)
-
-  (* let mk_append h lit2 = *)
-  (*   let f = "append" #: (construct_normal_tp ([ ty_tr; unit_ty ], ty_tr)) in *)
-  (*   AApp (f, [ AVar h; lit2 ]) *)
-
-  (* let mk_concat h1 h2 h = *)
-  (*   let f = "concat" #: (construct_normal_tp ([ ty_tr; ty_tr ], ty_tr)) in *)
-  (*   AApp (f, [ AVar h1; AVar h2; AVar h ]) *)
-
-  (* let subst_cty_by_id id { v; phi } = P.subst_typed_id (v, id) phi *)
-  (* let kw_h = "h" #: ty_tr *)
-  (* let kw_h_prev = "h_prev" #: ty_tr *)
-  (* let kw_v ty = v_name #: ty *)
-
-  (* let mk_cty ty phif = *)
-  (*   let v = kw_v ty in *)
-  (*   { v; phi = phif v } *)
-
-  (* let mk_octy ty phif = BaseRty { ou = Over; cty = mk_cty ty phif } *)
-  (* let mk_otop ty = mk_octy ty (fun _ -> mk_true) *)
-  (* let mk_ucty ty phif = BaseRty { ou = Under; cty = mk_cty ty phif } *)
-
-  (* let mk_ucty_eq_lit_lit ty lit1 lit2 = *)
-  (*   mk_ucty unit_ty (fun _ -> Lit (mk_eq ty lit1 lit2)) *)
-
-  (* let mk_ucty_eq_lit ty lit = *)
-  (*   mk_ucty ty (fun v -> Lit (mk_eq ty (AVar v) lit)) *)
-
-  (* let mk_ucty_eq_c ty c = mk_ucty_eq_lit ty (P.AC c) *)
-  (* let mk_ucty_eq_id ty id = mk_ucty_eq_lit ty P.(AVar id #: ty) *)
+  let find_lit_assignment_from_prop prop x =
+    match x.Nt.ty with
+    | Nt.Ty_bool -> find_boollit_assignment_from_prop prop x.Nt.x
+    | Nt.Ty_int -> find_intlit_assignment_from_prop prop x.Nt.x
+    | _ -> _failatwith __FILE__ __LINE__ "die"
 end
 
 module Structure = struct
@@ -185,8 +151,20 @@ module TypedCoreEff = struct
 end
 
 module Eqctx = struct
-  include Typectx.FString (Equation)
   include Equation
+
+  type ctx = equation list
+
+  open Zzdatatype.Datatype
+
+  let find_ret_rules ctx (op1, args1) (op2, args2) =
+    let () =
+      Printf.printf "find_ret_rules: <%s(%s)><%s(%s)>" op1
+        (List.split_by_comma Rty.layout_lit args1)
+        op2
+        (List.split_by_comma Rty.layout_lit args2)
+    in
+    match_obv_equation ctx (op1, args1, op2, args2)
 
   let from_code _ = []
   (* let from_code code = *)

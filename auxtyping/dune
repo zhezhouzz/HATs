@@ -6,5 +6,10 @@
    aux
    fexists
    fmerge
+   ; the aux function of regular expression
+   retilize
+   finalize
+   alpha
+   purify
    auxtyping
 ))

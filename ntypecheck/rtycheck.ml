@@ -15,10 +15,6 @@ let rec rty_check opctx ctx (rty : t) : t =
   match rty with
   | Pty pty -> Pty (pty_check opctx ctx pty)
   | Regty regex -> Regty Nt.((regex_check opctx ctx regex.ty) #-> regex)
-  | Sigmaty { localx = { x; ty }; rty } ->
-      let ty = rty_check opctx ctx ty in
-      let ctx' = Typectx.new_to_right ctx Nt.(x #: (erase ty)) in
-      Sigmaty { localx = { x; ty }; rty = rty_check opctx ctx' rty }
 
 and pty_check opctx ctx (rty : pty) : pty =
   let rec aux ctx rty =
@@ -82,3 +78,8 @@ and regex_check opctx ctx retbty (regex : regex) : regex =
   | SeqA (t1, t2) ->
       SeqA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | StarA t -> StarA (regex_check opctx ctx retbty t)
+  | SigmaA { localx = { x; ty }; xA; body } ->
+      let xA = regex_check opctx ctx ty xA in
+      let ctx' = Typectx.new_to_right ctx Nt.(x #: ty) in
+      SigmaA
+        { localx = { x; ty }; xA; body = regex_check opctx ctx' retbty body }

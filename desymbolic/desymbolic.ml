@@ -150,6 +150,7 @@ let desymbolic_sevent ctx mts se =
       in
       Some (NRegex.Union mts)
 
+(* NOTE: the None indicate the empty set *)
 let desymbolic ctx mts regex =
   let rec aux regex =
     match regex with
@@ -157,14 +158,12 @@ let desymbolic ctx mts regex =
     | EventA se ->
         let* r = desymbolic_sevent ctx mts se in
         Some r
-    | LorA (t1, t2) ->
-        let* r1 = aux t1 in
-        let* r2 = aux t2 in
-        Some (NRegex.Union [ r1; r2 ])
-    | LandA (t1, t2) ->
-        let* r1 = aux t1 in
-        let* r2 = aux t2 in
-        Some (NRegex.Intersect [ r1; r2 ])
+    | LorA (t1, t2) -> (
+        let rs = List.filter_map aux [ t1; t2 ] in
+        match rs with [] -> None | _ -> Some (NRegex.Union rs))
+    | LandA (t1, t2) -> (
+        let rs = List.filter_map aux [ t1; t2 ] in
+        match rs with [] -> None | _ -> Some (NRegex.Union rs))
     | SeqA (t1, t2) ->
         let* r1 = aux t1 in
         let* r2 = aux t2 in
@@ -172,5 +171,6 @@ let desymbolic ctx mts regex =
     | StarA t ->
         let* r = aux t in
         Some (NRegex.Star r)
+    | SigmaA _ -> _failatwith __FILE__ __LINE__ "die"
   in
   match aux regex with None -> NRegex.Epslion | Some r -> r
