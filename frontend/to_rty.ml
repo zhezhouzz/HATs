@@ -237,3 +237,4 @@ let layout = pprint_rty
 let layout_cty = pprint_cty
 let layout_pty = pprint_pty
 let layout_regex = pprint_regex
+let layout_sevent = pprint_sevent

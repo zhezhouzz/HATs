@@ -15,8 +15,8 @@ module Structure = Structure.F (L)
 module Rty = Structure.R
 
 (* module Qualifier = Rty.P *)
-module Equation = Algebraic.F (L)
-module EquationRaw = Algebraic.F (LRaw)
+module Equation = Structure.Equation
+module EquationRaw = StructureRaw.Equation
 
 (* unwrap *)
 module NRegex = Nregex.T

@@ -63,10 +63,10 @@ let smt_solve ctx assertions =
   solver_result solver
 
 let smt_neg_and_solve ctx pre vc =
-  let () =
-    Env.show_debug_queries @@ fun _ ->
-    Printf.printf "Query: %s\n" @@ Language.Rty.layout_prop vc
-  in
+  (* let () = *)
+  (*   Env.show_debug_queries @@ fun _ -> *)
+  (*   Printf.printf "Query: %s\n" @@ Language.Rty.layout_prop vc *)
+  (* in *)
   let assertions =
     List.map (Propencoding.to_z3 ctx) (pre @ [ Language.Rty.Not vc ])
   in
@@ -79,9 +79,31 @@ let smt_neg_and_solve ctx pre vc =
   in
   res
 
+let sequence_name = "reg_query_string"
+
+open Zzdatatype.Datatype
+open Sugar
+
+exception SMTTIMEOUT
+
+let handle_check_res query_action =
+  let time_t, res = Sugar.clock query_action in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Pp.printf "@{<bold>Solving time: %.2f@}\n" time_t
+  in
+  match res with
+  | SmtUnsat -> None
+  | SmtSat model ->
+      ( Env.show_debug_stat @@ fun _ ->
+        Printf.printf "model:\n%s\n"
+        @@ Sugar.short_str 100 @@ Z3.Model.to_string model );
+      Some model
+  | Timeout -> raise SMTTIMEOUT
+
 let inclusion_query ctx r1 r2 =
   (* let open Sugar in *)
-  let r1, r2 = Regencoding.to_z3_two_reg ctx (r1, r2) in
+  let encoding, r1, r2 = Regencoding.to_z3_two_reg ctx (r1, r2) in
   let () =
     Env.show_debug_queries @@ fun _ ->
     Printf.printf "Query: %s ⊆ %s\n" (Expr.to_string r1) (Expr.to_string r2)
@@ -89,9 +111,23 @@ let inclusion_query ctx r1 r2 =
   (* let sequence = *)
   (*   Expr.mk_const_s ctx "reg_query_string" (Seq.mk_seq_sort ctx @@ Seq.mk_string_sort ctx) *)
   (* in *)
-  let sequence =
-    Expr.mk_const_s ctx "reg_query_string" (Seq.mk_string_sort ctx)
-  in
+  let sequence = Expr.mk_const_s ctx sequence_name (Seq.mk_string_sort ctx) in
   let q1 = Seq.mk_seq_in_re ctx sequence r1 in
   let q2 = Seq.mk_seq_in_re ctx sequence r2 in
-  smt_solve ctx [ q1; Boolean.mk_not ctx q2 ]
+  match
+    handle_check_res (fun () -> smt_solve ctx [ q1; Boolean.mk_not ctx q2 ])
+  with
+  | None -> None
+  | Some model ->
+      (* ( Env.show_debug_queries @@ fun _ -> *)
+      (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
+      let str =
+        match Z3aux.get_string_by_name model sequence_name with
+        | Some str -> str
+        | None -> _failatwith __FILE__ __LINE__ "die"
+      in
+      let mt_list = Regencoding.encoding_code_trace encoding str in
+      ( Env.show_debug_debug @@ fun _ ->
+        Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
+          (List.split_by ";" Minterm.T.mt_to_string mt_list) );
+      Some mt_list

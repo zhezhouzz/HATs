@@ -1,11 +1,13 @@
 module F (L : Lit.T) = struct
   include Termlang.F (L)
   module R = Rty.F (L)
+  module Equation = Algebraic.F (L)
 
   type rty_kind = RtyLib | RtyToCheck
 
   type entry =
     (* | Mps of string list *)
+    | EquationEntry of Equation.equation
     | Type_dec of Type_dec.t
     | Func_dec of string Normalty.Ntyped.typed
     | FuncImp of { name : string; if_rec : bool; body : term typed }
@@ -17,6 +19,7 @@ module F (L : Lit.T) = struct
   open Zzdatatype.Datatype
 
   let mk_normal_top_ctx_ = function
+    | EquationEntry _ -> []
     | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
         match kind with
@@ -26,6 +29,7 @@ module F (L : Lit.T) = struct
     | Type_dec _ -> []
 
   let mk_normal_top_opctx_ = function
+    | EquationEntry _ -> []
     | FuncImp _ -> []
     | Rty _ -> []
     | Func_dec _ -> []

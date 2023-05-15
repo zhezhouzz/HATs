@@ -21,6 +21,37 @@ module PtyMap = Map.Make (PtyElem)
 type 'a tab = LitTab of 'a LitMap.t | PtyTab of 'a PtyMap.t | EmptyTab
 type 'a head = { global_tab : 'a tab; local_tab : 'a tab StrMap.t }
 
+let pprint_bool_tab m =
+  let () =
+    match m with
+    | LitTab m ->
+        let pos_set =
+          List.filter_map (fun (k, v) -> if v then Some (Lit k) else None)
+          @@ List.of_seq @@ LitMap.to_seq m
+        in
+        let neg_set =
+          List.filter_map (fun (k, v) ->
+              if not v then Some (Not (Lit k)) else None)
+          @@ List.of_seq @@ LitMap.to_seq m
+        in
+        Pp.printf "%s" (Rty.layout_prop (And (pos_set @ neg_set)))
+    | PtyTab m ->
+        let pos_set =
+          List.filter_map (fun (k, v) ->
+              if v then Some (Rty.layout_pty k) else None)
+          @@ List.of_seq @@ PtyMap.to_seq m
+        in
+        let neg_set =
+          List.filter_map (fun (k, v) ->
+              if not v then Some (spf "not %s" @@ Rty.layout_pty k) else None)
+          @@ List.of_seq @@ PtyMap.to_seq m
+        in
+        Pp.printf "%s" (List.split_by "/\\" (fun x -> x) (pos_set @ neg_set))
+    | EmptyTab -> Pp.printf "true"
+  in
+  let () = Pp.printf "\n" in
+  ()
+
 let pprint_tab m =
   let () =
     match m with
@@ -84,7 +115,7 @@ let tab_to_prop = function
           (fun lit b m -> if b then Lit lit :: m else Not (Lit lit) :: m)
           m []
       in
-      And l
+      smart_and l
   | PtyTab _ -> _failatwith __FILE__ __LINE__ "die"
 
 let tab_cardinal (tab : 'a tab) =

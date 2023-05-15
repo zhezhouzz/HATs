@@ -11,6 +11,36 @@ let minterm_to_op_model { global_tab; local_tab }
   let local_m = tab_i_to_b m local_embedding in
   (global_m, local_m)
 
+let display_trace rctx ctx mt_list =
+  match List.last_destruct_opt mt_list with
+  | Some (mt_list, ret_mt) ->
+      let global_m, ret_m = minterm_to_op_model ctx ret_mt in
+      let mt_list =
+        List.map
+          (fun mt ->
+            let _, m = minterm_to_op_model ctx mt in
+            m)
+          mt_list
+      in
+      let () = Printf.printf "Gamma:\n" in
+      let () =
+        Printf.printf "%s\n" @@ RTypectx.layout_typed_l (fun x -> x) rctx
+      in
+      let () = Printf.printf "Global:\n" in
+      let () = pprint_bool_tab global_m in
+      let () =
+        List.iteri
+          (fun idx m ->
+            let () = Printf.printf "[<%i>]:\n" idx in
+            let () = pprint_bool_tab m in
+            ())
+          mt_list
+      in
+      let () = Printf.printf "[Ret]:\n" in
+      let () = pprint_bool_tab ret_m in
+      ()
+  | _ -> _failatwith __FILE__ __LINE__ "die"
+
 let model_verify_bool sub_pty_bool (global_m, local_m) =
   match local_m with
   | EmptyTab | LitTab _ ->

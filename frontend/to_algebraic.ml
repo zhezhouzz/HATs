@@ -11,7 +11,7 @@ let pprint_id id = id
 (* spf "%s" id.L.x *)
 
 let rec pprint_eqterm = function
-  | EqtRet id -> id
+  | EqtRet lit -> To_lit.layout_lit lit
   | EqtDo { dolhs; effop; effargs; body } ->
       spf "%s <- %s (%s); %s" (pprint_id dolhs) (pprint_id effop)
         (List.split_by_comma pprint_id effargs)
@@ -47,12 +47,10 @@ let eqevent_of_ocamlexpr expr =
     match expr.pexp_desc with
     | Pexp_construct (op, Some e) -> (
         let op = To_id.longid_to_id op in
-        let args = ids_of_ocamlexpr e in
         (* let open L in *)
-        match (op, args) with
-        | "Ret", [ v ] -> PRetEvent (EqtRet v)
-        | "Ret", _ -> _failatwith __FILE__ __LINE__ "die"
-        | _, args -> PEqtDo (op, args))
+        match op with
+        | "Ret" -> PRetEvent (EqtRet (To_lit.lit_of_ocamlexpr e))
+        | _ -> PEqtDo (op, ids_of_ocamlexpr e))
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux expr
@@ -60,10 +58,6 @@ let eqevent_of_ocamlexpr expr =
 let eqterm_of_ocamlexpr expr =
   let rec aux expr =
     match expr.pexp_desc with
-    | Pexp_constraint _ -> (
-        match eqevent_of_ocamlexpr expr with
-        | PRetEvent eqt -> eqt
-        | _ -> _failatwith __FILE__ __LINE__ "die")
     | Pexp_let (_, [ vb ], body) -> (
         let dolhs =
           match To_pat.patten_to_typed_ids vb.pvb_pat with
@@ -74,10 +68,13 @@ let eqterm_of_ocamlexpr expr =
         | PEqtDo (effop, effargs) ->
             EqtDo { dolhs; effop; effargs; body = aux body }
         | _ -> _failatwith __FILE__ __LINE__ "die")
-    | _ ->
-        _failatwith __FILE__ __LINE__
-          (spf "wrong refinement type: %s"
-             (Pprintast.string_of_expression expr))
+    | _ -> (
+        match eqevent_of_ocamlexpr expr with
+        | PRetEvent eqt -> eqt
+        | _ ->
+            _failatwith __FILE__ __LINE__
+              (spf "wrong refinement type: %s"
+                 (Pprintast.string_of_expression expr)))
   in
   aux expr
 
@@ -91,6 +88,13 @@ let equation_of_ocamlexpr expr =
         | "eq", [ e1; e2 ] ->
             EqState
               { elhs = eqterm_of_ocamlexpr e1; erhs = eqterm_of_ocamlexpr e2 }
+        | "eqr", [ e1; e2 ] ->
+            EqObv
+              {
+                elhs = eqterm_of_ocamlexpr e1;
+                erhs = eqterm_of_ocamlexpr e2;
+                cond = [];
+              }
         | "eqr", [ e1; e2; e3 ] ->
             let cond =
               match To_lit.lit_of_ocamlexpr e3 with

@@ -16,7 +16,11 @@ let find_const_in_model m x =
         String.equal name x)
       cs
   in
-  match i with Some i -> Some (Z3.FuncDecl.apply i []) | None -> None
+  match i with
+  | Some i ->
+      (* let () = Printf.printf "Const %s\n" @@ Z3.FuncDecl.to_string i in *)
+      Some (Z3.FuncDecl.apply i [])
+  | None -> None
 
 let get_int_by_name m x =
   let i = find_const_in_model m x in
@@ -29,6 +33,22 @@ let get_int_by_name m x =
       | Some v ->
           (* Printf.printf "get_int(%s)\n" (Z3.Expr.to_string v); *)
           Some (int_of_string @@ Z3.Arithmetic.Integer.numeral_to_string v))
+
+let get_string_by_name m x =
+  let i = find_const_in_model m x in
+  match i with
+  | None -> None
+  | Some i -> (
+      match Z3.Model.eval m i false with
+      (* match Z3.Model.get_const_interp m i with *)
+      | None -> _failatwith __FILE__ __LINE__ "get_string"
+      | Some v ->
+          let str = Expr.to_string v in
+          let str = List.of_seq @@ String.to_seq str in
+          let str = List.filter (fun c -> not (Char.equal c '"')) str in
+          let str = String.of_seq @@ List.to_seq str in
+          (* Printf.printf "get_int(%s)\n" (Z3.Expr.to_string v); *)
+          Some str)
 
 let int_to_z3 ctx i = mk_numeral_int ctx i (Integer.mk_sort ctx)
 let bool_to_z3 ctx b = if b then mk_true ctx else mk_false ctx

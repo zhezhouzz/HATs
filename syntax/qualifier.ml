@@ -19,8 +19,22 @@ module F (L : Lit.T) = struct
   let mk_false = Lit mk_lit_false
   let is_true p = match get_cbool p with Some true -> true | _ -> false
   let is_false p = match get_cbool p with Some false -> true | _ -> false
-  let smart_and l = And (List.filter (fun p -> not (is_true p)) l)
-  let smart_or l = Or (List.filter (fun p -> not (is_false p)) l)
+
+  let smart_and l =
+    if List.exists is_false l then mk_false
+    else
+      match List.filter (fun p -> not (is_true p)) l with
+      | [] -> mk_true
+      | [ x ] -> x
+      | l -> And l
+
+  let smart_or l =
+    if List.exists is_true l then mk_true
+    else
+      match List.filter (fun p -> not (is_false p)) l with
+      | [] -> mk_false
+      | [ x ] -> x
+      | l -> Or l
 
   open Sugar
 
@@ -52,7 +66,9 @@ module F (L : Lit.T) = struct
     | Some true -> prop
     | Some false -> mk_false
     | None -> (
-        match prop with And props -> And (a :: props) | _ -> And [ a; prop ])
+        match prop with
+        | And props -> smart_and (a :: props)
+        | _ -> smart_and [ a; prop ])
 
   let smart_implies a prop =
     match get_cbool a with

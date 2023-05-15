@@ -36,7 +36,16 @@ struct
     | AAppOp of Op.t typed * lit typed list
   [@@deriving sexp]
 
-  let compare l1 l2 = Sexplib.Sexp.compare (sexp_of_lit l1) (sexp_of_lit l2)
+  let compare l1 l2 =
+    let res = Sexplib.Sexp.compare (sexp_of_lit l1) (sexp_of_lit l2) in
+    (* let () = *)
+    (*   Printf.printf "lit compare\n%s\n=?\n%s\n===> kk %b\n" *)
+    (*     (Sexplib.Sexp.to_string (sexp_of_lit l1)) *)
+    (*     (Sexplib.Sexp.to_string (sexp_of_lit l2)) *)
+    (*     (0 == res) *)
+    (* in *)
+    res
+
   let eq_lit l1 l2 = 0 == compare l1 l2
   let mk_lit_true = AC (Constant.B true)
   let mk_lit_false = AC (Constant.B false)
@@ -44,7 +53,7 @@ struct
 
   let mk_int_l1_eq_l2 l1 l2 =
     let mk_eq_typed_op =
-      Op.mk_eq_op #: T.(mk_arr (mk_arr int_ty int_ty) int_ty)
+      Op.mk_eq_op #: T.(mk_arr int_ty (mk_arr int_ty bool_ty))
     in
     AAppOp (mk_eq_typed_op, [ l1 #: T.int_ty; l2 #: T.int_ty ])
 

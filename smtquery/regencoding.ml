@@ -25,21 +25,42 @@ let int_range_start = 48
 let int_range_len = 10
 let upper_range_start = 65
 let upper_range_len = 26
-let lower_range_start = 65
+let lower_range_start = 97
 let lower_range_len = 26
 let range_len = int_range_len + upper_range_len + lower_range_len
 let delimit = '_'
 
 let int_to_char i =
   if i < int_range_len then Char.chr (i + int_range_start)
-  else if i < int_range_len + upper_range_len then
-    Char.chr (i + upper_range_start)
-  else if i < int_range_len + upper_range_len + lower_range_len then
-    Char.chr (i + lower_range_start)
-  else _failatwith __FILE__ __LINE__ "die"
+  else
+    let i = i - int_range_len in
+    if i < upper_range_len then Char.chr (i + upper_range_start)
+    else
+      let i = i - upper_range_len in
+      if i < lower_range_len then Char.chr (i + lower_range_start)
+      else _failatwith __FILE__ __LINE__ "die"
+
+let char_to_int c =
+  (* let () = Printf.printf "c:%c\n" c in *)
+  let i = Char.code c in
+  let i' = i - int_range_start in
+  if i' < int_range_len then i'
+  else
+    let i' = i - upper_range_start in
+    if i' < upper_range_len then i'
+    else
+      let i' = i - lower_range_start in
+      if i' < lower_range_len then i' else _failatwith __FILE__ __LINE__ "die"
 
 let il_to_chars il =
   String.of_seq @@ List.to_seq @@ (delimit :: List.map int_to_char il)
+
+let chars_to_il str =
+  let cs = List.of_seq @@ String.to_seq str in
+  List.map char_to_int cs
+(* match cs with *)
+(* | di :: cs when Char.equal di delimit -> List.map char_to_int cs *)
+(* | _ -> _failatwith __FILE__ __LINE__ "?" *)
 
 let il_to_z3 ctx il =
   Seq.mk_seq_to_re ctx @@ Seq.mk_string ctx @@ il_to_chars il
@@ -51,9 +72,10 @@ let rec next_next l =
   | [] -> [ 0 ]
   | hd :: tl ->
       let hd' = hd + 1 in
-      if hd' < range_len then hd' :: tl else 0 :: next_next l
+      if hd' < range_len then hd' :: tl else 0 :: next_next tl
 
 let encoding_insert_mt { tab; next } mt =
+  (* let () = Pp.printf "@{<orange>next:@} %s\n" (il_to_chars !next) in *)
   let str = mt_to_string mt in
   match Hashtbl.find_opt tab str with
   | None ->
@@ -81,6 +103,43 @@ let encoding_parse_reg encoding reg =
     | Star r -> aux r
   in
   aux reg
+
+let rev_find_opt tab il =
+  Hashtbl.fold
+    (fun k v res ->
+      (* let () = Printf.printf "k: %s -> v: %s\n" k (IntList.to_string v) in *)
+      match res with
+      | Some res -> Some res
+      | None -> if List.equal ( == ) il v then Some k else None)
+    tab None
+
+let encoding_code_trace { tab; _ } str =
+  (* let () = Printf.printf "str:%s\n" str in *)
+  let cs_list =
+    List.filter
+      (fun l -> String.length l > 0)
+      (String.split_on_char delimit str)
+  in
+  (* let () = *)
+  (*   Printf.printf "?len(il): %i\n" (String.length (List.nth cs_list 0)) *)
+  (* in *)
+  (* let cs_list = List.map (fun str -> "_" ^ str) cs_list in *)
+  let il_list = List.map chars_to_il cs_list in
+  (* let () = Printf.printf "?len(il): %i\n" (List.length (List.nth il_list 0)) in *)
+  let mt_list =
+    List.map
+      (fun il ->
+        (* let () = *)
+        (*   Printf.printf "il: %s\n" (List.split_by_comma string_of_int il) *)
+        (* in *)
+        match rev_find_opt tab il with
+        | Some mt_str ->
+            (* let () = Printf.printf "mt_str: %s\n" mt_str in *)
+            string_to_mt mt_str
+        | None -> _failatwith __FILE__ __LINE__ "die")
+      il_list
+  in
+  mt_list
 
 let to_z3 ctx encoding reg =
   let rec aux reg =
@@ -119,6 +178,6 @@ let to_z3 ctx encoding reg =
 
 let to_z3_two_reg ctx (r1, r2) =
   let encoding = encoding_init () in
-  encoding_parse_reg encoding r1;
-  encoding_parse_reg encoding r2;
-  (to_z3 ctx encoding r1, to_z3 ctx encoding r2)
+  let () = encoding_parse_reg encoding r1 in
+  let () = encoding_parse_reg encoding r2 in
+  (encoding, to_z3 ctx encoding r1, to_z3 ctx encoding r2)

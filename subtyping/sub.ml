@@ -31,7 +31,7 @@ let merge_effect_binding rctx (rty1, rty2) =
 
 let sub_regex_purify gamma eqctx regex1 regex2 =
   let check gamma prop =
-    Subcty.is_bot_pty gamma (mk_unit_under_pty_from_prop prop)
+    not (Subcty.is_bot_pty gamma (mk_unit_under_pty_from_prop prop))
   in
   let topl1, regex1 = Auxtyping.purify eqctx gamma check regex1 in
   let topl2, regex2 = Auxtyping.purify eqctx gamma check regex2 in
@@ -81,7 +81,11 @@ and sub_regex_bool rctx eqctx regex1 regex2 =
   let rctx, eqctx, regex1, regex2 = sub_regex_purify rctx eqctx regex1 regex2 in
   (* let regex1 = regex1.Nt.x in *)
   (* let regex2 = regex2.Nt.x in *)
+  let () =
+    Printf.printf "R: %s\n" (RTypectx.layout_typed_l (fun x -> x) rctx)
+  in
   let ctx, mts = Desymbolic.ctx_init (LorA (regex1, regex2)) in
+  (* let () = failwith "end" in *)
   let mts =
     NRegex.mts_filter_map
       (fun mt ->
@@ -95,10 +99,22 @@ and sub_regex_bool rctx eqctx regex1 regex2 =
       mts
   in
   let () = NRegex.pprint_mts mts in
-  (* let () = failwith "end" in *)
   let regex1 = Desymbolic.desymbolic ctx mts regex1 in
   let regex2 = Desymbolic.desymbolic ctx mts regex2 in
-  Smtquery.check_inclusion_bool (regex2, regex1)
+  let () =
+    Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n"
+      (NRegex.reg_to_string regex1)
+  in
+  let () =
+    Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
+      (NRegex.reg_to_string regex2)
+  in
+  let res = Smtquery.check_inclusion_counterexample (regex2, regex1) in
+  match res with
+  | None -> true
+  | Some mt_list ->
+      Desymbolic.display_trace rctx ctx mt_list;
+      false
 
 let is_bot_rty rctx _ = function
   | Pty pty -> Subcty.is_bot_pty rctx pty

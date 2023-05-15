@@ -12,6 +12,8 @@ let check opctx' structure normalized_structure =
   let opctx, rctx = RCtx.op_and_rctx_from_code structure in
   let opctx = opctx @ opctx' in
   let eqctx = Eqctx.from_code structure in
+  (* let () = Printf.printf "!!! %s\n" @@ Eqctx.layout_equations eqctx in *)
+  (* let () = failwith "end" in *)
   let tasks = RCtx.get_task structure in
   let ress =
     List.mapi

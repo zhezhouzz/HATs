@@ -12,6 +12,16 @@ module T = struct
   let mt_to_string { op; global_embedding; local_embedding } =
     spf "%s_%i_%i" op global_embedding local_embedding
 
+  let string_to_mt str =
+    match
+      List.filter (fun l -> String.length l > 0) @@ String.split_on_char '_' str
+    with
+    | [ op; global_embedding; local_embedding ] ->
+        let global_embedding = int_of_string global_embedding in
+        let local_embedding = int_of_string local_embedding in
+        { op; global_embedding; local_embedding }
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
   let mts_fold_on_op op f (i_s_il : mts) res =
     IntMap.fold
       (fun global_embedding s_il res ->
