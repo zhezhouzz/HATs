@@ -1,10 +1,8 @@
-let exists_typed = Fexists.exists_typed
-let exists_ptyped = Fexists.exists_ptyped
+let common_sub_rtys = Fmerge.common_sub_rtys
+let common_sub_rty = Fmerge.common_sub_rty
+let common_sup_ptys = Fmerge.common_sup_ptys
+let common_sub_ptys = Fmerge.common_sub_ptys
 
-(* let exists_typed_to_cty = Fexists.exists_typed_to_cty *)
-let exists_ptyped_to_cty = Fexists.exists_ptyped_to_cty
-let disj_rtys = Fmerge.disj_rtys
-let disj_rty = Fmerge.disj_rty
-let conj_ptys = Fmerge.conj_ptys
-let disj_ptys = Fmerge.disj_ptys
-let purify = Purify.purify
+open Sugar
+
+let purify _ _ _ _ = _failatwith __FILE__ __LINE__ "die"

@@ -2,7 +2,7 @@ open Language
 open Rty
 open Zzdatatype.Datatype
 open Sugar
-open Auxtyping
+(* open Auxtyping *)
 
 let close_ptyped_to_prop x prop =
   let open P in
@@ -30,12 +30,7 @@ let sub_cty rctx cty1 cty2 =
         | TuplePty _ ->
             _failatwith __FILE__ __LINE__ "unimp: tuple type in the ctx"
         | ArrPty _ -> aux rctx uqvs cty1 cty2
-        | BasePty { ou = Over; cty } ->
-            aux rctx ({ cx = x.px; cty } :: uqvs) cty1 cty2
-        | BasePty { ou = Under; _ } ->
-            let cty1 = exists_ptyped_to_cty x cty1 in
-            let cty2 = exists_ptyped_to_cty x cty2 in
-            aux rctx uqvs cty1 cty2)
+        | BasePty { cty } -> aux rctx ({ cx = x.px; cty } :: uqvs) cty1 cty2)
   in
   aux rctx [] cty1 cty2
 
@@ -49,6 +44,5 @@ let is_bot_cty rctx cty =
 let is_bot_pty rctx pty =
   match pty with
   | TuplePty _ -> _failatwith __FILE__ __LINE__ "die"
-  | BasePty { ou = Over; cty } -> is_bot_cty rctx cty
-  | BasePty { ou = Under; cty } -> is_bot_cty rctx cty
+  | BasePty { cty } -> is_bot_cty rctx cty
   | ArrPty _ -> false

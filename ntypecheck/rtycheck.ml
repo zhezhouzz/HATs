@@ -19,7 +19,7 @@ let rec rty_check opctx ctx (rty : t) : t =
 and pty_check opctx ctx (rty : pty) : pty =
   let rec aux ctx rty =
     match rty with
-    | BasePty { ou; cty } -> BasePty { ou; cty = cty_check opctx ctx cty }
+    | BasePty { cty } -> BasePty { cty = cty_check opctx ctx cty }
     | TuplePty ptys -> TuplePty (List.map (aux ctx) ptys)
     | ArrPty { rarg; retrty } ->
         let rarg = { px = rarg.px; pty = aux ctx rarg.pty } in
@@ -28,10 +28,10 @@ and pty_check opctx ctx (rty : pty) : pty =
           | None ->
               _assert __FILE__ __LINE__
                 (spf "syntax error: argument type %s" (To_rty.layout_pty rty))
-              @@ (is_overbase_pty rarg.pty || is_arr_pty rarg.pty)
+              @@ is_arr_pty rarg.pty
           | Some _ ->
               _assert __FILE__ __LINE__ "syntax error: argument type"
-              @@ is_overbase_pty rarg.pty
+              @@ is_base_pty rarg.pty
         in
         let ctx' =
           match rarg.px with
@@ -78,8 +78,3 @@ and regex_check opctx ctx retbty (regex : regex) : regex =
   | SeqA (t1, t2) ->
       SeqA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | StarA t -> StarA (regex_check opctx ctx retbty t)
-  | SigmaA { localx = { x; ty }; xA; body } ->
-      let xA = regex_check opctx ctx ty xA in
-      let ctx' = Typectx.new_to_right ctx Nt.(x #: ty) in
-      SigmaA
-        { localx = { x; ty }; xA; body = regex_check opctx ctx' retbty body }

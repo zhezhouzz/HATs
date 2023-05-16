@@ -64,9 +64,7 @@ module Rty = struct
     let v = Nt.{ x = v_name; ty } in
     { v; phi = mk_prop_var_eq_lit v c }
 
-  let mk_pty_var_eq_lit ty c =
-    BasePty { ou = Under; cty = mk_cty_var_eq_lit ty c }
-
+  let mk_pty_var_eq_lit ty c = BasePty { cty = mk_cty_var_eq_lit ty c }
   let mk_pty_var_eq_c ty c = mk_pty_var_eq_lit ty L.(AC c)
   let mk_pty_var_eq_var var = mk_pty_var_eq_lit var.L.ty L.(AVar var.L.x)
 

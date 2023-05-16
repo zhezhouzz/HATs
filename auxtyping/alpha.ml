@@ -65,9 +65,9 @@ let alpha regex =
         let ctx, r = aux ctx t in
         (ctx, StarA r)
   in
-  aux [] regex
+  aux regex
 
-let to_top_typed_regex (regex : regex) : string Nt.typed list * regex =
+let to_top_typed_regex regex =
   let rec aux topl regex =
     match regex with
     | EpsilonA | EventA _ -> (topl, regex)

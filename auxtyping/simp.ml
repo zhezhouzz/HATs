@@ -19,9 +19,5 @@ let simp regex =
             aux (SeqA (EventA (GuardEvent (P.smart_and [ phi1; phi2 ])), r))
         | regex1, regex2 -> SeqA (regex1, regex2))
     | StarA t -> StarA (aux t)
-    | SigmaA { localx; xA; body } ->
-        let xA = aux xA in
-        let body = aux body in
-        SigmaA { localx; xA; body }
   in
   aux regex

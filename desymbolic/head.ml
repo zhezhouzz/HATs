@@ -89,6 +89,15 @@ let ptytab_i_to_b m n =
   let bv = NRegex.id_to_barr (PtyMap.cardinal m) n in
   PtyMap.map (fun idx -> bv.(idx)) m
 
+let ptytab_get_nty m =
+  let res =
+    PtyMap.fold
+      (fun pty _ nty ->
+        match nty with Some _ -> nty | None -> Some (Rty.erase_pty pty))
+      m None
+  in
+  match res with None -> _failatwith __FILE__ __LINE__ "die" | Some res -> res
+
 let tab_i_to_b (tab : int tab) n =
   match tab with
   | EmptyTab -> EmptyTab

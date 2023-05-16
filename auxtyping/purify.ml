@@ -9,14 +9,10 @@ open Zzdatatype.Datatype
 type pctx = {
   eqctx : ECtx.ctx;
   gamma : RCtx.ctx;
-  actx : Alpha.tmp_under_ctx;
   check : RCtx.ctx -> prop -> bool;
 }
 
-let check_prop_valid { gamma; actx; check; _ } phi =
-  let actx = Alpha.choose_need actx @@ fv_prop phi in
-  let gamma = gamma @ Alpha.to_rctx actx in
-  check gamma phi
+let check_prop_valid { gamma; check; _ } phi = check gamma phi
 
 let cond_to_cond_prop eqconds =
   P.(smart_and (List.map (fun lit -> Lit lit) eqconds))
@@ -156,7 +152,6 @@ let reduction_drop_on_op pctx se regex : prop =
         let cond2 = aux topcond t2 in
         smart_and [ cond1; cond2 ]
     | StarA t -> aux topcond (LorA (LorA (EpsilonA, t), SeqA (t, t)))
-    | SigmaA _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux mk_true regex
 
@@ -187,7 +182,6 @@ let reduction_on_op pctx se regex (x, phi_k) =
         let* r2 = aux topcond t2 in
         Some (LandA (r1, r2))
     | StarA t -> aux topcond (LorA (LorA (EpsilonA, t), SeqA (t, t)))
-    | SigmaA _ -> _failatwith __FILE__ __LINE__ "die"
   in
   let _, res = reduction_none_on_op pctx mk_true se in
   match res with
@@ -316,20 +310,7 @@ let counter = ref 0
 
 let purify (eqctx : ECtx.ctx) (gamma : RCtx.ctx) check
     ({ x = regex; ty = nty } : regex Nt.typed) =
-  let () = Pp.printf "@{<bold>purify raw:@} %s\n" (layout_regex regex) in
-  let regex = Finalize.finalize regex in
-  let () =
-    Pp.printf "@{<bold>purify after finalize:@} %s\n" (layout_regex regex)
-  in
-  let regex = Retilize.retilize nty regex in
-  let () =
-    Pp.printf "@{<bold>purify after retilize:@} %s\n" (layout_regex regex)
-  in
-  let actx, regex = Alpha.alpha regex in
-  let () =
-    Pp.printf "@{<bold>purify after renaming:@} %s\n" (layout_regex regex)
-  in
-  let (regex : regex) = purify_aux { eqctx; gamma; actx; check } regex in
+  let (regex : regex) = purify_aux { eqctx; gamma; check } regex in
   let () =
     Pp.printf "@{<bold>purify after purify:@} %s\n" (layout_regex regex)
   in
@@ -341,56 +322,3 @@ let purify (eqctx : ECtx.ctx) (gamma : RCtx.ctx) check
   let () = Pp.printf "@{<bold>purify after simp:@} %s\n" (layout_regex regex) in
   (* let () = if !counter == 1 then failwith "end" else counter := !counter + 1 in *)
   (Alpha.to_rctx topl, regex)
-
-(* (\* NOTE: pretr has no sigma *\) *)
-(* let purify_se (eqctx : ECtx.ctx) (gamma : RCtx.ctx) (pre_regex: regex) se = *)
-(*   let rec aux regex prop se = *)
-(*     match regex with *)
-(*     | EpsilonA ->  *)
-(*     | SeqA (t1, t2) -> *)
-(*       aux (fun se -> (SeqA (t1, k se))) t2 *)
-(*     | SigmaA { localx; xA; body } -> *)
-(*       aux (fun se -> (SigmaA { localx; xA; body = k se })) body *)
-(*     | StarA _ -> _failatwith __FILE__ __LINE__ "star cannot be the last event" *)
-(*     | LorA (t1, t2) -> LorA (aux k t1, aux k t2) *)
-(*     | EpsilonA -> _failatwith __FILE__ __LINE__ "epsilon cannot be the last event" *)
-(*     | LandA (t1, t2) -> LandA (aux k t1, aux k t2) *)
-(*     | EventA se -> k se  *)
-(*   in *)
-(*   aux k regex *)
-
-(* (\* NOTE: box is a special regex variable which is not in the syntax *\) *)
-(* let box = EventA (EffEvent { op = "☐"; vs = []; phi = mk_true }) *)
-
-(* let regex_to_boxcont regex = *)
-(*   let rec aux regex = *)
-(*     match regex with *)
-(*     | SeqA (t1, t2) -> SeqA (t1, aux t2) *)
-(*     | SigmaA { localx; xA; body } -> *)
-(*       SigmaA { localx; xA; body = aux body } *)
-(*     | StarA _ -> SeqA (regex, box) *)
-(*     | LorA (t1, t2) -> LorA (aux t1, aux t2) *)
-(*     | EpsilonA -> _failatwith __FILE__ __LINE__ "die" *)
-(*     | LandA (_, _) -> _failatwith __FILE__ __LINE__ "conjunction will not happen before purify" *)
-(*     | EventA (GuardEvent _) -> SeqA (regex, box) *)
-(*     | EventA (RetEvent pty) -> *)
-(*       (match pty with *)
-(*        | TuplePty _ -> _failatwith __FILE__ __LINE__ "die" *)
-(*        | BasePty {ou = Over; _} -> _failatwith __FILE__ __LINE__ "die" *)
-(*        | ArrPty _ -> box *)
-(*        | BasePty {ou = Under; cty} ->  *)
-(*       ) *)
-(*     | EventA se -> EventA  *)
-(*   in *)
-(*   aux regex *)
-
-(* let purify_typectx (eqctx : ECtx.ctx) (k : regex_cont) (typectx : RCtx.ctx) : *)
-(*     RCtx.ctx * regex_cont = *)
-(*   let fold_aux (pure_typectx, k) x = *)
-(*     match x.ty with *)
-(*     | Pty _ -> (pure_typectx @ [ x ], k) *)
-(*     | Regty Nt.{ x = regex; ty = nty } -> *)
-(*         let x = Nt.( #: ) x.x nty in *)
-
-(*   in *)
-(*   RCtx.fold_left fold_aux (RCtx.empty, k) typectx *)

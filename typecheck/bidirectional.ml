@@ -54,17 +54,17 @@ let wellformedness_rty_bool typectx tau =
     false)
   else true
 
-let is_under_unit_top rty =
-  let open R in
-  match rty with
-  | Pty (BasePty { ou = Under; cty = { v; phi } }) -> (
-      match (v.Nt.ty, get_cbool phi) with
-      | Nt.Ty_unit, Some true -> true
-      | _, _ -> false)
-  | _ -> false
+(* let is_under_unit_top rty = *)
+(*   let open R in *)
+(*   match rty with *)
+(*   | Pty (BasePty { ou = Under; cty = { v; phi } }) -> ( *)
+(*       match (v.Nt.ty, get_cbool phi) with *)
+(*       | Nt.Ty_unit, Some true -> true *)
+(*       | _, _ -> false) *)
+(*   | _ -> false *)
 
-let simplify_bindings xs =
-  List.filter (fun x -> not (is_under_unit_top x.R.ty)) xs
+(* let simplify_bindings xs = *)
+(*   List.filter (fun x -> not (is_under_unit_top x.R.ty)) xs *)
 
 let typectx_new_to_right typectx (binding : string R.typed) =
   if wellformedness_rty_bool typectx binding.ty then

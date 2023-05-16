@@ -3,14 +3,14 @@
  (wrapped true)
  (libraries utils language core env ocolor normalization)
  (modules
-   aux
-   fexists
+   ; aux
+   ; fexists
    fmerge
    ; the aux function of regular expression
-   retilize
-   finalize
-   alpha
-   purify
+   ; retilize
+   ; finalize
+   ; alpha
+   ; purify
    simp
    auxtyping
 ))

@@ -27,9 +27,8 @@ let pprint_phi v (phi : P.prop) =
   | _ -> To_qualifier.layout phi
 
 let pprint_cty { v; phi } = spf "%s | %s" (pprint_id v) (pprint_phi v phi)
-
-let pprint_ou ou body =
-  match ou with Over -> spf "{%s}" body | Under -> spf "[%s]" body
+let pprint_parn body = spf "[%s]" body
+(* match ou with Over -> spf "{%s}" body | Under -> spf "[%s]" body *)
 
 let tpA str = spf "⦇%s⦈" str
 let tpEvent str = spf "⟨%s⟩" str
@@ -37,7 +36,7 @@ let layout_stropt = function None -> "" | Some x -> spf "%s:" x
 
 let rec pprint_pty rty =
   match rty with
-  | BasePty { ou; cty } -> pprint_ou ou (pprint_cty cty)
+  | BasePty { cty } -> pprint_parn (pprint_cty cty)
   | TuplePty ptys -> spf "(%s)" (List.split_by_comma pprint_pty ptys)
   | ArrPty { rarg; retrty } ->
       spf "%s%s→%s" (layout_stropt rarg.px) (pprint_pty rarg.pty)
@@ -65,8 +64,6 @@ and pprint_regex = function
   | LandA (a1, a2) -> spf "(%s && %s)" (pprint_regex a1) (pprint_regex a2)
   | SeqA (a1, a2) -> spf "%s%s" (pprint_regex a1) (pprint_regex a2)
   | StarA a -> spf "(%s)*" (pprint_regex a)
-  | SigmaA { localx; xA; body } ->
-      spf "Σ%s:%s.%s" localx.x (pprint_regex xA) (pprint_regex body)
 
 let get_denoteopt_from_attr a =
   match a with [ x ] -> Some x.attr_name.txt | _ -> None
@@ -77,13 +74,6 @@ let get_denote expr =
   match get_denoteopt expr with
   | Some x -> x
   | None -> _failatwith __FILE__ __LINE__ ""
-
-let get_ou expr =
-  match get_denoteopt expr with
-  | Some "over" -> Over
-  | Some "under" -> Under
-  | None -> Under
-  | _ -> _failatwith __FILE__ __LINE__ ""
 
 let get_opopt expr =
   match To_op.string_to_op (get_denote expr) with
@@ -121,9 +111,7 @@ let cty_of_ocamlexpr_aux expr =
 let rec pty_of_ocamlexpr_aux expr =
   let rec aux expr =
     match expr.pexp_desc with
-    | Pexp_constraint _ ->
-        let ou = get_ou expr in
-        BasePty { ou; cty = cty_of_ocamlexpr_aux expr }
+    | Pexp_constraint _ -> BasePty { cty = cty_of_ocamlexpr_aux expr }
     | Pexp_tuple es -> TuplePty (List.map aux es)
     | Pexp_fun (_, Some pty, px, body) ->
         let id = To_pat.patten_to_typed_ids px in
@@ -175,14 +163,6 @@ and regex_of_ocamlexpr_aux expr =
         else
           _failatwith __FILE__ __LINE__
             (spf "the automata var (%s) are disallowed" id)
-    | Pexp_let (_, [ vb ], body) ->
-        let id = To_pat.patten_to_typed_ids vb.pvb_pat in
-        let localx =
-          match id with
-          | [ { x; ty = Some ty } ] -> Nt.{ x; ty }
-          | _ -> failwith "rty_of_ocamlexpr_aux"
-        in
-        SigmaA { localx; xA = aux vb.pvb_expr; body = aux body }
     | Pexp_apply (func, args) -> (
         let f = To_expr.id_of_ocamlexpr func in
         let args = List.map snd args in

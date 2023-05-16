@@ -2,10 +2,8 @@ module F (L : Lit.T) = struct
   open Sexplib.Std
   include Cty.F (L)
 
-  type ou = Over | Under [@@deriving sexp]
-
   type pty =
-    | BasePty of { ou : ou; cty : cty }
+    | BasePty of { cty : cty }
     | TuplePty of pty list
     | ArrPty of { rarg : string option ptyped; retrty : rty }
 
@@ -23,7 +21,6 @@ module F (L : Lit.T) = struct
     | LandA of regex * regex
     | SeqA of regex * regex
     | StarA of regex
-    | SigmaA of { localx : string Nt.typed; xA : regex; body : regex }
 
   and 'a typed = { x : 'a; ty : rty }
   and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
@@ -54,19 +51,10 @@ module F (L : Lit.T) = struct
   let compare_pty l1 l2 = Sexplib.Sexp.compare (sexp_of_pty l1) (sexp_of_pty l2)
   let eq_pty l1 l2 = 0 == compare_pty l1 l2
 
-  let ou_eq a b =
-    match (a, b) with Over, Over | Under, Under -> true | _ -> false
+  let compare tau1 tau2 =
+    Sexplib.Sexp.compare (sexp_of_rty tau1) (sexp_of_rty tau2)
 
-  let ou_flip = function Over -> Under | Under -> Over
-
-  let pty_flip = function
-    | BasePty { ou; cty } -> BasePty { ou = ou_flip ou; cty }
-    | _ -> _failatwith __FILE__ __LINE__ "die"
-
-  let rty_flip = function
-    | Pty pty -> Pty (pty_flip pty)
-    | _ -> _failatwith __FILE__ __LINE__ "die"
-
+  let eq tau1 tau2 = 0 == compare tau1 tau2
   let ( #: ) x ty = { x; ty }
   let ( #:: ) px pty = { px; pty }
   let ( #-> ) f { x; ty } = { x = f x; ty }
@@ -77,7 +65,7 @@ module F (L : Lit.T) = struct
   let rec subst_pty (y, z) rty =
     let rec aux rty =
       match rty with
-      | BasePty { cty; ou } -> BasePty { cty = subst_cty (y, z) cty; ou }
+      | BasePty { cty } -> BasePty { cty = subst_cty (y, z) cty }
       | TuplePty ptys -> TuplePty (List.map aux ptys)
       | ArrPty { rarg; retrty } ->
           let rarg = rarg.px #:: (aux rarg.pty) in
@@ -104,12 +92,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
-      | SigmaA { localx; xA; body } ->
-          let xA = subst_regex (y, z) xA in
-          let body =
-            if String.equal y localx.x then body else subst_regex (y, z) body
-          in
-          SigmaA { localx; xA; body }
     in
     aux regex
 
@@ -160,10 +142,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> aux t1 @ aux t2
       | SeqA (t1, t2) -> aux t1 @ aux t2
       | StarA t -> aux t
-      | SigmaA { localx; xA; body } ->
-          fv_regex xA
-          @ List.filter (fun x -> String.equal x localx.x)
-          @@ fv_regex body
     in
     aux regex
 
@@ -244,11 +222,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
       | SeqA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
       | StarA t -> aux t (global_m, local_m)
-      | SigmaA _ -> _failatwith __FILE__ __LINE__ "die"
-      (* | SigmaA { localx; xA; body } -> ( *)
-      (*    match localx.x with *)
-      (*    | Some _ -> _failatwith __FILE__ __LINE__ "die" *)
-      (*    | None -> aux xA @@ aux body (global_m, local_m)) *)
     in
     aux regex ([], StrMap.empty)
 
@@ -264,7 +237,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> aux t1 @@ aux t2 res
       | SeqA (t1, t2) -> aux t1 @@ aux t2 res
       | StarA t -> aux t res
-      | SigmaA _ -> _failatwith __FILE__ __LINE__ "die"
     in
     List.slow_rm_dup eq_pty @@ aux regex []
 
@@ -272,7 +244,7 @@ module F (L : Lit.T) = struct
 
   let rec normalize_name_pty tau1 =
     match tau1 with
-    | BasePty { ou; cty } -> BasePty { ou; cty = normalize_name_cty cty }
+    | BasePty { cty } -> BasePty { cty = normalize_name_cty cty }
     | TuplePty tys -> TuplePty (List.map normalize_name_pty tys)
     | ArrPty { rarg; retrty } ->
         let rarg = rarg.px #:: (normalize_name_pty rarg.pty) in
@@ -302,8 +274,6 @@ module F (L : Lit.T) = struct
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
-      | SigmaA { localx; xA; body } ->
-          SigmaA { localx; xA = aux xA; body = aux body }
     in
     aux regex
 
@@ -350,18 +320,13 @@ module F (L : Lit.T) = struct
   (* | _, _ -> _failatwith __FILE__ __LINE__ "?" *)
 
   let mk_unit_under_pty_from_prop phi =
-    BasePty { ou = Under; cty = mk_unit_cty_from_prop phi }
+    BasePty { cty = mk_unit_cty_from_prop phi }
 
   let mk_unit_under_rty_from_prop phi = Pty (mk_unit_under_pty_from_prop phi)
   let default_ty = mk_unit_under_rty_from_prop mk_true
   let mk_noty x = { x; ty = default_ty }
   let xmap f { x; ty } = { x = f x; ty }
   let is_base_pty = function BasePty _ -> true | _ -> false
-  let is_overbase_pty = function BasePty { ou = Over; _ } -> true | _ -> false
-
-  let is_underbase_pty = function
-    | BasePty { ou = Under; _ } -> true
-    | _ -> false
 
   (* regular expression *)
 
@@ -369,12 +334,10 @@ module F (L : Lit.T) = struct
     let rec aux regex =
       match regex with
       | EpsilonA | EventA _ -> regex
-      | SigmaA _ -> regex
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t2, aux t1)
       | StarA t -> StarA (aux t)
-      (* NOTE: the revesing is delimited -- not act on the body of sigma *)
     in
     aux regex
 
@@ -392,7 +355,7 @@ module F (L : Lit.T) = struct
         let retrty = Pty (mk_bot_pty t2) in
         ArrPty { rarg = { px; pty }; retrty }
     | Nt.Ty_tuple tys -> TuplePty (List.map mk_bot_pty tys)
-    | _ -> BasePty { ou = Under; cty = mk_bot_cty t }
+    | _ -> BasePty { cty = mk_bot_cty t }
 
   and mk_top_pty t =
     match t with
@@ -406,10 +369,7 @@ module F (L : Lit.T) = struct
         let retrty = Pty (mk_top_pty t2) in
         ArrPty { rarg = { px; pty }; retrty }
     | Nt.Ty_tuple tys -> TuplePty (List.map mk_top_pty tys)
-    | _ -> BasePty { ou = Under; cty = mk_top_cty t }
-
-  let eq tau1 tau2 =
-    0 == Sexplib.Sexp.compare (sexp_of_rty tau1) (sexp_of_rty tau2)
+    | _ -> BasePty { cty = mk_top_cty t }
 
   let is_arr_pty = function ArrPty _ -> true | _ -> false
 
@@ -449,7 +409,7 @@ module F (L : Lit.T) = struct
   let mk_tuple _ = _failatwith __FILE__ __LINE__ "unimp"
   let mk_arr _ = _failatwith __FILE__ __LINE__ "unimp"
   let int_ty = default_ty
-  let unit_pty = BasePty { ou = Under; cty = mk_unit_cty_from_prop mk_true }
+  let unit_pty = BasePty { cty = mk_unit_cty_from_prop mk_true }
   let unit_ty = Pty unit_pty
   let to_smtty _ = _failatwith __FILE__ __LINE__ "unimp"
   let sexp_of_t _ = _failatwith __FILE__ __LINE__ "unimp"

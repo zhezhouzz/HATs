@@ -1,10 +1,6 @@
 open Syntax
 module Raw = RtyRaw
 open Rty
-
-let force_ou = function Raw.Over -> Over | Raw.Under -> Under
-let besome_ou = function Over -> Raw.Over | Under -> Raw.Under
-
 open Coersion_qualifier
 (* open Coersion_lit *)
 
@@ -13,7 +9,7 @@ let besome_cty { v; phi } = Raw.{ v; phi = besome_qualifier phi }
 
 let rec force_pty pty =
   match pty with
-  | Raw.BasePty { ou; cty } -> BasePty { ou = force_ou ou; cty = force_cty cty }
+  | Raw.BasePty { cty } -> BasePty { cty = force_cty cty }
   | Raw.TuplePty ptys -> TuplePty (List.map force_pty ptys)
   | Raw.ArrPty { rarg; retrty } ->
       let Raw.{ px; pty } = rarg in
@@ -40,15 +36,12 @@ and force_regex regex =
     | Raw.LandA (t1, t2) -> LandA (aux t1, aux t2)
     | Raw.SeqA (t1, t2) -> SeqA (aux t1, aux t2)
     | Raw.StarA t -> StarA (aux t)
-    | Raw.SigmaA { localx; xA; body } ->
-        SigmaA { localx; xA = aux xA; body = aux body }
   in
   aux regex
 
 let rec besome_pty pty =
   match pty with
-  | BasePty { ou; cty } ->
-      Raw.BasePty { ou = besome_ou ou; cty = besome_cty cty }
+  | BasePty { cty } -> Raw.BasePty { cty = besome_cty cty }
   | TuplePty ptys -> Raw.TuplePty (List.map besome_pty ptys)
   | ArrPty { rarg; retrty } ->
       let { px; pty } = rarg in
@@ -75,7 +68,5 @@ and besome_regex regex =
     | LandA (t1, t2) -> Raw.LandA (aux t1, aux t2)
     | SeqA (t1, t2) -> Raw.SeqA (aux t1, aux t2)
     | StarA t -> Raw.StarA (aux t)
-    | SigmaA { localx; xA; body } ->
-        Raw.SigmaA { localx; xA = aux xA; body = aux body }
   in
   aux regex

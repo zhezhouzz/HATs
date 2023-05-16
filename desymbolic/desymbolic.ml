@@ -71,23 +71,9 @@ let model_verify_bool sub_pty_bool (global_m, local_m) =
       (*   Printf.printf "neg_set: %s\n" *)
       (*   @@ List.split_by_comma Rty.layout_pty neg_set *)
       (* in *)
-      let lhs_pty, rhs_pty =
-        match (pos_set, neg_set) with
-        (* NOTE: when pos_set (neg_set) is empty, it is equal to the top (bottom) element in the subtyping lattice *)
-        (* TODO: It is a nice feature that is consistent with the normal logic, why not move it into the conj/conj of types? *)
-        | [], _ ->
-            let lhs_pty = Auxtyping.conj_ptys neg_set in
-            let rhs_pty = Rty.(mk_top_pty @@ erase_pty lhs_pty) in
-            (lhs_pty, rhs_pty)
-        | _, [] ->
-            let rhs_pty = Auxtyping.conj_ptys pos_set in
-            let lhs_pty = Rty.(mk_bot_pty @@ erase_pty rhs_pty) in
-            (lhs_pty, rhs_pty)
-        | _, _ ->
-            let lhs_pty = Auxtyping.disj_ptys neg_set in
-            let rhs_pty = Auxtyping.conj_ptys pos_set in
-            (lhs_pty, rhs_pty)
-      in
+      let nty = ptytab_get_nty local_m in
+      let lhs_pty = Auxtyping.common_sup_ptys nty neg_set in
+      let rhs_pty = Auxtyping.common_sub_ptys nty pos_set in
       (* let () = *)
       (*   Pp.printf "%s |- %s <: @{<bold>%s@}\n" *)
       (*     (Rty.layout_typed (fun x -> x) binding) *)
@@ -201,6 +187,5 @@ let desymbolic ctx mts regex =
     | StarA t ->
         let* r = aux t in
         Some (NRegex.Star r)
-    | SigmaA _ -> _failatwith __FILE__ __LINE__ "die"
   in
   match aux regex with None -> NRegex.Epslion | Some r -> r
