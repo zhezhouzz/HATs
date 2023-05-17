@@ -1,6 +1,7 @@
 include Head
 open Zzdatatype.Datatype
 open Language
+module Rty = PCtxType
 open Rty.P
 open Sugar
 
@@ -24,7 +25,7 @@ let display_trace rctx ctx mt_list =
       in
       let () = Printf.printf "Gamma:\n" in
       let () =
-        Printf.printf "%s\n" @@ RTypectx.layout_typed_l (fun x -> x) rctx
+        Printf.printf "%s\n" @@ PTypectx.layout_typed_l (fun x -> x) rctx
       in
       let () = Printf.printf "Global:\n" in
       let () = pprint_bool_tab global_m in
@@ -45,16 +46,16 @@ let model_verify_bool sub_pty_bool (global_m, local_m) =
   match local_m with
   | EmptyTab | LitTab _ ->
       let m = merge_global_to_local global_m local_m in
-      let rhs_pty = Rty.mk_unit_under_pty_from_prop @@ tab_to_prop m in
-      let lhs_pty = Rty.mk_unit_under_pty_from_prop mk_false in
+      let rhs_pty = Rty.mk_unit_pty_from_prop @@ tab_to_prop m in
+      let lhs_pty = Rty.mk_unit_pty_from_prop mk_false in
       (* let () = *)
       (*   Pp.printf "%s <: @{<bold>%s@}\n" (Rty.layout_pty lhs_pty) *)
       (*     (Rty.layout_pty rhs_pty) *)
       (* in *)
       not (sub_pty_bool [] (lhs_pty, rhs_pty))
   | PtyTab local_m ->
-      let ctxurty = Rty.mk_unit_under_rty_from_prop @@ tab_to_prop global_m in
-      let binding = Rty.((Rename.unique "a") #: ctxurty) in
+      let ctxurty = Rty.mk_unit_pty_from_prop @@ tab_to_prop global_m in
+      let binding = Rty.{ x = Rename.unique "a"; ty = ctxurty } in
       let pos_set =
         List.filter_map (fun (k, v) -> if v then Some k else None)
         @@ List.of_seq @@ PtyMap.to_seq local_m

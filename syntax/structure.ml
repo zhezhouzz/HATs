@@ -11,7 +11,7 @@ module F (L : Lit.T) = struct
     | Type_dec of Type_dec.t
     | Func_dec of string Normalty.Ntyped.typed
     | FuncImp of { name : string; if_rec : bool; body : term typed }
-    | Rty of { name : string; kind : rty_kind; rty : R.t }
+    | Rty of { name : string; kind : rty_kind; rty : R.rty }
 
   type structure = entry list
 
@@ -22,10 +22,8 @@ module F (L : Lit.T) = struct
     | EquationEntry _ -> []
     | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
-        match kind with
-        | RtyLib -> [ Normalty.Ntyped.(name #: (R.erase rty)) ]
-        | RtyToCheck -> [])
-    | Func_dec x -> [ x ]
+        match kind with RtyLib -> [ (name, R.erase rty) ] | RtyToCheck -> [])
+    | Func_dec x -> [ (x.x, x.ty) ]
     | Type_dec _ -> []
 
   let mk_normal_top_opctx_ = function
@@ -33,7 +31,8 @@ module F (L : Lit.T) = struct
     | FuncImp _ -> []
     | Rty _ -> []
     | Func_dec _ -> []
-    | Type_dec d -> Type_dec.mk_ctx_ d
+    | Type_dec d ->
+        List.map (fun R.Nt.{ x; ty } -> (x, ty)) @@ Type_dec.mk_ctx_ d
 
   let mk_normal_top_ctx es = List.concat @@ List.map mk_normal_top_ctx_ es
   let mk_normal_top_opctx es = List.concat @@ List.map mk_normal_top_opctx_ es

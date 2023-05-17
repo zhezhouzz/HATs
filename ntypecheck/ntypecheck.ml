@@ -4,7 +4,8 @@ open StructureRaw
 open Coersion
 open Rtycheck
 
-let opt_to_typed_rty opctx ctx rty : Rty.t = force_rty (rty_check opctx ctx rty)
+let opt_to_typed_rty opctx ctx rty : Rty.rty =
+  force_rty (rty_check opctx ctx rty)
 
 let opt_to_typed_pty opctx ctx rty : Rty.pty =
   force_pty (pty_check opctx ctx rty)
@@ -37,7 +38,7 @@ let struc_infer_one opctx ctx x if_rec body =
   in
   res
 
-let opt_to_typed_structure (opctx : Op.t TypedCoreEff.typed list) ctx l =
+let opt_to_typed_structure opctx ctx l =
   let () = NTypectx.pretty_print_lines ctx in
   let () = NOpTypectx.pretty_print_lines opctx in
   let l = map_imps (struc_infer_one opctx ctx) l in

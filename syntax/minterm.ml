@@ -25,11 +25,13 @@ module T = struct
   let mts_fold_on_op op f (i_s_il : mts) res =
     IntMap.fold
       (fun global_embedding s_il res ->
-        let il = StrMap.find "mts_fold_on_op" s_il op in
-        List.fold_right
-          (fun local_embedding res ->
-            f { global_embedding; op; local_embedding } res)
-          il res)
+        match StrMap.find_opt s_il op with
+        | None -> res
+        | Some il ->
+            List.fold_right
+              (fun local_embedding res ->
+                f { global_embedding; op; local_embedding } res)
+              il res)
       i_s_il res
 
   let mts_map f (i_s_il : mts) =

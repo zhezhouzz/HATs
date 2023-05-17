@@ -11,7 +11,7 @@ let cty_check opctx ctx { v; phi } =
   let phi = type_check_qualifier opctx ctx' phi in
   { v; phi }
 
-let rec rty_check opctx ctx (rty : t) : t =
+let rec rty_check opctx ctx (rty : rty) : rty =
   match rty with
   | Pty pty -> Pty (pty_check opctx ctx pty)
   | Regty regex -> Regty Nt.((regex_check opctx ctx regex.ty) #-> regex)
@@ -28,7 +28,7 @@ and pty_check opctx ctx (rty : pty) : pty =
           | None ->
               _assert __FILE__ __LINE__
                 (spf "syntax error: argument type %s" (To_rty.layout_pty rty))
-              @@ is_arr_pty rarg.pty
+              @@ (is_arr_pty rarg.pty || is_base_pty rarg.pty)
           | Some _ ->
               _assert __FILE__ __LINE__ "syntax error: argument type"
               @@ is_base_pty rarg.pty

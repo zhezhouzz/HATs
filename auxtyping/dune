@@ -11,6 +11,8 @@
    ; finalize
    ; alpha
    ; purify
+   branching
+   concat
    simp
    auxtyping
 ))

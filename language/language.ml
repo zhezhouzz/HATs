@@ -1,16 +1,21 @@
 include Syntax
 
 module NTypectx = struct
-  include Typectx.FString (Nt)
   include Nt
+  include Typectx.FString (Nt)
+
+  let new_to_right ctx Nt.{ x; ty } = new_to_right ctx (x, ty)
+
+  let new_to_rights ctx l =
+    let l = List.map (fun Nt.{ x; ty } -> (x, ty)) l in
+    new_to_rights ctx l
 end
 
 module NOpTypectx = struct
-  include Typectx.FOp (Nt)
   include Nt
+  include Typectx.FOp (Nt)
 
-  let to_builtin (ctx : string Nt.typed list) =
-    List.map (fun { x; ty } -> (Op.BuiltinOp x) #: ty) ctx
+  let to_builtin ctx : ctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) ctx
 end
 
 module StructureRaw = struct
@@ -41,10 +46,10 @@ module Rty = struct
 
   open Sugar
 
-  let layout_typed f { x; ty } = spf "%s: %s" (f x) (layout ty)
+  (* let layout_typed f { x; ty } = spf "%s: %s" (f x) (layout ty) *)
 
-  let layout_typed_l f l =
-    Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l
+  (* let layout_typed_l f l = *)
+  (*   Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l *)
 
   let mk_lit_var_eq_lit v c =
     let open L in
@@ -75,18 +80,116 @@ module Rty = struct
     | _ -> _failatwith __FILE__ __LINE__ "die"
 end
 
+module PCtxType = struct
+  include Rty
+
+  type t = pty
+  type 'a typed = { x : 'a; ty : pty }
+
+  (* open Sugar *)
+
+  let ( #: ) x ty = { x; ty }
+  let ( #-> ) f { x; ty } = { x = f x; ty }
+  let layout = layout_pty
+end
+
+module RCtxType = struct
+  include Rty
+
+  type t = rty
+  type 'a typed = { x : 'a; ty : rty }
+
+  (* open Sugar *)
+
+  let ( #: ) x ty = { x; ty }
+  let ( #-> ) f { x; ty } = { x = f x; ty }
+  let layout = layout_rty
+  (* let layout_typed f { x; ty } = spf "%s:%s" (f x) (layout ty) *)
+
+  (* let layout_typed_l f l = *)
+  (*   Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l *)
+end
+
 module Structure = struct
   open Coersion
   include Structure
+  module R = RCtxType
 
   let layout_term x = StructureRaw.layout_term @@ besome_typed_term x
   let layout_entry x = StructureRaw.layout_entry @@ besome_entry x
   let layout_structure x = StructureRaw.layout_structure @@ besome_structure x
 end
 
+module POpTypectx = struct
+  include PCtxType
+  include Typectx.FOp (PCtxType)
+
+  let to_nctx rctx =
+    List.map (fun { x; ty } -> Nt.{ x; ty = erase_pty ty }) rctx
+end
+
+module PTypectx = struct
+  include PCtxType
+  include Typectx.FString (PCtxType)
+
+  let new_to_right ctx PCtxType.{ x; ty } = new_to_right ctx (x, ty)
+
+  let new_to_rights ctx l =
+    let l = List.map (fun PCtxType.{ x; ty } -> (x, ty)) l in
+    new_to_rights ctx l
+
+  let filter_map_rty f code =
+    List.filter_map
+      (fun code ->
+        let open Structure in
+        match code with
+        | EquationEntry _ | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        | Rty { name; kind; rty } -> f (name, kind, rty_force_pty rty))
+      code
+
+  let from_code code =
+    from_kv_list
+    @@ filter_map_rty
+         (fun (name, kind, rty) ->
+           let open Structure in
+           match kind with RtyLib -> Some (name, rty) | RtyToCheck -> None)
+         code
+
+  (* let get_task code = *)
+  (*   filter_map_rty *)
+  (*     (fun (name, kind, rty) -> *)
+  (*       let open Structure in *)
+  (*       match kind with RtyLib -> None | RtyToCheck -> Some (name, rty)) *)
+  (*     code *)
+
+  let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) rctx
+
+  let op_and_rctx_from_code code =
+    let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in
+    let rctx = from_code code in
+    let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l (fun x -> x) rctx) in
+    let opctx, rctx =
+      List.partition
+        (fun (x, _) -> NOpTypectx.exists opctx (Op.BuiltinOp x))
+        rctx
+    in
+    let opctx = to_opctx opctx in
+    (* let () = *)
+    (*   Pp.printf "@{<bold>Op:@} %s\n" *)
+    (*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *)
+    (* in *)
+    (opctx, rctx)
+end
+
 module RTypectx = struct
-  include Typectx.FString (Rty)
-  include Rty
+  include RCtxType
+  include Typectx.FString (RCtxType)
+
+  let new_to_right ctx RCtxType.{ x; ty } = new_to_right ctx (x, ty)
+
+  let new_to_rights ctx l =
+    let l = List.map (fun RCtxType.{ x; ty } -> (x, ty)) l in
+    new_to_rights ctx l
 
   let filter_map_rty f code =
     List.filter_map
@@ -97,12 +200,13 @@ module RTypectx = struct
         | Rty { name; kind; rty } -> f (name, kind, rty))
       code
 
-  let from_code code =
-    filter_map_rty
-      (fun (name, kind, rty) ->
-        let open Structure in
-        match kind with RtyLib -> Some R.(name #: rty) | RtyToCheck -> None)
-      code
+  (* let from_code code = *)
+  (*   from_kv_list *)
+  (*   @@ filter_map_rty *)
+  (*        (fun (name, kind, rty) -> *)
+  (*          let open Structure in *)
+  (*          match kind with RtyLib -> Some (name, rty) | RtyToCheck -> None) *)
+  (*        code *)
 
   let get_task code =
     filter_map_rty
@@ -111,29 +215,26 @@ module RTypectx = struct
         match kind with RtyLib -> None | RtyToCheck -> Some (name, rty))
       code
 
-  let op_and_rctx_from_code code =
-    let opctx = Structure.mk_normal_top_opctx code in
-    let rctx = from_code code in
-    let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l (fun x -> x) rctx) in
-    let opctx, rctx =
-      List.partition
-        (fun { x; _ } -> NOpTypectx.exists opctx (Op.BuiltinOp x))
-        rctx
-    in
-    let opctx = List.map (fun x -> (fun x -> Op.BuiltinOp x) #-> x) opctx in
-    (* let () = *)
-    (*   Pp.printf "@{<bold>Op:@} %s\n" *)
-    (*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *)
-    (* in *)
-    (opctx, rctx)
-end
-
-module ROpTypectx = struct
-  include Typectx.FOp (Rty)
-  include Rty
-
-  let from_rctx rctx = List.map (fun x -> (fun x -> Op.BuiltinOp x) #-> x) rctx
-  let to_nctx rctx = List.map (fun { x; ty } -> Nt.{ x; ty = erase ty }) rctx
+  (* let op_and_rctx_from_code code = *)
+  (*   let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in *)
+  (*   let rctx = from_code code in *)
+  (*   let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l (fun x -> x) rctx) in *)
+  (*   let opctx, rctx = *)
+  (*     List.partition *)
+  (*       (fun { x; _ } -> NOpTypectx.exists opctx (Op.BuiltinOp x)) *)
+  (*       rctx *)
+  (*   in *)
+  (*   let opctx = *)
+  (*     List.map *)
+  (*       (fun { x; ty } -> *)
+  (*         POpTypectx.{ x = Op.BuiltinOp x; ty = rty_force_pty ty }) *)
+  (*       opctx *)
+  (*   in *)
+  (*   (\* let () = *\) *)
+  (*   (\*   Pp.printf "@{<bold>Op:@} %s\n" *\) *)
+  (*   (\*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *\) *)
+  (*   (\* in *\) *)
+  (*   (opctx, rctx) *)
 end
 
 (* module RTypedTermlang = struct *)
@@ -203,8 +304,4 @@ module Eqctx = struct
   (*     let open Structure in *)
   (*     match kind with RtyLib -> Some R.(name #: rty) | RtyToCheck -> None) *)
   (*   code *)
-end
-
-module RTypedCoreEff = struct
-  include Corelang.F (Rty)
 end

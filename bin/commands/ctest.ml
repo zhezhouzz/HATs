@@ -17,7 +17,7 @@ let init_builtinctx () =
   (* in *)
   (* let () = failwith "end" in *)
   let code = Ntypecheck.opt_to_typed_structure topnopctx [] code in
-  let oprctx = ROpTypectx.from_rctx @@ RTypectx.from_code code in
+  let oprctx = PTypectx.to_opctx @@ PTypectx.from_code code in
   (oprctx, topnopctx)
 
 let print_source_code_ meta_config_file source_file =

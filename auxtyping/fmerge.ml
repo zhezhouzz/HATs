@@ -64,7 +64,7 @@ let multi_merge (f : 'a * 'a -> 'a) (default : unit -> 'a) (l : 'a list) : 'a =
   | [] -> default ()
   | rty :: rest -> List.fold_left (fun tau tau' -> f (tau, tau')) rty rest
 
-let common_sub_rtys rtys : t =
+let common_sub_rtys rtys : rty =
   let () =
     Pp.printf "@{<bold>Disjunction:@}%s\n" (List.split_by ", " layout rtys)
   in

@@ -22,11 +22,10 @@ module F (L : Lit.T) = struct
     | SeqA of regex * regex
     | StarA of regex
 
-  and 'a typed = { x : 'a; ty : rty }
   and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
 
-  type t = rty
-  type 'a rtyped = 'a typed
+  (* type t = pty *)
+  type 'a rtyped = { rx : 'a; rty : rty }
 
   open Sugar
 
@@ -48,6 +47,19 @@ module F (L : Lit.T) = struct
     | GuardEvent _ -> _failatwith __FILE__ __LINE__ "die"
     | EffEvent { op; vs; phi } -> (op, vs, phi)
 
+  let pty_destruct_arr = function
+    | ArrPty { rarg; retrty } -> (rarg, retrty)
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  let rty_force_pty = function
+    | Pty pty -> pty
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  let pty_force_cty = function
+    | BasePty { cty } -> cty
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  let rty_force_cty rty = rty |> rty_force_pty |> pty_force_cty
   let compare_pty l1 l2 = Sexplib.Sexp.compare (sexp_of_pty l1) (sexp_of_pty l2)
   let eq_pty l1 l2 = 0 == compare_pty l1 l2
 
@@ -55,9 +67,7 @@ module F (L : Lit.T) = struct
     Sexplib.Sexp.compare (sexp_of_rty tau1) (sexp_of_rty tau2)
 
   let eq tau1 tau2 = 0 == compare tau1 tau2
-  let ( #: ) x ty = { x; ty }
   let ( #:: ) px pty = { px; pty }
-  let ( #-> ) f { x; ty } = { x = f x; ty }
   let ( #--> ) f { px; pty } = { px = f px; pty }
 
   (* subst *)
@@ -164,81 +174,118 @@ module F (L : Lit.T) = struct
   let ptyped_opt_erase { px; pty } =
     match px with None -> None | Some x -> Some Nt.{ x; ty = erase_pty pty }
 
-  let typed_erase { x; ty } = Nt.{ x; ty = erase ty }
+  let ptyped_erase { px; pty } = Nt.{ x = px; ty = erase_pty pty }
 
   let pty_to_ret_rty pty =
     Regty Nt.{ x = EventA (RetEvent pty); ty = erase_pty pty }
 
-  let typed_force_to_ptyped file line { x; ty } =
-    match ty with
-    | Pty pty -> { px = x; pty }
+  let rtyped_force_to_ptyped file line { rx; rty } =
+    match rty with
+    | Pty pty -> { px = rx; pty }
     | _ -> _failatwith file line "die"
 
   (* gather lits/rtys *)
 
   open Zzdatatype.Datatype
 
-  let get_lits_from_sevent sevent =
+  type gathered_lits = {
+    global_lits : lit list;
+    global_pty : pty list;
+    local_lits : lit list StrMap.t;
+  }
+
+  let gathered_lits_init () =
+    { global_lits = []; global_pty = []; local_lits = StrMap.empty }
+
+  let gather_from_sevent { global_lits; global_pty; local_lits } sevent =
     match sevent with
     | GuardEvent phi ->
-        let global_lits = P.get_lits phi in
-        Some (guard_name, global_lits, [])
-    | RetEvent _ -> None
-    | EffEvent { op; phi; vs } ->
-        let vs = List.map (fun x -> x.Nt.x) vs in
-        let is_contain_local_free lit =
-          match List.interset ( == ) vs @@ P.fv_lit lit with
-          | [] -> false
-          | _ -> true
-        in
+        { global_lits = P.get_lits phi @ global_lits; global_pty; local_lits }
+    | RetEvent pty ->
+        { global_lits; global_pty = pty :: global_pty; local_lits }
+    | EffEvent { op; phi; _ } ->
         let lits = P.get_lits phi in
-        let local_lits, global_lits =
-          List.partition is_contain_local_free lits
+        let local_lits =
+          StrMap.update op
+            (fun l ->
+              match l with None -> Some lits | Some l -> Some (l @ lits))
+            local_lits
         in
-        Some (op, global_lits, local_lits)
+        { global_lits; global_pty; local_lits }
 
-  let get_lits_from_regex regex =
-    let update_local m (op, lits) =
-      StrMap.update op
-        (fun lits' ->
-          match lits' with
-          | None -> Some lits
-          | Some lits' -> Some (List.slow_rm_dup P.eq_lit (lits @ lits')))
-        m
-    in
-    let update_global m lits = List.slow_rm_dup P.eq_lit (lits @ m) in
-    let rec aux regex (global_m, local_m) =
+  let gather_from_regex regex =
+    let rec aux regex m =
       match regex with
-      | EpsilonA -> (global_m, local_m)
-      | EventA se -> (
-          match get_lits_from_sevent se with
-          | None -> (global_m, local_m)
-          | Some (op, global_lits, _) when String.equal op guard_name ->
-              (update_global global_m global_lits, local_m)
-          | Some (op, global_lits, local_lits) ->
-              ( update_global global_m global_lits,
-                update_local local_m (op, local_lits) ))
-      | LorA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
-      | LandA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
-      | SeqA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m)
-      | StarA t -> aux t (global_m, local_m)
+      | EpsilonA -> m
+      | EventA se -> gather_from_sevent m se
+      | LorA (t1, t2) -> aux t1 @@ aux t2 m
+      | LandA (t1, t2) -> aux t1 @@ aux t2 m
+      | SeqA (t1, t2) -> aux t1 @@ aux t2 m
+      | StarA t -> aux t m
     in
-    aux regex ([], StrMap.empty)
+    aux regex (gathered_lits_init ())
 
-  let get_ptys_from_sevent sevent =
-    match sevent with RetEvent pty -> [ pty ] | _ -> []
+  (* let get_lits_from_sevent sevent = *)
+  (*   match sevent with *)
+  (*   | GuardEvent phi -> *)
+  (*       let global_lits = P.get_lits phi in *)
+  (*       Some (guard_name, global_lits, []) *)
+  (*   | RetEvent _ -> None *)
+  (*   | EffEvent { op; phi; vs } -> *)
+  (*       let vs = List.map (fun x -> x.Nt.x) vs in *)
+  (*       let is_contain_local_free lit = *)
+  (*         match List.interset ( == ) vs @@ P.fv_lit lit with *)
+  (*         | [] -> false *)
+  (*         | _ -> true *)
+  (*       in *)
+  (*       let lits = P.get_lits phi in *)
+  (*       let local_lits, global_lits = *)
+  (*         List.partition is_contain_local_free lits *)
+  (*       in *)
+  (*       Some (op, global_lits, local_lits) *)
 
-  let get_ptys_from_regex regex =
-    let rec aux regex res =
-      match regex with
-      | EpsilonA -> res
-      | EventA se -> res @ get_ptys_from_sevent se
-      | LorA (t1, t2) -> aux t1 @@ aux t2 res
-      | LandA (t1, t2) -> aux t1 @@ aux t2 res
-      | SeqA (t1, t2) -> aux t1 @@ aux t2 res
-      | StarA t -> aux t res
-    in
-    List.slow_rm_dup eq_pty @@ aux regex []
+  (* let get_lits_from_regex regex = *)
+  (*   let update_local m (op, lits) = *)
+  (*     StrMap.update op *)
+  (*       (fun lits' -> *)
+  (*         match lits' with *)
+  (*         | None -> Some lits *)
+  (*         | Some lits' -> Some (List.slow_rm_dup P.eq_lit (lits @ lits'))) *)
+  (*       m *)
+  (*   in *)
+  (*   let update_global m lits = List.slow_rm_dup P.eq_lit (lits @ m) in *)
+  (*   let rec aux regex (global_m, local_m) = *)
+  (*     match regex with *)
+  (*     | EpsilonA -> (global_m, local_m) *)
+  (*     | EventA se -> ( *)
+  (*         match get_lits_from_sevent se with *)
+  (*         | None -> (global_m, local_m) *)
+  (*         | Some (op, global_lits, _) when String.equal op guard_name -> *)
+  (*             (update_global global_m global_lits, local_m) *)
+  (*         | Some (op, global_lits, local_lits) -> *)
+  (*             ( update_global global_m global_lits, *)
+  (*               update_local local_m (op, local_lits) )) *)
+  (*     | LorA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m) *)
+  (*     | LandA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m) *)
+  (*     | SeqA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m) *)
+  (*     | StarA t -> aux t (global_m, local_m) *)
+  (*   in *)
+  (*   aux regex ([], StrMap.empty) *)
+
+  (* let get_ptys_from_sevent sevent = *)
+  (*   match sevent with RetEvent pty -> [ pty ] | _ -> [] *)
+
+  (* let get_ptys_from_regex regex = *)
+  (*   let rec aux regex res = *)
+  (*     match regex with *)
+  (*     | EpsilonA -> res *)
+  (*     | EventA se -> res @ get_ptys_from_sevent se *)
+  (*     | LorA (t1, t2) -> aux t1 @@ aux t2 res *)
+  (*     | LandA (t1, t2) -> aux t1 @@ aux t2 res *)
+  (*     | SeqA (t1, t2) -> aux t1 @@ aux t2 res *)
+  (*     | StarA t -> aux t res *)
+  (*   in *)
+  (*   List.slow_rm_dup eq_pty @@ aux regex [] *)
 
   (* normalize name *)
 
@@ -319,12 +366,9 @@ module F (L : Lit.T) = struct
     | Regty _, Pty tau2 -> unify_name_rty (tau1, pty_to_ret_rty tau2)
   (* | _, _ -> _failatwith __FILE__ __LINE__ "?" *)
 
-  let mk_unit_under_pty_from_prop phi =
-    BasePty { cty = mk_unit_cty_from_prop phi }
-
-  let mk_unit_under_rty_from_prop phi = Pty (mk_unit_under_pty_from_prop phi)
-  let default_ty = mk_unit_under_rty_from_prop mk_true
-  let mk_noty x = { x; ty = default_ty }
+  let mk_unit_pty_from_prop phi = BasePty { cty = mk_unit_cty_from_prop phi }
+  let mk_unit_rty_from_prop phi = Pty (mk_unit_pty_from_prop phi)
+  let default_ty = mk_unit_rty_from_prop mk_true
   let xmap f { x; ty } = { x = f x; ty }
   let is_base_pty = function BasePty _ -> true | _ -> false
 

@@ -148,11 +148,10 @@ let ptylist_to_tab l =
 open Rty
 
 let make_tab regex =
-  let global_lits, local_lits_map = get_lits_from_regex regex in
+  let { global_lits; global_pty; local_lits } = gather_from_regex regex in
   let global_tab = litlist_to_tab global_lits in
-  let local_lits_map = StrMap.map litlist_to_tab local_lits_map in
-  let ptys = get_ptys_from_regex regex in
-  let ret_enrty = ptylist_to_tab ptys in
+  let local_lits_map = StrMap.map litlist_to_tab local_lits in
+  let ret_enrty = ptylist_to_tab global_pty in
   let local_tab = StrMap.add ret_name ret_enrty local_lits_map in
   { global_tab; local_tab }
 

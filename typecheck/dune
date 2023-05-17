@@ -3,6 +3,7 @@
  (wrapped true)
  (libraries utils language core env auxtyping subtyping normalization)
  (modules
+   baux
    bidirectional
    typecheck
 ))

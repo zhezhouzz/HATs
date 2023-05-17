@@ -1,13 +1,11 @@
 module type CtxType = sig
   type t
-  type 'a typed = { x : 'a; ty : t }
 
   (* val mk_noty : 'a -> 'a typed *)
   (* val ( #: ) : 'a -> t -> 'a typed *)
 
   (* val ( #-> ) : ('a -> 'b) -> 'a typed -> 'b typed *)
   val layout : t -> string
-  val layout_typed : ('a -> string) -> 'a typed -> string
   (* val layout_typed_l : ('a -> string) -> 'a typed list -> string *)
 
   (* val is_basic_tp : t -> bool *)
@@ -48,16 +46,27 @@ module F (I : CtxId) (Ty : CtxType) = struct
   open Sugar
   open Ty
 
-  type ctx = I.ctxid typed list
+  type binding = I.ctxid * t
+  type ctx = binding list
 
+  let last_destruct_opt pctx =
+    let* l, (x, ty) = List.last_destruct_opt pctx in
+    Some (l, (x, ty))
+
+  let layout_typed f (x, ty) = spf "%s:%s" (f x) (layout ty)
+
+  let layout_typed_l f l =
+    Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l
+
+  let from_kv_list l = l
   let empty = []
-  let exists ctx name = List.exists (fun x -> I.equal x.x name) ctx
-  let get_opctx ctx = List.filter (fun x -> Op.id_is_dt x.x) ctx
+  let exists ctx name = List.exists (fun (x, _) -> I.equal x name) ctx
+  (* let get_opctx ctx = List.filter (fun x -> Op.id_is_dt x.x) ctx *)
 
   let get_ty_opt (ctx : ctx) id : t option =
-    match List.find_opt (fun x -> I.equal id x.x) ctx with
+    match List.find_opt (fun (x, _) -> I.equal id x) ctx with
     | None -> None
-    | Some x -> Some x.ty
+    | Some (_, ty) -> Some ty
 
   let get_ty (ctx : ctx) id : t =
     match get_ty_opt ctx id with
@@ -66,10 +75,10 @@ module F (I : CtxId) (Ty : CtxType) = struct
         @@ spf "no such name (%s) in the type context" (I.layout id)
     | Some ty -> ty
 
-  let new_to_right ctx { x; ty } =
+  let new_to_right ctx (x, ty) =
     if exists ctx x then
       _failatwith __FILE__ __LINE__ (spf "Add %s" (I.layout x))
-    else ctx @ [ { x; ty } ]
+    else ctx @ [ (x, ty) ]
 
   let new_to_rights ctx l = List.fold_left new_to_right ctx l
   let fold_right = List.fold_right
@@ -82,8 +91,8 @@ module F (I : CtxId) (Ty : CtxType) = struct
         if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
         else
           List.iter
-            (fun x ->
-              Pp.printf "%s:@{<green>%s@}," (I.layout x.x) (layout x.ty))
+            (fun (x, ty) ->
+              Pp.printf "%s:@{<green>%s@}," (I.layout x) (layout ty))
             ctx)
 
   let pretty_print_lines ctx =
@@ -91,8 +100,8 @@ module F (I : CtxId) (Ty : CtxType) = struct
         if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
         else
           List.iter
-            (fun x ->
-              Pp.printf "%s:@{<green>%s@}\n" (I.layout x.x) (layout x.ty))
+            (fun (x, ty) ->
+              Pp.printf "%s:@{<green>%s@}\n" (I.layout x) (layout ty))
             ctx)
 
   let pretty_layout_judge ctx (e, ty) =
