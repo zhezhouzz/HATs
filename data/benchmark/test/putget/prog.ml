@@ -22,7 +22,7 @@ let prog (n : int) : int =
       2
 
 let[@assert] prog ?l:(n = (v >= 0 : [%v: int]) [@over]) : (int[@regex]) =
-  Put ((v0 == n && n > 0 && v1 != n : [%v0: int]) : [%v1: int]);
+  Put ((v0 == n && n >= 0 && v1 != n : [%v0: int]) : [%v1: int]);
   Ret (v0 == 2 : [%v0: int])
 
 (* let[@assert] prog ?l:(n = (v >= 0 : [%v: int]) [@over]) : (int[@regex]) = *)

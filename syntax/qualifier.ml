@@ -104,9 +104,9 @@ module F (L : Lit.T) = struct
       | Or es -> List.concat_map aux es
       | Iff (e1, e2) -> aux e1 @ aux e2
       | Forall (u, body) ->
-          List.filter (fun x -> String.equal x u.x) @@ aux body
+          List.filter (fun x -> not (String.equal x u.x)) @@ aux body
       | Exists (u, body) ->
-          List.filter (fun x -> String.equal x u.x) @@ aux body
+          List.filter (fun x -> not (String.equal x u.x)) @@ aux body
     in
     aux e
 

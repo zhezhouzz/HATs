@@ -13,10 +13,23 @@ let close_ptypeds_to_prop l prop = List.fold_right close_ptyped_to_prop l prop
 
 let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   let open P in
+  (* let () = *)
+  (*   Printf.printf "uqvs: %s\n" *)
+  (*   @@ List.split_by_comma *)
+  (*        (fun { cx; cty } -> spf "%s:%s" cx @@ layout_cty cty) *)
+  (*        uqvs *)
+  (* in *)
   let phi2 = subst_prop_id (v2.x, v1.x) phi2 in
   let query = close_ptypeds_to_prop uqvs (smart_implies phi1 phi2) in
   let query =
     match v1.ty with Nt.Ty_unit -> query | _ -> Forall (v1, query)
+  in
+  (* let () = Printf.printf "query: %s\n" (layout_prop query) in *)
+  let fvs = fv_prop query in
+  let () =
+    _assert __FILE__ __LINE__
+      (spf "the cty query has free variables %s" (StrList.to_string fvs))
+      (0 == List.length fvs)
   in
   Smtquery.check_bool query
 

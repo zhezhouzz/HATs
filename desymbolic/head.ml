@@ -1,5 +1,6 @@
 open Zzdatatype.Datatype
 open Language
+module Rty = PCtxType
 open Rty.P
 open Sugar
 
@@ -18,13 +19,17 @@ end
 module LitMap = Map.Make (LitElem)
 module PtyMap = Map.Make (PtyElem)
 
-type 'a tab = LitTab of 'a LitMap.t | PtyTab of 'a PtyMap.t | EmptyTab
+type 'a tab =
+  | LitTab of { vs : string typed list; littab : 'a LitMap.t }
+  | PtyTab of { ptytab : 'a PtyMap.t }
+  | EmptyTab
+
 type 'a head = { global_tab : 'a tab; local_tab : 'a tab StrMap.t }
 
 let pprint_bool_tab m =
   let () =
     match m with
-    | LitTab m ->
+    | LitTab { littab = m; _ } ->
         let pos_set =
           List.filter_map (fun (k, v) -> if v then Some (Lit k) else None)
           @@ List.of_seq @@ LitMap.to_seq m
@@ -35,7 +40,7 @@ let pprint_bool_tab m =
           @@ List.of_seq @@ LitMap.to_seq m
         in
         Pp.printf "%s" (Rty.layout_prop (And (pos_set @ neg_set)))
-    | PtyTab m ->
+    | PtyTab { ptytab = m } ->
         let pos_set =
           List.filter_map (fun (k, v) ->
               if v then Some (Rty.layout_pty k) else None)
@@ -55,11 +60,11 @@ let pprint_bool_tab m =
 let pprint_tab m =
   let () =
     match m with
-    | LitTab m ->
+    | LitTab { littab = m; _ } ->
         LitMap.iter
           (fun lit idx -> Pp.printf "@{%i@}: %s, " idx (Rty.layout_lit lit))
           m
-    | PtyTab m ->
+    | PtyTab { ptytab = m } ->
         PtyMap.iter
           (fun pty idx -> Pp.printf "@{%i@}: %s, " idx (Rty.layout_pty pty))
           m
@@ -82,6 +87,8 @@ let pprint_head { global_tab; local_tab } =
   ()
 
 let littab_i_to_b m n =
+  (* let () = Pp.printf "[global_tab]:" in *)
+  (* let () = pprint_tab (LitTab { vs = []; littab = m }) in *)
   let bv = NRegex.id_to_barr (LitMap.cardinal m) n in
   LitMap.map (fun idx -> bv.(idx)) m
 
@@ -101,24 +108,29 @@ let ptytab_get_nty m =
 let tab_i_to_b (tab : int tab) n =
   match tab with
   | EmptyTab -> EmptyTab
-  | LitTab m -> LitTab (littab_i_to_b m n)
-  | PtyTab m -> PtyTab (ptytab_i_to_b m n)
+  | LitTab { littab = m; vs } -> LitTab { littab = littab_i_to_b m n; vs }
+  | PtyTab { ptytab = m } -> PtyTab { ptytab = ptytab_i_to_b m n }
 
 let merge_global_to_local global_m local_m =
   match (global_m, local_m) with
   | EmptyTab, _ -> local_m
   | LitTab _, EmptyTab -> global_m
-  | LitTab m1, LitTab m2 -> LitTab (LitMap.add_seq (LitMap.to_seq m1) m2)
+  | LitTab { littab = m1; vs = vs1 }, LitTab { littab = m2; vs = vs2 } ->
+      LitTab
+        {
+          littab = LitMap.add_seq (LitMap.to_seq m1) m2;
+          vs = List.slow_rm_dup (fun x y -> String.equal x.x y.x) vs1 @ vs2;
+        }
   | _, _ -> _failatwith __FILE__ __LINE__ "die"
 
 let tab_models_lit m lit =
   match m with
-  | LitTab m -> LitMap.find lit m
+  | LitTab { littab = m; _ } -> LitMap.find lit m
   | _ -> _failatwith __FILE__ __LINE__ "die"
 
 let tab_to_prop = function
   | EmptyTab -> mk_true
-  | LitTab m ->
+  | LitTab { littab = m; _ } ->
       let l =
         LitMap.fold
           (fun lit b m -> if b then Lit lit :: m else Not (Lit lit) :: m)
@@ -129,27 +141,46 @@ let tab_to_prop = function
 
 let tab_cardinal (tab : 'a tab) =
   match tab with
-  | LitTab m -> LitMap.cardinal m
-  | PtyTab m -> PtyMap.cardinal m
+  | LitTab { littab = m; _ } -> LitMap.cardinal m
+  | PtyTab { ptytab = m } -> PtyMap.cardinal m
   | EmptyTab -> 0
 
-let litlist_to_tab l =
+let tab_vs (tab : 'a tab) =
+  match tab with
+  | LitTab { vs; _ } ->
+      let bindings =
+        List.map (fun { x; ty } -> Rty.{ x; ty = mk_top_pty ty }) vs
+      in
+      bindings
+  | PtyTab _ -> []
+  | EmptyTab -> []
+
+let litlist_to_tab (vs, l) =
+  let l = List.slow_rm_dup eq_lit l in
   if List.length l == 0 then EmptyTab
   else
     LitTab
-      (List.fold_lefti (fun m idx lit -> LitMap.add lit idx m) LitMap.empty l)
+      {
+        littab =
+          List.fold_lefti (fun m idx lit -> LitMap.add lit idx m) LitMap.empty l;
+        vs;
+      }
 
 let ptylist_to_tab l =
+  let l = List.slow_rm_dup Rty.eq_pty l in
   if List.length l == 0 then EmptyTab
   else
     PtyTab
-      (List.fold_lefti (fun m idx lit -> PtyMap.add lit idx m) PtyMap.empty l)
+      {
+        ptytab =
+          List.fold_lefti (fun m idx lit -> PtyMap.add lit idx m) PtyMap.empty l;
+      }
 
 open Rty
 
 let make_tab regex =
   let { global_lits; global_pty; local_lits } = gather_from_regex regex in
-  let global_tab = litlist_to_tab global_lits in
+  let global_tab = litlist_to_tab ([], global_lits) in
   let local_lits_map = StrMap.map litlist_to_tab local_lits in
   let ret_enrty = ptylist_to_tab global_pty in
   let local_tab = StrMap.add ret_name ret_enrty local_lits_map in

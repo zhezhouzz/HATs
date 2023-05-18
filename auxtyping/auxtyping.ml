@@ -9,5 +9,5 @@ open Sugar
 let purify _ _ _ _ = _failatwith __FILE__ __LINE__ "die"
 let branchize regex = Branching.branchize regex
 let simp regex = Simp.simp regex
-let decide_ret_pty _ _ _ = _failatwith __FILE__ __LINE__ "die"
+let decide_ret_pty = Decide_ret.decide_ret
 let concat = Concat.concat

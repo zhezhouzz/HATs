@@ -2,12 +2,21 @@ module F (L : Lit.T) = struct
   open Sexplib.Std
   include Cty.F (L)
 
+  type arr_kind = SigamArr | PiArr [@@deriving sexp]
+
   type pty =
     | BasePty of { cty : cty }
     | TuplePty of pty list
-    | ArrPty of { rarg : string option ptyped; retrty : rty }
+    | ArrPty of {
+        arr_kind : arr_kind;
+        rarg : string option ptyped;
+        retrty : rty;
+      }
 
-  and rty = Pty of pty | Regty of regex Nt.typed [@@deriving sexp]
+  and rty =
+    | Pty of pty
+    | Regty of { nty : Nt.t; prereg : regex; retreg : regex }
+  [@@deriving sexp]
 
   and sevent =
     | GuardEvent of prop
@@ -15,16 +24,17 @@ module F (L : Lit.T) = struct
     | EffEvent of { op : string; vs : string Nt.typed list; phi : prop }
 
   and regex =
+    | EmptyA
     | EpsilonA
     | EventA of sevent
     | LorA of regex * regex
     | LandA of regex * regex
     | SeqA of regex * regex
     | StarA of regex
+    | ComplementA of regex
 
   and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
 
-  (* type t = pty *)
   type 'a rtyped = { rx : 'a; rty : rty }
 
   open Sugar
@@ -48,7 +58,7 @@ module F (L : Lit.T) = struct
     | EffEvent { op; vs; phi } -> (op, vs, phi)
 
   let pty_destruct_arr = function
-    | ArrPty { rarg; retrty } -> (rarg, retrty)
+    | ArrPty { arr_kind = PiArr; rarg; retrty } -> (rarg, retrty)
     | _ -> _failatwith __FILE__ __LINE__ "die"
 
   let rty_force_pty = function
@@ -77,10 +87,10 @@ module F (L : Lit.T) = struct
       match rty with
       | BasePty { cty } -> BasePty { cty = subst_cty (y, z) cty }
       | TuplePty ptys -> TuplePty (List.map aux ptys)
-      | ArrPty { rarg; retrty } ->
+      | ArrPty { arr_kind; rarg; retrty } ->
           let rarg = rarg.px #:: (aux rarg.pty) in
-          if str_eq_to_bv y rarg.px then ArrPty { rarg; retrty }
-          else ArrPty { rarg; retrty = subst (y, z) retrty }
+          if str_eq_to_bv y rarg.px then ArrPty { arr_kind; rarg; retrty }
+          else ArrPty { arr_kind; rarg; retrty = subst (y, z) retrty }
     in
     aux rty
 
@@ -96,18 +106,26 @@ module F (L : Lit.T) = struct
   and subst_regex (y, z) regex =
     let rec aux regex =
       match regex with
+      | EmptyA -> EmptyA
       | EpsilonA -> EpsilonA
       | EventA se -> EventA (subst_sevent (y, z) se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
+      | ComplementA t -> ComplementA (aux t)
     in
     aux regex
 
   and subst (y, z) = function
     | Pty pty -> Pty (subst_pty (y, z) pty)
-    | Regty regex -> Regty Nt.((subst_regex (y, z)) #-> regex)
+    | Regty { nty; prereg; retreg } ->
+        Regty
+          {
+            nty;
+            prereg = subst_regex (y, z) prereg;
+            retreg = subst_regex (y, z) retreg;
+          }
 
   let subst_rty = subst
 
@@ -129,7 +147,7 @@ module F (L : Lit.T) = struct
       | ArrPty { rarg; retrty } ->
           let argfv = aux rarg.pty in
           let retfv =
-            List.filter (fun x -> str_eq_to_bv x rarg.px) @@ fv retrty
+            List.filter (fun x -> not (str_eq_to_bv x rarg.px)) @@ fv retrty
           in
           argfv @ retfv
     in
@@ -140,22 +158,27 @@ module F (L : Lit.T) = struct
     | GuardEvent phi -> fv_prop phi
     | RetEvent pty -> fv_pty pty
     | EffEvent { vs; phi; _ } ->
-        List.filter (fun y -> List.exists (fun x -> String.equal x.Nt.x y) vs)
+        List.filter (fun y ->
+            not (List.exists (fun x -> String.equal x.Nt.x y) vs))
         @@ fv_prop phi
 
   and fv_regex regex =
     let rec aux regex =
       match regex with
+      | EmptyA -> []
       | EpsilonA -> []
       | EventA se -> fv_sevent se
       | LorA (t1, t2) -> aux t1 @ aux t2
       | LandA (t1, t2) -> aux t1 @ aux t2
       | SeqA (t1, t2) -> aux t1 @ aux t2
       | StarA t -> aux t
+      | ComplementA t -> aux t
     in
     aux regex
 
-  and fv = function Pty pty -> fv_pty pty | Regty regex -> fv_regex regex.Nt.x
+  and fv = function
+    | Pty pty -> fv_pty pty
+    | Regty { prereg; retreg; _ } -> fv_regex prereg @ fv_regex retreg
 
   (* erase *)
 
@@ -191,11 +214,21 @@ module F (L : Lit.T) = struct
   type gathered_lits = {
     global_lits : lit list;
     global_pty : pty list;
-    local_lits : lit list StrMap.t;
+    local_lits : (string Nt.typed list * lit list) StrMap.t;
   }
 
   let gathered_lits_init () =
     { global_lits = []; global_pty = []; local_lits = StrMap.empty }
+
+  let gathered_rm_dup { global_lits; global_pty; local_lits } =
+    let global_lits = List.slow_rm_dup eq_lit global_lits in
+    let global_pty = List.slow_rm_dup eq_pty global_pty in
+    let local_lits =
+      StrMap.map
+        (fun (vs, lits) -> (vs, List.slow_rm_dup eq_lit lits))
+        local_lits
+    in
+    { global_lits; global_pty; local_lits }
 
   let gather_from_sevent { global_lits; global_pty; local_lits } sevent =
     match sevent with
@@ -203,14 +236,24 @@ module F (L : Lit.T) = struct
         { global_lits = P.get_lits phi @ global_lits; global_pty; local_lits }
     | RetEvent pty ->
         { global_lits; global_pty = pty :: global_pty; local_lits }
-    | EffEvent { op; phi; _ } ->
+    | EffEvent { op; phi; vs } ->
         let lits = P.get_lits phi in
+        let vs' = List.map (fun x -> x.Nt.x) vs in
+        let is_contain_local_free lit =
+          match List.interset ( == ) vs' @@ P.fv_lit lit with
+          | [] -> false
+          | _ -> true
+        in
+        let llits, glits = List.partition is_contain_local_free lits in
         let local_lits =
           StrMap.update op
             (fun l ->
-              match l with None -> Some lits | Some l -> Some (l @ lits))
+              match l with
+              | None -> Some (vs, llits)
+              | Some (_, l) -> Some (vs, l @ llits))
             local_lits
         in
+        let global_lits = global_lits @ glits in
         { global_lits; global_pty; local_lits }
 
   let gather_from_regex regex =

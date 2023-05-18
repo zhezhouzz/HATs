@@ -6,6 +6,10 @@ open Sugar
 open PCtxType
 
 let rec sub_pty_bool pctx eqctx pty1 pty2 =
+  (* let () = *)
+  (*   Printf.printf "R[%s]: %s\n" __FUNCTION__ *)
+  (*     (PTypectx.layout_typed_l (fun x -> x) pctx) *)
+  (* in *)
   match (pty1, pty2) with
   | BasePty { cty = cty1 }, BasePty { cty = cty2 } ->
       Subcty.sub_cty_bool pctx cty1 cty2
@@ -46,6 +50,9 @@ and sub_regex_bool pctx eqctx regex1 regex2 =
   let mts =
     NRegex.mts_filter_map
       (fun mt ->
+        let () =
+          Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt)
+        in
         let b =
           Desymbolic.minterm_verify_bool
             (fun bindings (tau1, tau2) ->
@@ -68,13 +75,17 @@ and sub_regex_bool pctx eqctx regex1 regex2 =
     Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
       (NRegex.reg_to_string regex2)
   in
-  let () = failwith "end" in
-  let res = Smtquery.check_inclusion_counterexample (regex2, regex1) in
-  match res with
-  | None -> true
-  | Some mt_list ->
-      Desymbolic.display_trace pctx ctx mt_list;
-      false
+  (* let () = failwith "end" in *)
+  let res = Smtquery.check_inclusion_counterexample (regex1, regex2) in
+  let res =
+    match res with
+    | None -> true
+    | Some mt_list ->
+        Desymbolic.display_trace pctx ctx mt_list;
+        false
+  in
+  let () = Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res in
+  res
 
 let is_bot_rty pctx _ = function
   | Pty pty -> Subcty.is_bot_pty pctx pty

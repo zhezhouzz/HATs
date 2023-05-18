@@ -14,7 +14,8 @@ open Zzdatatype.Datatype
 (*     (Seq.mk_re_sort ctx (Seq.mk_seq_sort ctx (Seq.mk_string_sort ctx))) *)
 
 let mk_empty ctx =
-  Seq.mk_re_empty ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))
+  Seq.mk_re_option ctx
+  @@ Seq.mk_re_empty ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))
 
 let mk_full ctx =
   Seq.mk_re_full ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))

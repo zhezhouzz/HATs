@@ -46,14 +46,22 @@ let model_verify_bool sub_pty_bool (global_m, local_m) =
   match local_m with
   | EmptyTab | LitTab _ ->
       let m = merge_global_to_local global_m local_m in
-      let rhs_pty = Rty.mk_unit_pty_from_prop @@ tab_to_prop m in
-      let lhs_pty = Rty.mk_unit_pty_from_prop mk_false in
+      let lhs_pty = Rty.mk_unit_pty_from_prop @@ tab_to_prop m in
+      let rhs_pty = Rty.mk_unit_pty_from_prop mk_false in
+      let local_vars = tab_vs m in
+      let res = not (sub_pty_bool local_vars (lhs_pty, rhs_pty)) in
+      let () =
+        Pp.printf "@{<bold>%s@} ≮: %s\n@{<bold>Result:@} %b\n"
+          (Rty.layout_pty lhs_pty) (Rty.layout_pty rhs_pty) res
+      in
+      res
       (* let () = *)
-      (*   Pp.printf "%s <: @{<bold>%s@}\n" (Rty.layout_pty lhs_pty) *)
-      (*     (Rty.layout_pty rhs_pty) *)
+      (*   Printf.printf "local_vars: %s\n" *)
+      (*     (List.split_by ", " *)
+      (*        (fun Rty.{ x; ty } -> spf "%s:%s" x (Rty.layout_pty ty)) *)
+      (*        local_vars) *)
       (* in *)
-      not (sub_pty_bool [] (lhs_pty, rhs_pty))
-  | PtyTab local_m ->
+  | PtyTab { ptytab = local_m } ->
       let ctxurty = Rty.mk_unit_pty_from_prop @@ tab_to_prop global_m in
       let binding = Rty.{ x = Rename.unique "a"; ty = ctxurty } in
       let pos_set =
@@ -73,15 +81,15 @@ let model_verify_bool sub_pty_bool (global_m, local_m) =
       (*   @@ List.split_by_comma Rty.layout_pty neg_set *)
       (* in *)
       let nty = ptytab_get_nty local_m in
-      let lhs_pty = Auxtyping.common_sup_ptys nty neg_set in
-      let rhs_pty = Auxtyping.common_sub_ptys nty pos_set in
-      (* let () = *)
-      (*   Pp.printf "%s |- %s <: @{<bold>%s@}\n" *)
-      (*     (Rty.layout_typed (fun x -> x) binding) *)
-      (*     (Rty.layout_pty lhs_pty) (Rty.layout_pty rhs_pty) *)
-      (* in *)
-      (* let () = failwith "end" in *)
+      let lhs_pty = Auxtyping.common_sub_ptys nty neg_set in
+      let rhs_pty = Auxtyping.common_sup_ptys nty pos_set in
       let b = not (sub_pty_bool [ binding ] (lhs_pty, rhs_pty)) in
+      let () =
+        Pp.printf "%s |- %s ≮: @{<bold>%s@}\n@{<bold>Result:@} %b\n"
+          ((fun Rty.{ ty; _ } -> spf "%s" (Rty.layout_pty ty)) binding)
+          (Rty.layout_pty lhs_pty) (Rty.layout_pty rhs_pty) b
+      in
+      (* let () = failwith "end" in *)
       (* let () = Pp.printf "@{<bold>if_valid: %b@}\n" b in *)
       b
 
@@ -108,7 +116,7 @@ let ret_models local_m pty =
   let local_m =
     match local_m with
     | LitTab _ | EmptyTab -> _failatwith __FILE__ __LINE__ "die"
-    | PtyTab m -> m
+    | PtyTab { ptytab = m } -> m
   in
   PtyMap.find pty local_m
 

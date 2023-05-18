@@ -281,7 +281,11 @@ and comp_type_check typectx (curA : R.regex) (comp : comp typed) (rty : R.rty) :
                 @@ _safe_combine __FILE__ __LINE__ vs lits
               in
               let se = R.EffEvent { op = opname; vs; phi = P.And props } in
-              let pty = Auxtyping.decide_ret_pty typectx curA se in
+              let pty =
+                Auxtyping.decide_ret_pty typectx.eqctx typectx.rctx
+                  (fun _ _ -> true)
+                  curA se comp.ty
+              in
               let curA = R.(SeqA (curA, EventA se)) in
               let typectx' = typectx_new_to_right typectx R.(lhs.x #: pty) in
               let b = comp_type_check typectx' curA letbody rty in

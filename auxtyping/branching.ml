@@ -3,6 +3,17 @@ module P = Rty.P
 open Rty
 open Sugar
 
+let deseq regex =
+  let rec aux res regex =
+    match regex with
+    | EpsilonA -> [ res ]
+    | StarA _ | EventA _ -> [ res @ [ regex ] ]
+    | LorA (t1, t2) -> aux res t1 @ aux res t2
+    | LandA (_, _) -> _failatwith __FILE__ __LINE__ "die"
+    | SeqA (t1, t2) -> aux (res @ [ t1 ]) t2
+  in
+  aux [] regex
+
 let branchize_regex regex =
   let last_step preA se =
     match se with

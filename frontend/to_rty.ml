@@ -27,7 +27,7 @@ let pprint_phi v (phi : P.prop) =
   | _ -> To_qualifier.layout phi
 
 let pprint_cty { v; phi } = spf "%s | %s" (pprint_id v) (pprint_phi v phi)
-let pprint_parn body = spf "[%s]" body
+let pprint_parn body = spf "{%s}" body
 (* match ou with Over -> spf "{%s}" body | Under -> spf "[%s]" body *)
 
 let tpA str = spf "⦇%s⦈" str

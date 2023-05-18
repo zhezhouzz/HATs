@@ -106,7 +106,7 @@ let inclusion_query ctx r1 r2 =
   let encoding, r1, r2 = Regencoding.to_z3_two_reg ctx (r1, r2) in
   let () =
     Env.show_debug_queries @@ fun _ ->
-    Printf.printf "Query: %s ⊆ %s\n" (Expr.to_string r1) (Expr.to_string r2)
+    Printf.printf "Query:\n%s \n⊆\n%s\n" (Expr.to_string r1) (Expr.to_string r2)
   in
   (* let sequence = *)
   (*   Expr.mk_const_s ctx "reg_query_string" (Seq.mk_seq_sort ctx @@ Seq.mk_string_sort ctx) *)
