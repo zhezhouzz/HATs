@@ -12,8 +12,8 @@
    ; alpha
    ; purify
    branching
-   concat
+   ; concat
    simp
-   decide_ret
+   ; decide_ret
    auxtyping
 ))

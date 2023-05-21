@@ -5,20 +5,13 @@ open Language.NRegex
 open Sugar
 open Zzdatatype.Datatype
 
-(* let mk_empty ctx = *)
-(*   Seq.mk_re_empty ctx *)
-(*     (Seq.mk_re_sort ctx (Seq.mk_seq_sort ctx (Seq.mk_string_sort ctx))) *)
+let mk_empty ctx =
+  Seq.mk_re_empty ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))
+
+let mk_epsilon ctx = Seq.mk_re_option ctx @@ mk_empty ctx
 
 (* let mk_full ctx = *)
-(*   Seq.mk_re_full ctx *)
-(*     (Seq.mk_re_sort ctx (Seq.mk_seq_sort ctx (Seq.mk_string_sort ctx))) *)
-
-let mk_empty ctx =
-  Seq.mk_re_option ctx
-  @@ Seq.mk_re_empty ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))
-
-let mk_full ctx =
-  Seq.mk_re_full ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx))
+(*   Seq.mk_re_full ctx (Seq.mk_re_sort ctx (Seq.mk_string_sort ctx)) *)
 
 (* NOTE: z3 will timeout over regular expression of language of (String String), e.g., ("AB" | "BC")("A")*. Thus we encoding the (String String) into String, i.g., (AB | BC)A*. To make the encoding to be efficient, distinguished string will be encodinged as distinguish char, e.g., (1 | 2)3*. *)
 
@@ -93,15 +86,36 @@ let encoding_mt_to_z3 ctx { tab; _ } mt =
 
 let encoding_init () = { tab = Hashtbl.create range_len; next = ref [ 0 ] }
 
+let encoding_get_any ctx { tab; _ } =
+  (* let l = List.of_seq (Hashtbl.to_seq_values tab) in *)
+  (* let () = *)
+  (*   Printf.printf "Z#:%s\n" *)
+  (*     (List.split_by_comma *)
+  (*        (fun x -> spf "%s" @@ Expr.to_string (il_to_z3 ctx x)) *)
+  (*        l) *)
+  (* in *)
+  let res =
+    List.map (il_to_z3 ctx) @@ List.of_seq (Hashtbl.to_seq_values tab)
+  in
+  let res =
+    match res with
+    | [] -> mk_empty ctx
+    | [ r ] -> r
+    | _ -> Seq.mk_re_union ctx res
+  in
+  (* let () = Printf.printf "Z#: %s\n" (Expr.to_string res) in *)
+  res
+
 let encoding_parse_reg encoding reg =
   let rec aux reg =
     match reg with
-    | Epslion -> ()
+    | Epsilon | Any | Empt -> ()
     | Minterm mt -> encoding_insert_mt encoding mt
     | Union rs -> List.iter aux rs
     | Intersect rs -> List.iter aux rs
     | Concat rs -> List.iter aux rs
     | Star r -> aux r
+    | Complement r -> aux r
   in
   aux reg
 
@@ -144,22 +158,19 @@ let encoding_code_trace { tab; _ } str =
 
 let to_z3 ctx encoding reg =
   let rec aux reg =
-    (* let () = Printf.printf "%s\n" @@ reg_to_string reg in *)
+    let () = Printf.printf "%s\n" @@ reg_to_string reg in
     match reg with
-    | Epslion -> mk_empty ctx
+    | Any -> encoding_get_any ctx encoding
+    | Empt -> mk_empty ctx
+    | Epsilon -> mk_epsilon ctx
     | Minterm mt -> encoding_mt_to_z3 ctx encoding mt
-    (* let z3_str = Seq.mk_string ctx @@ mt_to_string mt in *)
-    (* let () = Printf.printf "z3_str: %s\n" @@ Expr.to_string z3_str in *)
-    (* let res = Seq.mk_seq_to_re ctx @@ Seq.mk_seq_unit ctx z3_str in *)
-    (* let () = Printf.printf "%s??\n" @@ reg_to_string reg in *)
-    (* res *)
     (* NOTE: z3 will raise exception when the length of the list < 2 *)
     | Union [] -> mk_empty ctx
     | Union [ r ] -> aux r
     | Union rs ->
         (* let () = Printf.printf "len(union rs) = %i\n" @@ List.length rs in *)
         Seq.mk_re_union ctx @@ List.map aux rs
-    | Intersect [] -> mk_full ctx
+    | Intersect [] -> _failatwith __FILE__ __LINE__ "die"
     | Intersect [ r ] -> aux r
     | Intersect rs ->
         (* let () = Printf.printf "len(intersect rs) = %i\n" @@ List.length rs in *)
@@ -173,7 +184,10 @@ let to_z3 ctx encoding reg =
         (*   Printf.printf "%s\n" @@ List.split_by " ? " Expr.to_string rs' *)
         (* in *)
         Seq.mk_re_concat ctx rs'
+    (* | Star (Complement Empt) -> mk_full ctx *)
     | Star r -> Seq.mk_re_star ctx @@ aux r
+    (* | Complement Empt -> mk_full ctx *)
+    | Complement r -> Seq.mk_re_complement ctx @@ aux r
   in
   aux reg
 
@@ -182,3 +196,8 @@ let to_z3_two_reg ctx (r1, r2) =
   let () = encoding_parse_reg encoding r1 in
   let () = encoding_parse_reg encoding r2 in
   (encoding, to_z3 ctx encoding r1, to_z3 ctx encoding r2)
+
+let to_z3_one_reg ctx r =
+  let encoding = encoding_init () in
+  let () = encoding_parse_reg encoding r in
+  (encoding, to_z3 ctx encoding r)

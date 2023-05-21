@@ -14,14 +14,17 @@ let cty_check opctx ctx { v; phi } =
 let rec rty_check opctx ctx (rty : rty) : rty =
   match rty with
   | Pty pty -> Pty (pty_check opctx ctx pty)
-  | Regty regex -> Regty Nt.((regex_check opctx ctx regex.ty) #-> regex)
+  | Regty { nty; prereg; postreg } ->
+      let prereg = regex_check opctx ctx None prereg in
+      let postreg = regex_check opctx ctx (Some nty) postreg in
+      Regty { nty; prereg; postreg }
 
 and pty_check opctx ctx (rty : pty) : pty =
   let rec aux ctx rty =
     match rty with
     | BasePty { cty } -> BasePty { cty = cty_check opctx ctx cty }
     | TuplePty ptys -> TuplePty (List.map (aux ctx) ptys)
-    | ArrPty { rarg; retrty } ->
+    | ArrPty { arr_kind; rarg; retrty } ->
         let rarg = { px = rarg.px; pty = aux ctx rarg.pty } in
         let () =
           match rarg.px with
@@ -33,13 +36,20 @@ and pty_check opctx ctx (rty : pty) : pty =
               _assert __FILE__ __LINE__ "syntax error: argument type"
               @@ is_base_pty rarg.pty
         in
-        let ctx' =
+        let opctx', ctx' =
           match rarg.px with
-          | None -> ctx
-          | Some x -> Typectx.new_to_right ctx Nt.(x #: (erase_pty rarg.pty))
+          | None -> (opctx, ctx)
+          | Some x -> (
+              let nty = erase_pty rarg.pty in
+              match arr_kind with
+              (* | PiArr -> (opctx, Typectx.new_to_right ctx Nt.(x #: nty)) *)
+              | SigamArr when not @@ Nt.is_basic_tp nty ->
+                  ( NOpTypectx.new_to_right opctx Nt.((Op.BuiltinOp x) #: nty),
+                    ctx )
+              | _ -> (opctx, Typectx.new_to_right ctx Nt.(x #: nty)))
         in
-        let retrty = rty_check opctx ctx' retrty in
-        ArrPty { rarg; retrty }
+        let retrty = rty_check opctx' ctx' retrty in
+        ArrPty { arr_kind; rarg; retrty }
   in
   aux ctx rty
 
@@ -50,7 +60,14 @@ and sevent_check opctx ctx retbty sevent =
       GuardEvent phi
   | RetEvent pty ->
       let pty = pty_check opctx ctx pty in
-      let _ = _check_equality __FILE__ __LINE__ Nt.eq retbty (erase_pty pty) in
+      let _ =
+        match retbty with
+        | None ->
+            _failatwith __FILE__ __LINE__
+              "the pre-condition should not have return event"
+        | Some retbty ->
+            _check_equality __FILE__ __LINE__ Nt.eq retbty (erase_pty pty)
+      in
       RetEvent pty
   | EffEvent { op; vs; phi } ->
       let opty = Aux.infer_op opctx (Op.EffOp op) in
@@ -69,7 +86,7 @@ and sevent_check opctx ctx retbty sevent =
 
 and regex_check opctx ctx retbty (regex : regex) : regex =
   match regex with
-  | EpsilonA -> EpsilonA
+  | EpsilonA | AnyA | EmptyA -> regex
   | EventA se -> EventA (sevent_check opctx ctx retbty se)
   | LorA (t1, t2) ->
       LorA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
@@ -78,3 +95,4 @@ and regex_check opctx ctx retbty (regex : regex) : regex =
   | SeqA (t1, t2) ->
       SeqA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | StarA t -> StarA (regex_check opctx ctx retbty t)
+  | ComplementA t -> ComplementA (regex_check opctx ctx retbty t)

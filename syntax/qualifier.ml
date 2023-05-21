@@ -1,6 +1,7 @@
 module F (L : Lit.T) = struct
   include L
   open Sexplib.Std
+  open Sugar
 
   type prop =
     | Lit of lit
@@ -35,8 +36,6 @@ module F (L : Lit.T) = struct
       | [] -> mk_false
       | [ x ] -> x
       | l -> Or l
-
-  open Sugar
 
   let get_lits prop =
     let rec aux e res =

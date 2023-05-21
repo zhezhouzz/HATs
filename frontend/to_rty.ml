@@ -8,6 +8,7 @@ open Syntax.RtyRaw
 open Sugar
 
 let pprint_id Nt.{ x; ty } = spf "%s:%s" x (Nt.layout ty)
+let pprint_id_name Nt.{ x; _ } = x
 
 let pprint_phi v (phi : P.prop) =
   let open P in
@@ -33,19 +34,26 @@ let pprint_parn body = spf "{%s}" body
 let tpA str = spf "⦇%s⦈" str
 let tpEvent str = spf "⟨%s⟩" str
 let layout_stropt = function None -> "" | Some x -> spf "%s:" x
+let layout_arr = function PiArr -> "→" | SigamArr -> "⇢"
 
 let rec pprint_pty rty =
   match rty with
   | BasePty { cty } -> pprint_parn (pprint_cty cty)
   | TuplePty ptys -> spf "(%s)" (List.split_by_comma pprint_pty ptys)
-  | ArrPty { rarg; retrty } ->
-      spf "%s%s→%s" (layout_stropt rarg.px) (pprint_pty rarg.pty)
-        (pprint_rty retrty)
+  | ArrPty { arr_kind = PiArr; rarg; retrty } ->
+      spf "%s%s%s%s" (layout_stropt rarg.px) (pprint_pty rarg.pty)
+        (layout_arr PiArr) (pprint_rty retrty)
+  | ArrPty { arr_kind = SigamArr; rarg; retrty } ->
+      spf "?%s%s%s%s" (layout_stropt rarg.px)
+        (Nt.layout (erase_pty rarg.pty))
+        (layout_arr SigamArr) (pprint_rty retrty)
 
 and pprint_rty = function
   | Pty pty -> pprint_pty pty
-  | Regty Nt.{ x = regex; ty } ->
-      tpA @@ spf "%s | %s" (Nt.layout ty) (pprint_regex regex)
+  | Regty { nty; prereg; postreg } ->
+      spf "%s ⥤ %s" (pprint_regex prereg)
+      @@ tpA
+      @@ spf "%s | %s" (Nt.layout nty) (pprint_regex postreg)
 
 and pprint_sevent = function
   | GuardEvent phi ->
@@ -53,17 +61,20 @@ and pprint_sevent = function
   | RetEvent pty -> tpEvent @@ spf "%s %s" ret_name (pprint_pty pty)
   | EffEvent { op; vs; phi } ->
       tpEvent
-      @@ spf "%s (%s) | %s" op
-           (List.split_by_comma pprint_id vs)
+      @@ spf "%s(%s) | %s" op
+           (List.split_by_comma pprint_id_name vs)
            (To_qualifier.layout phi)
 
 and pprint_regex = function
+  | EmptyA -> "∅"
   | EpsilonA -> "ϵ"
   | EventA se -> pprint_sevent se
   | LorA (a1, a2) -> spf "(%s ‖ %s)" (pprint_regex a1) (pprint_regex a2)
   | LandA (a1, a2) -> spf "(%s && %s)" (pprint_regex a1) (pprint_regex a2)
   | SeqA (a1, a2) -> spf "%s%s" (pprint_regex a1) (pprint_regex a2)
   | StarA a -> spf "(%s)*" (pprint_regex a)
+  | AnyA -> "."
+  | ComplementA a -> spf "(%s)ᶜ" (pprint_regex a)
 
 let get_denoteopt_from_attr a =
   match a with [ x ] -> Some x.attr_name.txt | _ -> None
@@ -89,7 +100,9 @@ let get_self ct =
   let open Nt in
   match ct.ptyp_desc with
   | Ptyp_extension (name, PTyp ty) -> name.txt #: (Type.core_type_to_t ty)
-  | _ -> _failatwith __FILE__ __LINE__ ""
+  | _ ->
+      let () = Printf.printf "\nct: %s\n" (layout_coretype ct) in
+      _failatwith __FILE__ __LINE__ ""
 
 let vars_phi_of_ocamlexpr expr =
   let rec aux expr =
@@ -108,33 +121,27 @@ let cty_of_ocamlexpr_aux expr =
   | [ v ], phi -> { v; phi }
   | _ -> _failatwith __FILE__ __LINE__ "die"
 
-let rec pty_of_ocamlexpr_aux expr =
+let rec mk_arrpty arr_kind pattern ptyexpr body =
+  let id = To_pat.patten_to_typed_ids pattern in
+  let px =
+    match id with
+    | [ id ] when String.equal id.x "_" -> None
+    | [ id ] -> Some id.x
+    | _ -> failwith "rty_of_ocamlexpr_aux"
+  in
+  let rarg = px #:: (pty_of_ocamlexpr_aux ptyexpr) in
+  let retrty = rty_of_ocamlexpr_aux body in
+  ArrPty { arr_kind; rarg; retrty }
+
+and pty_of_ocamlexpr_aux expr =
   let rec aux expr =
     match expr.pexp_desc with
     | Pexp_constraint _ -> BasePty { cty = cty_of_ocamlexpr_aux expr }
     | Pexp_tuple es -> TuplePty (List.map aux es)
-    | Pexp_fun (_, Some pty, px, body) ->
-        let id = To_pat.patten_to_typed_ids px in
-        let px =
-          match id with
-          | [ id ] when String.equal id.x "_" -> None
-          | [ id ] -> Some id.x
-          | _ -> failwith "rty_of_ocamlexpr_aux"
-        in
-        let rarg = px #:: (aux pty) in
-        let retrty = rty_of_ocamlexpr_aux body in
-        ArrPty { rarg; retrty }
-    (* | Pexp_let (_, [ vb ], body) -> *)
-    (*     let id = To_pat.patten_to_typed_ids vb.pvb_pat in *)
-    (*     let rx = *)
-    (*       match id with *)
-    (*       | [ id ] when String.equal id.x "_" -> None *)
-    (*       | [ id ] -> Some id.x *)
-    (*       | _ -> failwith "rty_of_ocamlexpr_aux" *)
-    (*     in *)
-    (*     let rarg_rty = aux vb.pvb_expr in *)
-    (*     let rarg = rx #:: rarg_rty in *)
-    (*     ArrPty { rarg; retrty = rty_of_ocamlexpr_aux body } *)
+    | Pexp_fun (_, Some ptyexpr, pattern, body) ->
+        mk_arrpty PiArr pattern ptyexpr body
+    | Pexp_let (_, [ vb ], body) ->
+        mk_arrpty SigamArr vb.pvb_pat vb.pvb_expr body
     | _ ->
         _failatwith __FILE__ __LINE__
           (spf "wrong refinement type: %s"
@@ -160,6 +167,8 @@ and regex_of_ocamlexpr_aux expr =
     | Pexp_ident id ->
         let id = To_id.longid_to_id id in
         if String.equal "epsilon" id then EpsilonA
+        else if String.equal "empty" id then EmptyA
+        else if String.equal "any" id then AnyA
         else
           _failatwith __FILE__ __LINE__
             (spf "the automata var (%s) are disallowed" id)
@@ -168,18 +177,10 @@ and regex_of_ocamlexpr_aux expr =
         let args = List.map snd args in
         match (f, args) with
         | "star", [ e1 ] -> StarA (aux e1)
-        (* | "sigma", [ e1; e2; e3 ] -> *)
-        (*     let cx = To_expr.id_of_ocamlexpr e1 in *)
-        (*     let cty = cty_of_ocamlexpr_aux e2 in *)
-        (*     Sigmaty { localx = { cx; cty }; regex = aux e3 } *)
+        | "complement", [ e1 ] -> ComplementA (aux e1)
         | "mu", _ ->
             _failatwith __FILE__ __LINE__
               "the recursive automata are disallowed"
-            (* let mux = To_expr.id_of_ocamlexpr mux in *)
-            (* let muA = To_expr.id_of_ocamlexpr muA in *)
-            (* let index = To_lit.lit_of_ocamlexpr_aux index in *)
-            (* let regex = aux regex in *)
-            (* RecA { mux; muA; index; regex } *)
         | "lorA", [ a; b ] -> LorA (aux a, aux b)
         | "landA", [ a; b ] -> LandA (aux a, aux b)
         | _, _ -> _failatwith __FILE__ __LINE__ "die")
@@ -191,23 +192,24 @@ and regex_of_ocamlexpr_aux expr =
 
 and rty_of_ocamlexpr_aux expr =
   match expr.pexp_desc with
-  (* | Pexp_let (_, [ vb ], body) -> *)
-  (*     let id = To_pat.patten_to_typed_ids vb.pvb_pat in *)
-  (*     let rx = *)
-  (*       match id with [ id ] -> id.x | _ -> failwith "rty_of_ocamlexpr_aux" *)
-  (*     in *)
-  (*     let rty = rty_of_ocamlexpr_aux vb.pvb_expr in *)
-  (*     let localx = rx #: rty in *)
-  (*     Sigmaty { localx; rty = rty_of_ocamlexpr_aux body } *)
-  | _ -> (
-      match expr.pexp_desc with
-      | Pexp_constraint (e, ct) -> (
-          match get_denoteopt_from_attr ct.ptyp_attributes with
-          | Some "regex" ->
-              let ty = Type.core_type_to_t ct in
-              Regty Nt.{ x = regex_of_ocamlexpr_aux e; ty }
-          | _ -> Pty (pty_of_ocamlexpr_aux expr))
-      | _ -> Pty (pty_of_ocamlexpr_aux expr))
+  | Pexp_record ([ (id1, e1); (id2, e2) ], None) ->
+      let id1 = To_id.longid_to_id id1 in
+      let id2 = To_id.longid_to_id id2 in
+      let () =
+        _assert __FILE__ __LINE__ "syntax error: {pre = ...; post = ...}"
+          (String.equal id1 "pre" && String.equal id2 "post")
+      in
+      let prereg = regex_of_ocamlexpr_aux e1 in
+      let nty, postreg =
+        match e2.pexp_desc with
+        | Pexp_constraint (e, ct) ->
+            (Type.core_type_to_t ct, regex_of_ocamlexpr_aux e)
+        | _ ->
+            _failatwith __FILE__ __LINE__
+              "syntax error: the post type must be typed"
+      in
+      Regty { nty; prereg; postreg }
+  | _ -> Pty (pty_of_ocamlexpr_aux expr)
 
 let rty_of_ocamlexpr expr =
   let rty = rty_of_ocamlexpr_aux expr in

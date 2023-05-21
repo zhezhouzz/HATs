@@ -1,8 +1,7 @@
 include Head
 open Zzdatatype.Datatype
 open Language
-module Rty = PCtxType
-open Rty.P
+open Rty
 open Sugar
 
 let minterm_to_op_model { global_tab; local_tab }
@@ -24,9 +23,7 @@ let display_trace rctx ctx mt_list =
           mt_list
       in
       let () = Printf.printf "Gamma:\n" in
-      let () =
-        Printf.printf "%s\n" @@ PTypectx.layout_typed_l (fun x -> x) rctx
-      in
+      let () = Printf.printf "%s\n" @@ PTypectx.layout_typed_l rctx in
       let () = Printf.printf "Global:\n" in
       let () = pprint_bool_tab global_m in
       let () =
@@ -40,7 +37,7 @@ let display_trace rctx ctx mt_list =
       let () = Printf.printf "[Ret]:\n" in
       let () = pprint_bool_tab ret_m in
       ()
-  | _ -> _failatwith __FILE__ __LINE__ "die"
+  | None -> Printf.printf "Empty trace ϵ\n"
 
 let model_verify_bool sub_pty_bool (global_m, local_m) =
   match local_m with
@@ -63,7 +60,7 @@ let model_verify_bool sub_pty_bool (global_m, local_m) =
       (* in *)
   | PtyTab { ptytab = local_m } ->
       let ctxurty = Rty.mk_unit_pty_from_prop @@ tab_to_prop global_m in
-      let binding = Rty.{ x = Rename.unique "a"; ty = ctxurty } in
+      let binding = { px = Rename.unique "a"; pty = ctxurty } in
       let pos_set =
         List.filter_map (fun (k, v) -> if v then Some k else None)
         @@ List.of_seq @@ PtyMap.to_seq local_m
@@ -86,7 +83,7 @@ let model_verify_bool sub_pty_bool (global_m, local_m) =
       let b = not (sub_pty_bool [ binding ] (lhs_pty, rhs_pty)) in
       let () =
         Pp.printf "%s |- %s ≮: @{<bold>%s@}\n@{<bold>Result:@} %b\n"
-          ((fun Rty.{ ty; _ } -> spf "%s" (Rty.layout_pty ty)) binding)
+          ((fun { pty; _ } -> spf "%s" (Rty.layout_pty pty)) binding)
           (Rty.layout_pty lhs_pty) (Rty.layout_pty rhs_pty) b
       in
       (* let () = failwith "end" in *)
@@ -154,9 +151,10 @@ let models_event ctx mt = function
       else false
 
 let desymbolic_sevent ctx mts se =
+  let open NRegex in
   match se with
   | GuardEvent phi ->
-      let l = NRegex.mts_to_global_m mts in
+      let l = mts_to_global_m mts in
       let l =
         List.filter
           (fun global_embedding ->
@@ -164,7 +162,7 @@ let desymbolic_sevent ctx mts se =
             op_models m phi)
           l
       in
-      if List.length l > 0 then Some NRegex.Epslion else None
+      if List.length l > 0 then Epsilon else Empt
   | _ ->
       let op = se_get_op se in
       let mts =
@@ -173,28 +171,22 @@ let desymbolic_sevent ctx mts se =
             if models_event ctx mt se then NRegex.Minterm mt :: res else res)
           mts []
       in
-      Some (NRegex.Union mts)
+      if List.length mts > 0 then Union mts else Empt
 
 (* NOTE: the None indicate the empty set *)
 let desymbolic ctx mts regex =
+  let open NRegex in
   let rec aux regex =
     match regex with
-    | EpsilonA -> Some NRegex.Epslion
-    | EventA se ->
-        let* r = desymbolic_sevent ctx mts se in
-        Some r
-    | LorA (t1, t2) -> (
-        let rs = List.filter_map aux [ t1; t2 ] in
-        match rs with [] -> None | _ -> Some (NRegex.Union rs))
-    | LandA (t1, t2) -> (
-        let rs = List.filter_map aux [ t1; t2 ] in
-        match rs with [] -> None | _ -> Some (NRegex.Union rs))
-    | SeqA (t1, t2) ->
-        let* r1 = aux t1 in
-        let* r2 = aux t2 in
-        Some (NRegex.Concat [ r1; r2 ])
-    | StarA t ->
-        let* r = aux t in
-        Some (NRegex.Star r)
+    | EmptyA -> Empt
+    | AnyA -> Any
+    | EpsilonA -> Epsilon
+    | EventA se -> desymbolic_sevent ctx mts se
+    | LorA (t1, t2) -> Union [ aux t1; aux t2 ]
+    | LandA (t1, t2) -> Intersect [ aux t1; aux t2 ]
+    | SeqA (t1, t2) -> Concat [ aux t1; aux t2 ]
+    | StarA t -> Star (aux t)
+    | ComplementA t -> Complement (aux t)
   in
-  match aux regex with None -> NRegex.Epslion | Some r -> r
+  let res = aux regex in
+  simp res

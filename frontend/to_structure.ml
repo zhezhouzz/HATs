@@ -27,6 +27,13 @@ let ocaml_structure_to_structure structure =
               kind = RtyLib;
               rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
             }
+      | [ x ] when String.equal x.attr_name.txt "effrty" ->
+          Rty
+            {
+              name = String.capitalize_ascii name;
+              kind = RtyLib;
+              rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
+            }
       | [ x ] when String.equal x.attr_name.txt "assert" ->
           Rty
             {

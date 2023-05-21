@@ -33,7 +33,7 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   in
   Smtquery.check_bool query
 
-let sub_cty (pctx : PTypectx.ctx) cty1 cty2 =
+let sub_cty (pctx : PTypectx.ctx) (cty1, cty2) =
   let rec aux (pctx : PTypectx.ctx) uqvs cty1 cty2 =
     match PTypectx.last_destruct_opt pctx with
     | None -> aux_sub_cty uqvs cty1 cty2
@@ -46,12 +46,12 @@ let sub_cty (pctx : PTypectx.ctx) cty1 cty2 =
   in
   aux pctx [] cty1 cty2
 
-let sub_cty_bool (pctx : PTypectx.ctx) cty1 cty2 = sub_cty pctx cty1 cty2
+let sub_cty_bool (pctx : PTypectx.ctx) (cty1, cty2) = sub_cty pctx (cty1, cty2)
 (* match sub_cty pctx cty1 cty2 with None -> true | Some _ -> false *)
 
 let is_bot_cty pctx cty =
   let bot_cty = mk_bot_cty (erase_cty cty) in
-  sub_cty_bool pctx cty bot_cty
+  sub_cty_bool pctx (cty, bot_cty)
 
 let is_bot_pty pctx pty =
   match pty with

@@ -4,7 +4,8 @@ module T = struct
 
   type reg =
     | Empt
-    | Epslion
+    | Epsilon
+    | Any
     | Minterm of mt
     | Union of reg list
     | Intersect of reg list
@@ -20,7 +21,8 @@ module T = struct
     let rec aux reg =
       match reg with
       | Empt -> "∅"
-      | Epslion -> "ε"
+      | Epsilon -> "ϵ"
+      | Any -> "."
       | Minterm mt -> mt_to_string mt
       | Union rs -> spf "∪(%s)" @@ List.split_by_comma aux rs
       | Intersect rs -> spf "⊓(%s)" @@ List.split_by_comma aux rs
@@ -30,38 +32,36 @@ module T = struct
     in
     aux reg
 
-  (* let simp reg = *)
-  (*   let rec aux reg = *)
-  (*     match reg with *)
-  (*     | Epslion | Minterm _ -> reg *)
-  (*     | Union rs -> ( *)
-  (*         let rs = List.map aux rs in *)
-  (*         let rs = *)
-  (*           List.filter_map *)
-  (*             (fun x -> match x with Epslion -> None | _ -> Some x) *)
-  (*             rs *)
-  (*         in *)
-  (*         match rs with [] -> Epslion | [ x ] -> x | _ -> Union rs) *)
-  (*     | Intersect rs -> ( *)
-  (*         let rs = List.map aux rs in *)
-  (*         if *)
-  (*           List.exists *)
-  (*             (fun x -> match x with Epslion -> true | _ -> false) *)
-  (*             rs *)
-  (*         then Epslion *)
-  (*         else *)
-  (*           match rs with [] -> Intersect [] | [ x ] -> x | _ -> Intersect rs) *)
-  (*     | Concat rs ->  *)
-
-  (*       ( *)
-  (*         let rs = List.map aux rs in *)
-  (*         let rs = *)
-  (*           List.filter_map *)
-  (*             (fun x -> match x with Epslion -> None | _ -> Some x) *)
-  (*             rs *)
-  (*         in *)
-  (*         match rs with [] -> Epslion | [ x ] -> x | _ -> Concat rs) *)
-  (*     | Star r -> Star (aux r) *)
-  (*   in *)
-  (*   aux reg *)
+  let simp reg =
+    let rec aux reg =
+      match reg with
+      | Epsilon | Empt | Any | Minterm _ -> reg
+      | Union rs -> (
+          let rs = List.map aux rs in
+          let rs =
+            List.filter_map
+              (fun x -> match x with Empt -> None | _ -> Some x)
+              rs
+          in
+          match rs with [] -> Empt | [ x ] -> x | _ -> Union rs)
+      | Intersect rs -> (
+          let rs = List.map aux rs in
+          if List.exists (fun x -> match x with Empt -> true | _ -> false) rs
+          then Empt
+          else match rs with [] -> Empt | [ x ] -> x | _ -> Intersect rs)
+      | Concat rs -> (
+          let rs = List.map aux rs in
+          if List.exists (fun x -> match x with Empt -> true | _ -> false) rs
+          then Empt
+          else
+            let rs =
+              List.filter_map
+                (fun x -> match x with Epsilon -> None | _ -> Some x)
+                rs
+            in
+            match rs with [] -> Epsilon | [ x ] -> x | _ -> Concat rs)
+      | Star r -> Star (aux r)
+      | Complement r -> Complement (aux r)
+    in
+    aux reg
 end

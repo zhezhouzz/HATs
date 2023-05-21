@@ -6,9 +6,12 @@ open Sugar
 let deseq regex =
   let rec aux res regex =
     match regex with
+    | EmptyA -> []
+    | AnyA -> [ res ]
     | EpsilonA -> [ res ]
     | StarA _ | EventA _ -> [ res @ [ regex ] ]
     | LorA (t1, t2) -> aux res t1 @ aux res t2
+    | ComplementA _ -> _failatwith __FILE__ __LINE__ "die"
     | LandA (_, _) -> _failatwith __FILE__ __LINE__ "die"
     | SeqA (t1, t2) -> aux (res @ [ t1 ]) t2
   in
@@ -23,8 +26,11 @@ let branchize_regex regex =
   in
   let rec aux preA regex =
     match regex with
+    | AnyA -> _failatwith __FILE__ __LINE__ "die"
+    | EmptyA -> _failatwith __FILE__ __LINE__ "die"
     | EpsilonA -> _failatwith __FILE__ __LINE__ "die"
     | StarA _ -> _failatwith __FILE__ __LINE__ "die"
+    | ComplementA _ -> _failatwith __FILE__ __LINE__ "die"
     | EventA se -> last_step preA se
     | LorA (t1, t2) -> aux preA t1 @ aux preA t2
     | LandA (t1, t2) ->
@@ -43,8 +49,8 @@ let branchize_regex regex =
         ll
     | SeqA (t1, t2) -> aux (SeqA (preA, t1)) t2
   in
-  aux regex
+  aux EpsilonA regex
 
-let branchize = function
-  | Pty pty -> [ (EpsilonA, pty) ]
-  | Regty regex -> branchize_regex EpsilonA regex.Nt.x
+(* let branchize = function *)
+(*   | Pty pty -> [ (EpsilonA, pty) ] *)
+(*   | Regty regex -> branchize_regex EpsilonA regex.Nt.x *)

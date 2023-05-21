@@ -2,20 +2,42 @@ include Syntax
 
 module NTypectx = struct
   include Nt
-  include Typectx.FString (Nt)
+  include Typectx.FString
 
-  let new_to_right ctx Nt.{ x; ty } = new_to_right ctx (x, ty)
+  type ctx = Nt.t poly_ctx
+
+  let new_to_right ctx { x; ty } = new_to_right ctx (x, ty)
 
   let new_to_rights ctx l =
-    let l = List.map (fun Nt.{ x; ty } -> (x, ty)) l in
+    let l = List.map (fun { x; ty } -> (x, ty)) l in
     new_to_rights ctx l
+
+  let _f = layout
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
+  let pretty_layout = pretty_layout _f
 end
 
 module NOpTypectx = struct
   include Nt
-  include Typectx.FOp (Nt)
+  include Typectx.FOp
+
+  type ctx = Nt.t poly_ctx
 
   let to_builtin ctx : ctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) ctx
+  let new_to_right ctx { x; ty } = new_to_right ctx (x, ty)
+  let _f = layout
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
+  let pretty_layout = pretty_layout _f
 end
 
 module StructureRaw = struct
@@ -42,7 +64,6 @@ module Rty = struct
   let layout_pty rty = StructureRaw.layout_pty (besome_pty rty)
   let layout_regex rty = StructureRaw.layout_regex (besome_regex rty)
   let layout_sevent rty = StructureRaw.layout_sevent (besome_sevent rty)
-  let layout = layout_rty
 
   open Sugar
 
@@ -78,42 +99,23 @@ module Rty = struct
     | Nt.Ty_bool -> find_boollit_assignment_from_prop prop x.Nt.x
     | Nt.Ty_int -> find_intlit_assignment_from_prop prop x.Nt.x
     | _ -> _failatwith __FILE__ __LINE__ "die"
-end
 
-module PCtxType = struct
-  include Rty
-
-  type t = pty
-  type 'a typed = { x : 'a; ty : pty }
-
-  (* open Sugar *)
-
-  let ( #: ) x ty = { x; ty }
-  let ( #-> ) f { x; ty } = { x = f x; ty }
-  let layout = layout_pty
-end
-
-module RCtxType = struct
-  include Rty
-
-  type t = rty
-  type 'a typed = { x : 'a; ty : rty }
-
-  (* open Sugar *)
-
-  let ( #: ) x ty = { x; ty }
-  let ( #-> ) f { x; ty } = { x = f x; ty }
-  let layout = layout_rty
-  (* let layout_typed f { x; ty } = spf "%s:%s" (f x) (layout ty) *)
-
-  (* let layout_typed_l f l = *)
-  (*   Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l *)
+  let mk_effevent_from_application (op, args) =
+    let vs = vs_names (List.length args) in
+    let vs, props =
+      List.split
+      @@ List.map (fun (v, lit) ->
+             let v = Nt.(v #: lit.ty) in
+             (v, mk_prop_var_eq_lit v lit.x))
+      @@ _safe_combine __FILE__ __LINE__ vs args
+    in
+    EffEvent { op; vs; phi = And props }
 end
 
 module Structure = struct
   open Coersion
   include Structure
-  module R = RCtxType
+  module R = Rty
 
   let layout_term x = StructureRaw.layout_term @@ besome_typed_term x
   let layout_entry x = StructureRaw.layout_entry @@ besome_entry x
@@ -121,22 +123,33 @@ module Structure = struct
 end
 
 module POpTypectx = struct
-  include PCtxType
-  include Typectx.FOp (PCtxType)
+  include Rty
+  include Typectx.FOp
 
-  let to_nctx rctx =
-    List.map (fun { x; ty } -> Nt.{ x; ty = erase_pty ty }) rctx
+  type ctx = pty poly_ctx
+
+  let to_nctx rctx = List.map (fun (x, ty) -> (x, erase_pty ty)) rctx
 end
 
 module PTypectx = struct
-  include PCtxType
-  include Typectx.FString (PCtxType)
+  include Rty
+  include Typectx.FString
 
-  let new_to_right ctx PCtxType.{ x; ty } = new_to_right ctx (x, ty)
+  type ctx = pty poly_ctx
+
+  let new_to_right ctx { px; pty } = new_to_right ctx (px, pty)
 
   let new_to_rights ctx l =
-    let l = List.map (fun PCtxType.{ x; ty } -> (x, ty)) l in
+    let l = List.map (fun { px; pty } -> (px, pty)) l in
     new_to_rights ctx l
+
+  let _f = layout_pty
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
 
   let filter_map_rty f code =
     List.filter_map
@@ -164,16 +177,27 @@ module PTypectx = struct
 
   let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) rctx
 
+  let to_opctx_if_cap rctx =
+    let cond x = String.equal x (String.capitalize_ascii x) in
+    let effpctx =
+      List.filter_map
+        (fun (x, ty) -> if cond x then Some (Op.EffOp x, ty) else None)
+        rctx
+    in
+    let pctx = List.filter (fun (x, _) -> not (cond x)) rctx in
+    (effpctx, pctx)
+
   let op_and_rctx_from_code code =
     let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in
     let rctx = from_code code in
-    let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l (fun x -> x) rctx) in
+    let effctx, rctx = to_opctx_if_cap rctx in
+    let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l rctx) in
     let opctx, rctx =
       List.partition
         (fun (x, _) -> NOpTypectx.exists opctx (Op.BuiltinOp x))
         rctx
     in
-    let opctx = to_opctx opctx in
+    let opctx = effctx @ to_opctx opctx in
     (* let () = *)
     (*   Pp.printf "@{<bold>Op:@} %s\n" *)
     (*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *)
@@ -182,14 +206,24 @@ module PTypectx = struct
 end
 
 module RTypectx = struct
-  include RCtxType
-  include Typectx.FString (RCtxType)
+  include Rty
+  include Typectx.FString
 
-  let new_to_right ctx RCtxType.{ x; ty } = new_to_right ctx (x, ty)
+  type ctx = rty poly_ctx
+
+  let new_to_right ctx { rx; rty } = new_to_right ctx (rx, rty)
 
   let new_to_rights ctx l =
-    let l = List.map (fun RCtxType.{ x; ty } -> (x, ty)) l in
+    let l = List.map (fun { rx; rty } -> (rx, rty)) l in
     new_to_rights ctx l
+
+  let _f = layout_rty
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
 
   let filter_map_rty f code =
     List.filter_map
@@ -200,41 +234,12 @@ module RTypectx = struct
         | Rty { name; kind; rty } -> f (name, kind, rty))
       code
 
-  (* let from_code code = *)
-  (*   from_kv_list *)
-  (*   @@ filter_map_rty *)
-  (*        (fun (name, kind, rty) -> *)
-  (*          let open Structure in *)
-  (*          match kind with RtyLib -> Some (name, rty) | RtyToCheck -> None) *)
-  (*        code *)
-
   let get_task code =
     filter_map_rty
       (fun (name, kind, rty) ->
         let open Structure in
         match kind with RtyLib -> None | RtyToCheck -> Some (name, rty))
       code
-
-  (* let op_and_rctx_from_code code = *)
-  (*   let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in *)
-  (*   let rctx = from_code code in *)
-  (*   let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l (fun x -> x) rctx) in *)
-  (*   let opctx, rctx = *)
-  (*     List.partition *)
-  (*       (fun { x; _ } -> NOpTypectx.exists opctx (Op.BuiltinOp x)) *)
-  (*       rctx *)
-  (*   in *)
-  (*   let opctx = *)
-  (*     List.map *)
-  (*       (fun { x; ty } -> *)
-  (*         POpTypectx.{ x = Op.BuiltinOp x; ty = rty_force_pty ty }) *)
-  (*       opctx *)
-  (*   in *)
-  (*   (\* let () = *\) *)
-  (*   (\*   Pp.printf "@{<bold>Op:@} %s\n" *\) *)
-  (*   (\*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *\) *)
-  (*   (\* in *\) *)
-  (*   (opctx, rctx) *)
 end
 
 (* module RTypedTermlang = struct *)
@@ -248,12 +253,15 @@ module TypedCoreEff = struct
   open Sugar
 
   let _value_to_lit file line v =
-    match v.x with
-    | VVar name -> Rty.P.AVar name
-    | VConst c -> Rty.P.AC c
-    | VLam _ -> _failatwith file line "?"
-    | VFix _ -> _failatwith file line "?"
-    | VTu _ -> _failatwith file line "?"
+    let lit =
+      match v.x with
+      | VVar name -> Rty.P.AVar name
+      | VConst c -> Rty.P.AC c
+      | VLam _ -> _failatwith file line "?"
+      | VFix _ -> _failatwith file line "?"
+      | VTu _ -> _failatwith file line "?"
+    in
+    lit #: v.ty
 end
 
 module Eqctx = struct

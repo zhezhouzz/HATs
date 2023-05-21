@@ -9,6 +9,8 @@ module type T = sig
     | AAppOp of Op.t typed * lit typed list
   [@@deriving sexp]
 
+  val force_to_id : lit -> string
+  val typed_force_to_id_list : lit typed list -> string list
   val mk_lit_true : lit
   val mk_lit_false : lit
   val subst_lit : string * lit -> lit -> lit
@@ -16,7 +18,7 @@ module type T = sig
   val fv_typed_lit : lit typed -> string list
   val fv_typed_lits : lit typed list -> string list
   val get_eqlit_by_name : lit -> string -> lit option
-  val compare : lit -> lit -> int
+  val compare_lit : lit -> lit -> int
   val eq_lit : lit -> lit -> bool
   val mk_int_l1_eq_l2 : lit -> lit -> lit
   val find_assignment_of_intvar : lit -> string -> lit option
@@ -36,7 +38,7 @@ struct
     | AAppOp of Op.t typed * lit typed list
   [@@deriving sexp]
 
-  let compare l1 l2 =
+  let compare_lit l1 l2 =
     let res = Sexplib.Sexp.compare (sexp_of_lit l1) (sexp_of_lit l2) in
     (* let () = *)
     (*   Printf.printf "lit compare\n%s\n=?\n%s\n===> kk %b\n" *)
@@ -46,7 +48,14 @@ struct
     (* in *)
     res
 
-  let eq_lit l1 l2 = 0 == compare l1 l2
+  open Sugar
+
+  let force_to_id = function
+    | AVar x -> x
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  let typed_force_to_id_list l = List.map (fun x -> force_to_id x.x) l
+  let eq_lit l1 l2 = 0 == compare_lit l1 l2
   let mk_lit_true = AC (Constant.B true)
   let mk_lit_false = AC (Constant.B false)
   let get_var_opt = function AVar x -> Some x | _ -> None

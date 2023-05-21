@@ -86,12 +86,18 @@ open Sugar
 
 exception SMTTIMEOUT
 
+let debug_counter = ref 0
+
 let handle_check_res query_action =
   let time_t, res = Sugar.clock query_action in
   let () =
     Env.show_debug_stat @@ fun _ ->
     Pp.printf "@{<bold>Solving time: %.2f@}\n" time_t
   in
+  (* let () = *)
+  (*   if 18 == !debug_counter then failwith "end" *)
+  (*   else debug_counter := !debug_counter + 1 *)
+  (* in *)
   match res with
   | SmtUnsat -> None
   | SmtSat model ->
@@ -101,24 +107,56 @@ let handle_check_res query_action =
       Some model
   | Timeout -> raise SMTTIMEOUT
 
-let inclusion_query ctx r1 r2 =
-  (* let open Sugar in *)
+let mk_q_version1 ctx r1 r2 =
   let encoding, r1, r2 = Regencoding.to_z3_two_reg ctx (r1, r2) in
-  let () =
-    Env.show_debug_queries @@ fun _ ->
-    Printf.printf "Query:\n%s \n⊆\n%s\n" (Expr.to_string r1) (Expr.to_string r2)
-  in
-  (* let sequence = *)
-  (*   Expr.mk_const_s ctx "reg_query_string" (Seq.mk_seq_sort ctx @@ Seq.mk_string_sort ctx) *)
-  (* in *)
   let sequence = Expr.mk_const_s ctx sequence_name (Seq.mk_string_sort ctx) in
   let q1 = Seq.mk_seq_in_re ctx sequence r1 in
   let q2 = Seq.mk_seq_in_re ctx sequence r2 in
-  match
-    handle_check_res (fun () -> smt_solve ctx [ q1; Boolean.mk_not ctx q2 ])
-  with
-  | None -> None
+  let () =
+    Env.show_debug_queries @@ fun _ ->
+    Printf.printf "Query:\n%s\n%s\n" (Expr.to_string q1) (Expr.to_string q2)
+  in
+  (encoding, [ q1; Boolean.mk_not ctx q2 ])
+
+let mk_q_version2 ctx r1 r2 =
+  let encoding, r =
+    Regencoding.to_z3_one_reg ctx
+      Language.NRegex.(Intersect [ r1; Complement r2 ])
+  in
+  let sequence = Expr.mk_const_s ctx sequence_name (Seq.mk_string_sort ctx) in
+  let q = Seq.mk_seq_in_re ctx sequence r in
+  let () =
+    Env.show_debug_queries @@ fun _ ->
+    Printf.printf "Query:\n%s\n" (Expr.to_string q)
+  in
+  (encoding, [ q ])
+
+let layout_counterexample mt_list =
+  match mt_list with
+  | [] -> "ϵ"
+  | _ -> List.split_by ";" Minterm.T.mt_to_string mt_list
+
+let inclusion_query ctx r1 r2 =
+  (* let open Sugar in *)
+  let encoding, qs = mk_q_version2 ctx r1 r2 in
+  (* let () = *)
+  (*   if 1 == !debug_counter then failwith "end" *)
+  (*   else debug_counter := !debug_counter + 1 *)
+  (* in *)
+  match handle_check_res (fun () -> smt_solve ctx qs) with
+  | None ->
+      ( Env.show_debug_queries @@ fun _ ->
+        Pp.printf "@{<orange>inclusion is valid:@}\n" );
+      (* let () = *)
+      (*   if 1 == !debug_counter then failwith "end" *)
+      (*   else debug_counter := !debug_counter + 1 *)
+      (* in *)
+      None
   | Some model ->
+      (* let () = *)
+      (*   if 1 == !debug_counter then failwith "end" *)
+      (*   else debug_counter := !debug_counter + 1 *)
+      (* in *)
       (* ( Env.show_debug_queries @@ fun _ -> *)
       (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
       let str =
@@ -127,7 +165,11 @@ let inclusion_query ctx r1 r2 =
         | None -> _failatwith __FILE__ __LINE__ "die"
       in
       let mt_list = Regencoding.encoding_code_trace encoding str in
-      ( Env.show_debug_debug @@ fun _ ->
-        Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
-          (List.split_by ";" Minterm.T.mt_to_string mt_list) );
+      (* ( Env.show_debug_queries @@ fun _ -> *)
+      (*   Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n" *)
+      (*     (layout_counterexample mt_list) ); *)
+      (* let () = *)
+      (*   if 1 == !debug_counter then failwith "end" *)
+      (*   else debug_counter := !debug_counter + 1 *)
+      (* in *)
       Some mt_list

@@ -1,23 +1,3 @@
-module type CtxType = sig
-  type t
-
-  (* val mk_noty : 'a -> 'a typed *)
-  (* val ( #: ) : 'a -> t -> 'a typed *)
-
-  (* val ( #-> ) : ('a -> 'b) -> 'a typed -> 'b typed *)
-  val layout : t -> string
-  (* val layout_typed_l : ('a -> string) -> 'a typed list -> string *)
-
-  (* val is_basic_tp : t -> bool *)
-  (* val is_dt : t -> bool *)
-  (* val eq : t -> t -> bool *)
-
-  (* val destruct_arr_tp : t -> t list * t *)
-  (* val construct_arr_tp : t list * t -> t *)
-  (* val default_ty : t *)
-  (* val _type_unify : string -> int -> t -> t -> t *)
-end
-
 module type CtxId = sig
   type ctxid
 
@@ -39,21 +19,20 @@ module OpId = struct
   let layout = Op.to_string
 end
 
-module F (I : CtxId) (Ty : CtxType) = struct
+module F (I : CtxId) = struct
   open Zzdatatype.Datatype
 
   (* open Sexplib.Std *)
   open Sugar
-  open Ty
 
-  type binding = I.ctxid * t
-  type ctx = binding list
+  type 'a binding = I.ctxid * 'a
+  type 'a poly_ctx = 'a binding list
 
   let last_destruct_opt pctx =
     let* l, (x, ty) = List.last_destruct_opt pctx in
     Some (l, (x, ty))
 
-  let layout_typed f (x, ty) = spf "%s:%s" (f x) (layout ty)
+  let layout_typed f (x, ty) = spf "%s:%s" (I.layout x) (f ty)
 
   let layout_typed_l f l =
     Zzdatatype.Datatype.List.split_by_comma (layout_typed f) l
@@ -63,12 +42,12 @@ module F (I : CtxId) (Ty : CtxType) = struct
   let exists ctx name = List.exists (fun (x, _) -> I.equal x name) ctx
   (* let get_opctx ctx = List.filter (fun x -> Op.id_is_dt x.x) ctx *)
 
-  let get_ty_opt (ctx : ctx) id : t option =
+  let get_ty_opt (ctx : 'a poly_ctx) id : 'a option =
     match List.find_opt (fun (x, _) -> I.equal id x) ctx with
     | None -> None
     | Some (_, ty) -> Some ty
 
-  let get_ty (ctx : ctx) id : t =
+  let get_ty (ctx : 'a poly_ctx) id : 'a =
     match get_ty_opt ctx id with
     | None ->
         _failatwith __FILE__ __LINE__
@@ -84,24 +63,22 @@ module F (I : CtxId) (Ty : CtxType) = struct
   let fold_right = List.fold_right
   let fold_left = List.fold_left
   let filter_map = List.filter_map
-  let pretty_layout ctx = List.split_by "\n" (layout_typed I.layout) ctx
+  let pretty_layout f ctx = List.split_by "\n" (layout_typed f) ctx
 
-  let pretty_print ctx =
+  let pretty_print f ctx =
     Env.show_debug_typing (fun _ ->
         if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
         else
           List.iter
-            (fun (x, ty) ->
-              Pp.printf "%s:@{<green>%s@}," (I.layout x) (layout ty))
+            (fun (x, ty) -> Pp.printf "%s:@{<green>%s@}," (I.layout x) (f ty))
             ctx)
 
-  let pretty_print_lines ctx =
+  let pretty_print_lines f ctx =
     Env.show_debug_typing (fun _ ->
         if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
         else
           List.iter
-            (fun (x, ty) ->
-              Pp.printf "%s:@{<green>%s@}\n" (I.layout x) (layout ty))
+            (fun (x, ty) -> Pp.printf "%s:@{<green>%s@}\n" (I.layout x) (f ty))
             ctx)
 
   let pretty_layout_judge ctx (e, ty) =
@@ -110,25 +87,25 @@ module F (I : CtxId) (Ty : CtxType) = struct
   let pretty_layout_subtyping ctx (r1, r2) =
     Printf.sprintf "%s⊢\n%s <:\n%s\n" ctx r1 r2
 
-  let pretty_print_infer ctx (e, (r : t)) =
+  let pretty_print_infer f ctx (e, (r : 'a)) =
     Env.show_debug_typing (fun _ ->
         let () = Pp.printf "@{<bold>Type Infer:@}\n" in
-        pretty_print ctx;
+        pretty_print f ctx;
         Pp.printf "⊢ @{<hi_magenta>%s@} ⇨ " (short_str 100 e);
-        Pp.printf "@{<cyan>%s@}\n\n" @@ layout r)
+        Pp.printf "@{<cyan>%s@}\n\n" @@ f r)
 
-  let pretty_print_judge ctx (e, (r : t)) =
+  let pretty_print_judge f ctx (e, (r : 'a)) =
     Env.show_debug_typing (fun _ ->
         let () = Pp.printf "@{<bold>Type Check:@}\n" in
-        pretty_print ctx;
+        pretty_print f ctx;
         Pp.printf "⊢ @{<hi_magenta>%s@} ⇦ " (short_str 10000 e);
-        Pp.printf "@{<cyan>%s@}\n\n" @@ layout r)
+        Pp.printf "@{<cyan>%s@}\n\n" @@ f r)
 end
 
-module FString (Ty : CtxType) = struct
-  include F (StrId) (Ty)
+module FString = struct
+  include F (StrId)
 end
 
-module FOp (Ty : CtxType) = struct
-  include F (OpId) (Ty)
+module FOp = struct
+  include F (OpId)
 end

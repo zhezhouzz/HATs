@@ -11,7 +11,7 @@ let check opctx' structure normalized_structure =
   (* in *)
   let opctx, rctx = PCtx.op_and_rctx_from_code structure in
   let opctx = opctx @ opctx' in
-  let eqctx = Eqctx.from_code structure in
+  (* let eqctx = Eqctx.from_code structure in *)
   (* let () = Printf.printf "!!! %s\n" @@ Eqctx.layout_equations eqctx in *)
   (* let () = failwith "end" in *)
   let tasks = RTypectx.get_task structure in
@@ -29,10 +29,7 @@ let check opctx' structure normalized_structure =
         with
         | None -> _failatwith __FILE__ __LINE__ ""
         | Some (_, comp) ->
-            let res =
-              Bidirectional.comp_type_check { rctx; opctx; eqctx } R.EpsilonA
-                comp rty
-            in
+            let res = Bidirectional.comp_type_check { rctx; opctx } comp rty in
             let () =
               if res then
                 Env.show_debug_typing @@ fun _ ->

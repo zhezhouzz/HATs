@@ -1,13 +1,12 @@
 open Zzdatatype.Datatype
 open Language
-module Rty = PCtxType
-open Rty.P
+open Rty
 open Sugar
 
 module LitElem = struct
   type t = lit
 
-  let compare = compare
+  let compare = compare_lit
 end
 
 module PtyElem = struct
@@ -149,7 +148,7 @@ let tab_vs (tab : 'a tab) =
   match tab with
   | LitTab { vs; _ } ->
       let bindings =
-        List.map (fun { x; ty } -> Rty.{ x; ty = mk_top_pty ty }) vs
+        List.map (fun { x; ty } -> { px = x; pty = mk_top_pty ty }) vs
       in
       bindings
   | PtyTab _ -> []

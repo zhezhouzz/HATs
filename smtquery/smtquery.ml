@@ -33,7 +33,7 @@ let check_implies_bool (a, b) =
 
 let check_inclusion (r1, r2) = Check.inclusion_query ctx r1 r2
 
-open Zzdatatype.Datatype
+(* open Zzdatatype.Datatype *)
 
 let check_inclusion_bool (r1, r2) =
   match check_inclusion (r1, r2) with
@@ -44,7 +44,7 @@ let check_inclusion_bool (r1, r2) =
       (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
       ( Env.show_debug_queries @@ fun _ ->
         Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
-          (List.split_by ";" Minterm.T.mt_to_string mt_list) );
+          (Check.layout_counterexample mt_list) );
       false
 
 let check_inclusion_counterexample (r1, r2) =
@@ -53,7 +53,7 @@ let check_inclusion_counterexample (r1, r2) =
   | Some mt_list ->
       ( Env.show_debug_queries @@ fun _ ->
         Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
-          (List.split_by ";" Minterm.T.mt_to_string mt_list) );
+          (Check.layout_counterexample mt_list) );
       Some mt_list
 
 open Language.NRegex

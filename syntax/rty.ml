@@ -4,6 +4,12 @@ module F (L : Lit.T) = struct
 
   type arr_kind = SigamArr | PiArr [@@deriving sexp]
 
+  let eq_arr_kind k1 k2 =
+    match (k1, k2) with
+    | SigamArr, SigamArr -> true
+    | PiArr, PiArr -> true
+    | _, _ -> false
+
   type pty =
     | BasePty of { cty : cty }
     | TuplePty of pty list
@@ -15,7 +21,7 @@ module F (L : Lit.T) = struct
 
   and rty =
     | Pty of pty
-    | Regty of { nty : Nt.t; prereg : regex; retreg : regex }
+    | Regty of { nty : Nt.t; prereg : regex; postreg : regex }
   [@@deriving sexp]
 
   and sevent =
@@ -26,12 +32,14 @@ module F (L : Lit.T) = struct
   and regex =
     | EmptyA
     | EpsilonA
+    | AnyA
     | EventA of sevent
     | LorA of regex * regex
     | LandA of regex * regex
     | SeqA of regex * regex
     | StarA of regex
     | ComplementA of regex
+  [@@deriving sexp]
 
   and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
 
@@ -39,12 +47,23 @@ module F (L : Lit.T) = struct
 
   open Sugar
 
+  let mk_regex_any = AnyA
+  let mk_regex_all = StarA AnyA
+
+  let smart_seq (a1, a2) =
+    match a1 with EmptyA -> EmptyA | EpsilonA -> a2 | _ -> SeqA (a1, a2)
+
   let str_eq_to_bv y x =
     match x with Some x -> String.equal x y | None -> false
 
   let ret_name = "Ret"
   let guard_name = "Guard"
   let vs_names n = List.init n (fun i -> spf "%s%i" v_name i)
+
+  let vs_names_from_types tps =
+    let n = List.length tps in
+    let vs = vs_names n in
+    List.map (fun (x, ty) -> x #: ty) @@ _safe_combine __FILE__ __LINE__ vs tps
 
   (* NOTE: Gurad is not a real event, thus it has no op name *)
   let se_get_op = function
@@ -73,10 +92,10 @@ module F (L : Lit.T) = struct
   let compare_pty l1 l2 = Sexplib.Sexp.compare (sexp_of_pty l1) (sexp_of_pty l2)
   let eq_pty l1 l2 = 0 == compare_pty l1 l2
 
-  let compare tau1 tau2 =
+  let compare_rty tau1 tau2 =
     Sexplib.Sexp.compare (sexp_of_rty tau1) (sexp_of_rty tau2)
 
-  let eq tau1 tau2 = 0 == compare tau1 tau2
+  let eq_rty tau1 tau2 = 0 == compare_rty tau1 tau2
   let ( #:: ) px pty = { px; pty }
   let ( #--> ) f { px; pty } = { px = f px; pty }
 
@@ -107,6 +126,7 @@ module F (L : Lit.T) = struct
     let rec aux regex =
       match regex with
       | EmptyA -> EmptyA
+      | AnyA -> AnyA
       | EpsilonA -> EpsilonA
       | EventA se -> EventA (subst_sevent (y, z) se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
@@ -119,12 +139,12 @@ module F (L : Lit.T) = struct
 
   and subst (y, z) = function
     | Pty pty -> Pty (subst_pty (y, z) pty)
-    | Regty { nty; prereg; retreg } ->
+    | Regty { nty; prereg; postreg } ->
         Regty
           {
             nty;
             prereg = subst_regex (y, z) prereg;
-            retreg = subst_regex (y, z) retreg;
+            postreg = subst_regex (y, z) postreg;
           }
 
   let subst_rty = subst
@@ -144,7 +164,7 @@ module F (L : Lit.T) = struct
       match rty with
       | BasePty { cty; _ } -> fv_cty cty
       | TuplePty ptys -> List.concat_map aux ptys
-      | ArrPty { rarg; retrty } ->
+      | ArrPty { rarg; retrty; _ } ->
           let argfv = aux rarg.pty in
           let retfv =
             List.filter (fun x -> not (str_eq_to_bv x rarg.px)) @@ fv retrty
@@ -166,6 +186,7 @@ module F (L : Lit.T) = struct
     let rec aux regex =
       match regex with
       | EmptyA -> []
+      | AnyA -> []
       | EpsilonA -> []
       | EventA se -> fv_sevent se
       | LorA (t1, t2) -> aux t1 @ aux t2
@@ -178,7 +199,7 @@ module F (L : Lit.T) = struct
 
   and fv = function
     | Pty pty -> fv_pty pty
-    | Regty { prereg; retreg; _ } -> fv_regex prereg @ fv_regex retreg
+    | Regty { prereg; postreg; _ } -> fv_regex prereg @ fv_regex postreg
 
   (* erase *)
 
@@ -188,11 +209,13 @@ module F (L : Lit.T) = struct
       match rty with
       | BasePty { cty; _ } -> erase_cty cty
       | TuplePty ptys -> Ty_tuple (List.map aux ptys)
-      | ArrPty { rarg; retrty } -> mk_arr (aux rarg.pty) (erase retrty)
+      | ArrPty { rarg; retrty; arr_kind = PiArr } ->
+          mk_arr (aux rarg.pty) (erase retrty)
+      | ArrPty { retrty; arr_kind = SigamArr; _ } -> erase retrty
     in
     aux rty
 
-  and erase = function Pty pty -> erase_pty pty | Regty regex -> regex.Nt.ty
+  and erase = function Pty pty -> erase_pty pty | Regty { nty; _ } -> nty
 
   let ptyped_opt_erase { px; pty } =
     match px with None -> None | Some x -> Some Nt.{ x; ty = erase_pty pty }
@@ -200,7 +223,12 @@ module F (L : Lit.T) = struct
   let ptyped_erase { px; pty } = Nt.{ x = px; ty = erase_pty pty }
 
   let pty_to_ret_rty pty =
-    Regty Nt.{ x = EventA (RetEvent pty); ty = erase_pty pty }
+    Regty
+      {
+        nty = erase_pty pty;
+        prereg = EpsilonA;
+        postreg = EventA (RetEvent pty);
+      }
 
   let rtyped_force_to_ptyped file line { rx; rty } =
     match rty with
@@ -259,12 +287,15 @@ module F (L : Lit.T) = struct
   let gather_from_regex regex =
     let rec aux regex m =
       match regex with
+      | EmptyA -> m
+      | AnyA -> m
       | EpsilonA -> m
       | EventA se -> gather_from_sevent m se
       | LorA (t1, t2) -> aux t1 @@ aux t2 m
       | LandA (t1, t2) -> aux t1 @@ aux t2 m
       | SeqA (t1, t2) -> aux t1 @@ aux t2 m
       | StarA t -> aux t m
+      | ComplementA t -> aux t m
     in
     aux regex (gathered_lits_init ())
 
@@ -336,10 +367,10 @@ module F (L : Lit.T) = struct
     match tau1 with
     | BasePty { cty } -> BasePty { cty = normalize_name_cty cty }
     | TuplePty tys -> TuplePty (List.map normalize_name_pty tys)
-    | ArrPty { rarg; retrty } ->
+    | ArrPty { arr_kind; rarg; retrty } ->
         let rarg = rarg.px #:: (normalize_name_pty rarg.pty) in
         let retrty = normalize_name_rty retrty in
-        ArrPty { rarg; retrty }
+        ArrPty { arr_kind; rarg; retrty }
 
   and normalize_name_sevent = function
     | GuardEvent phi -> GuardEvent phi
@@ -358,19 +389,26 @@ module F (L : Lit.T) = struct
   and noralize_name_regex regex =
     let rec aux regex =
       match regex with
-      | EpsilonA -> regex
+      | AnyA | EmptyA | EpsilonA -> regex
       | EventA se -> EventA (normalize_name_sevent se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
+      | ComplementA t -> ComplementA (aux t)
     in
     aux regex
 
   and normalize_name_rty tau =
     match tau with
     | Pty tau -> Pty (normalize_name_pty tau)
-    | Regty regex -> Regty Nt.(noralize_name_regex #-> regex)
+    | Regty { nty; prereg; postreg } ->
+        Regty
+          {
+            nty;
+            prereg = noralize_name_regex prereg;
+            postreg = noralize_name_regex postreg;
+          }
 
   (* unify name *)
 
@@ -383,8 +421,9 @@ module F (L : Lit.T) = struct
           @@ _safe_combine __FILE__ __LINE__ tys1 tys2
         in
         (TuplePty tys1, TuplePty tys2)
-    | ( ArrPty { rarg = rarg1; retrty = retrty1 },
-        ArrPty { rarg = rarg2; retrty = retrty2 } ) ->
+    | ( ArrPty { arr_kind = k1; rarg = rarg1; retrty = retrty1 },
+        ArrPty { arr_kind = k2; rarg = rarg2; retrty = retrty2 } )
+      when eq_arr_kind k1 k2 ->
         let pty1, pty2 = unify_name_pty (rarg1.pty, rarg2.pty) in
         let (rarg1, rarg2), retrty2 =
           match (rarg1.px, rarg2.px) with
@@ -395,8 +434,8 @@ module F (L : Lit.T) = struct
           | _, _ -> _failatwith __FILE__ __LINE__ "?"
         in
         let retrty1, retrty2 = unify_name_rty (retrty1, retrty2) in
-        ( ArrPty { rarg = rarg1; retrty = retrty1 },
-          ArrPty { rarg = rarg2; retrty = retrty2 } )
+        ( ArrPty { arr_kind = k1; rarg = rarg1; retrty = retrty1 },
+          ArrPty { arr_kind = k2; rarg = rarg2; retrty = retrty2 } )
     | _, _ -> _failatwith __FILE__ __LINE__ "?"
 
   and unify_name_rty (tau1, tau2) =
@@ -420,11 +459,12 @@ module F (L : Lit.T) = struct
   let delimited_reverse regex =
     let rec aux regex =
       match regex with
-      | EpsilonA | EventA _ -> regex
+      | AnyA | EmptyA | EpsilonA | EventA _ -> regex
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t2, aux t1)
       | StarA t -> StarA (aux t)
+      | ComplementA t -> ComplementA (aux t)
     in
     aux regex
 
@@ -440,7 +480,7 @@ module F (L : Lit.T) = struct
         in
         let pty = mk_top_pty t1 in
         let retrty = Pty (mk_bot_pty t2) in
-        ArrPty { rarg = { px; pty }; retrty }
+        ArrPty { arr_kind = PiArr; rarg = { px; pty }; retrty }
     | Nt.Ty_tuple tys -> TuplePty (List.map mk_bot_pty tys)
     | _ -> BasePty { cty = mk_bot_cty t }
 
@@ -454,11 +494,13 @@ module F (L : Lit.T) = struct
         in
         let pty = mk_bot_pty t1 in
         let retrty = Pty (mk_top_pty t2) in
-        ArrPty { rarg = { px; pty }; retrty }
+        ArrPty { arr_kind = PiArr; rarg = { px; pty }; retrty }
     | Nt.Ty_tuple tys -> TuplePty (List.map mk_top_pty tys)
     | _ -> BasePty { cty = mk_top_cty t }
 
-  let is_arr_pty = function ArrPty _ -> true | _ -> false
+  let is_arr_pty = function
+    | ArrPty { arr_kind = PiArr; _ } -> true
+    | _ -> false
 
   (* dummy interfaces *)
   let is_basic_tp _ = _failatwith __FILE__ __LINE__ "never happen"
@@ -473,7 +515,7 @@ module F (L : Lit.T) = struct
 
   let destruct_arr_one rty =
     match rty with
-    | ArrPty { rarg; retrty } -> (rarg, retrty)
+    | ArrPty { arr_kind = PiArr; rarg; retrty } -> (rarg, retrty)
     | _ -> _failatwith __FILE__ __LINE__ ""
 
   let get_argty rty =
