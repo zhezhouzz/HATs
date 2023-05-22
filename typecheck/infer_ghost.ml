@@ -40,13 +40,11 @@ let unify_prop_func_op_args prop_func_name m =
     StrMap.filter_map
       (fun opname (_, lits) ->
         let vss = find_lits_contain_prop_func prop_func_name lits in
-        match vss with
-        | [] -> None
-        | [ vs ] -> Some (opname, vs)
-        | _ ->
-            _failatwith __FILE__ __LINE__
-              "Syntax error: the prop function should be applied once in a \
-               qualifer")
+        match vss with [] -> None | vs :: _ -> Some (opname, vs)
+        (* | _ -> *)
+        (*     _failatwith __FILE__ __LINE__ *)
+        (* "Syntax error: the prop function should be applied once in a \ *)
+           (*        qualifer" *))
       m
   in
   let l = StrMap.to_value_list l in
@@ -212,7 +210,9 @@ let best_solution l =
   match List.sort solution_compare l with [] -> None | x :: _ -> Some x
 
 let infer_prop_func gamma previousA (prop_func, templateA) postreg =
-  let gathered = gather_from_regex (LorA (previousA, templateA)) in
+  let gathered =
+    gathered_rm_dup @@ gather_from_regex (LorA (previousA, templateA))
+  in
   let ictx = mk_ictx prop_func.x gathered.local_lits in
   let solutions = mk_solution_space ictx in
   let solutions =

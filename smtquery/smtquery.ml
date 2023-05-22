@@ -65,7 +65,15 @@ open Language.NRegex
 
 let test0 () =
   (* let r1 = Epslion in *)
-  let r1 = Minterm { op = "Put"; global_embedding = 1; local_embedding = 3 } in
+  let r1 =
+    Minterm
+      {
+        op = "Put";
+        global_embedding = 1;
+        ret_embedding = 1;
+        local_embedding = 3;
+      }
+  in
   (* let r2 = Concat [ Epslion; r1 ] in *)
   let r2 =
     Language.Rty.(

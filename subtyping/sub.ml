@@ -56,10 +56,15 @@ and sub_regex_bool pctx (regex1, regex2) =
   (* let () = *)
   (*   Printf.printf "regex1: %s\n" (Sexplib.Sexp.to_string @@ sexp_of_regex regex1) *)
   (* in *)
+  (* let () = *)
+  (*   Printf.printf "regex2: %s\n" (Sexplib.Sexp.to_string @@ sexp_of_regex regex2) *)
+  (* in *)
   let res =
     match (Auxtyping.simp regex1, Auxtyping.simp regex2) with
     | EmptyA, _ | _, StarA AnyA -> true
-    | _, EmptyA | StarA AnyA, _ -> false
+    | _, EmptyA ->
+        (* let () = Printf.printf "sdsd\n" in *)
+        false
     | EpsilonA, EpsilonA -> true
     | EventA (RetEvent pty1), EventA (RetEvent pty2) ->
         sub_pty_bool pctx (pty1, pty2)
@@ -71,7 +76,9 @@ and sub_regex_bool pctx (regex1, regex2) =
   res
 
 and sub_regex_bool_aux pctx (regex1, regex2) =
-  (* let () = Printf.printf "R: %s\n" (PTypectx.layout_typed_l pctx) in *)
+  let () =
+    Printf.printf "sub_regex_bool_aux R: %s\n" (PTypectx.layout_typed_l pctx)
+  in
   let ctx, mts = Desymbolic.ctx_init (LorA (regex1, regex2)) in
   let mts =
     NRegex.mts_filter_map

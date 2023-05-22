@@ -19,6 +19,7 @@ module Equation = Structure.Equation
 module EquationRaw = StructureRaw.Equation
 
 (* unwrap *)
+module GMap = Minterm.GMap
 module NRegex = Nregex.T
 module Const = Constant
 module Op = Op

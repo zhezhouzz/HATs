@@ -21,6 +21,7 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   (* in *)
   let phi2 = subst_prop_id (v2.x, v1.x) phi2 in
   let query = close_ptypeds_to_prop uqvs (smart_implies phi1 phi2) in
+  (* let () = Printf.printf "query: %s\n" (layout_prop query) in *)
   let query =
     match v1.ty with Nt.Ty_unit -> query | _ -> Forall (v1, query)
   in

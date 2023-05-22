@@ -23,7 +23,11 @@ type 'a tab =
   | PtyTab of { ptytab : 'a PtyMap.t }
   | EmptyTab
 
-type 'a head = { global_tab : 'a tab; local_tab : 'a tab StrMap.t }
+type 'a head = {
+  global_tab : 'a tab;
+  ret_tab : 'a tab;
+  local_tab : 'a tab StrMap.t;
+}
 
 let pprint_bool_tab m =
   let () =
@@ -72,9 +76,11 @@ let pprint_tab m =
   let () = Pp.printf "\n" in
   ()
 
-let pprint_head { global_tab; local_tab } =
+let pprint_head { global_tab; local_tab; ret_tab } =
   let () = Pp.printf "[global_tab]:" in
   let () = pprint_tab global_tab in
+  let () = Pp.printf "[ret_tab]:" in
+  let () = pprint_tab ret_tab in
   let () = Pp.printf "[local_tab]:\n" in
   let () =
     StrMap.iter
@@ -180,21 +186,20 @@ open Rty
 let make_tab regex =
   let { global_lits; global_pty; local_lits } = gather_from_regex regex in
   let global_tab = litlist_to_tab ([], global_lits) in
-  let local_lits_map = StrMap.map litlist_to_tab local_lits in
-  let ret_enrty = ptylist_to_tab global_pty in
-  let local_tab = StrMap.add ret_name ret_enrty local_lits_map in
-  { global_tab; local_tab }
+  let local_tab = StrMap.map litlist_to_tab local_lits in
+  let ret_tab = ptylist_to_tab global_pty in
+  { global_tab; ret_tab; local_tab }
 
 let mk_minterm_ids n = List.init (NRegex.pow 2 n) (fun x -> x)
 let mk_minterms_from_tab m = mk_minterm_ids (tab_cardinal m)
 
-let mk_mts { global_tab; local_tab } =
+let mk_mts { global_tab; ret_tab; local_tab } =
   let local_m = StrMap.map mk_minterms_from_tab local_tab in
   let global_idxs = mk_minterms_from_tab global_tab in
+  let ret_idxs = mk_minterms_from_tab ret_tab in
+  let idxs = List.cross global_idxs ret_idxs in
   let m =
-    List.fold_left
-      (fun m global_idx -> IntMap.add global_idx local_m m)
-      IntMap.empty global_idxs
+    List.fold_left (fun m idx -> GMap.add idx local_m m) GMap.empty idxs
   in
   m
 

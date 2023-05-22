@@ -1,61 +1,77 @@
+module Gkey = struct
+  open Sexplib.Std
+
+  type t = int * int [@@deriving sexp]
+
+  let compare l1 l2 = Sexplib.Sexp.compare (sexp_of_t l1) (sexp_of_t l2)
+end
+
+module GMap = Map.Make (Gkey)
+
 module T = struct
   open Sexplib.Std
   open Zzdatatype.Datatype
 
-  type mt = { op : string; global_embedding : int; local_embedding : int }
+  type mt = {
+    op : string;
+    global_embedding : int;
+    local_embedding : int;
+    ret_embedding : int;
+  }
   [@@deriving sexp]
 
-  type mts = int list StrMap.t IntMap.t
+  type mts = int list StrMap.t GMap.t
 
   open Sugar
 
-  let mt_to_string { op; global_embedding; local_embedding } =
-    spf "%s_%i_%i" op global_embedding local_embedding
+  let mt_to_string { op; global_embedding; ret_embedding; local_embedding } =
+    spf "%s_%i_%i_%i" op global_embedding ret_embedding local_embedding
 
   let string_to_mt str =
     match
       List.filter (fun l -> String.length l > 0) @@ String.split_on_char '_' str
     with
-    | [ op; global_embedding; local_embedding ] ->
-        let global_embedding = int_of_string global_embedding in
-        let local_embedding = int_of_string local_embedding in
-        { op; global_embedding; local_embedding }
+    | [ op; global_embedding; ret_embedding; local_embedding ] ->
+        let global_embedding, ret_embedding, local_embedding =
+          map3 int_of_string (global_embedding, ret_embedding, local_embedding)
+        in
+        { op; global_embedding; ret_embedding; local_embedding }
     | _ -> _failatwith __FILE__ __LINE__ "die"
 
   let mts_fold_on_op op f (i_s_il : mts) res =
-    IntMap.fold
-      (fun global_embedding s_il res ->
+    GMap.fold
+      (fun (global_embedding, ret_embedding) s_il res ->
         match StrMap.find_opt s_il op with
         | None -> res
         | Some il ->
             List.fold_right
               (fun local_embedding res ->
-                f { global_embedding; op; local_embedding } res)
+                f { global_embedding; ret_embedding; op; local_embedding } res)
               il res)
       i_s_il res
 
   let mts_map f (i_s_il : mts) =
-    IntMap.mapi
-      (fun global_embedding s_il ->
+    GMap.mapi
+      (fun (global_embedding, ret_embedding) s_il ->
         StrMap.mapi
           (fun op il ->
             List.map
               (fun local_embedding ->
-                f { global_embedding; op; local_embedding })
+                f { global_embedding; ret_embedding; op; local_embedding })
               il)
           s_il)
       i_s_il
 
   let mts_filter_map f (i_s_il : mts) =
-    IntMap.filter_map
-      (fun global_embedding s_il ->
+    GMap.filter_map
+      (fun (global_embedding, ret_embedding) s_il ->
         let s_il =
           StrMap.filter_map
             (fun op il ->
               let il =
                 List.filter_map
                   (fun local_embedding ->
-                    f { global_embedding; op; local_embedding })
+                    f { global_embedding; ret_embedding; op; local_embedding })
                   il
               in
               if List.length il == 0 then None else Some il)
@@ -67,8 +83,8 @@ module T = struct
   let s_il_is_empty s_il =
     StrMap.exists (fun _ l -> match l with [] -> true | _ -> false) s_il
 
-  let mts_to_global_m i_s_il =
-    IntMap.to_key_list @@ IntMap.map (fun m -> not (s_il_is_empty m)) i_s_il
+  (* let mts_to_global_m i_s_il = *)
+  (*   GMap.to_key_list @@ IntMap.map (fun m -> not (s_il_is_empty m)) i_s_il *)
 
   let rec pow a = function
     | 0 -> 1
@@ -86,8 +102,9 @@ module T = struct
   let pprint_bl bl = List.split_by "" (fun b -> if b then "1" else "0") bl
 
   let pprint_mts =
-    IntMap.iter (fun global_embedding s_il ->
+    GMap.iter (fun (global_embedding, ret_embedding) s_il ->
         let () = Pp.printf "[global %i]\n" global_embedding in
+        let () = Pp.printf "[ret %i]\n" ret_embedding in
         let () =
           StrMap.iter
             (fun op l ->

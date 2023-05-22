@@ -15,20 +15,19 @@ let[@effrty] get ?l:(a = (true : [%v: int])) =
     post = (Ret (phi v0 : [%v0: int]) : int);
   }
 
-let prog (n : int) : int =
-  if n <= 0 then 0
+let rec prog (n : int) : unit =
+  if n <= 0 then ()
   else
     let (m : int) = nat_gen () in
     let (dummy1 : unit) = perform (Put (n, m)) in
-    let (y : int) = perform (Get n) in
-    y
+    let (n1 : int) = n - 1 in
+    let (dummy2 : unit) = prog n1 in
+    ()
 
 let[@assert] prog ?l:(n = (v >= 0 : [%v: int]) [@over]) =
   {
     pre = epsilon;
     post =
-      ((lorA epsilon
-          (Put ((0 <= v1 : [%v0: int]) : [%v1: int]);
-           Get (0 <= v0 : [%v0: int]));
-        Ret (0 <= v0 : [%v0: int])) : int);
+      ((star (Put ((0 < v0 && v0 <= n && 0 <= v1 : [%v0: int]) : [%v1: int]));
+        Ret (true : [%v0: unit])) : unit);
   }

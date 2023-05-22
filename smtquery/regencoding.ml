@@ -158,7 +158,7 @@ let encoding_code_trace { tab; _ } str =
 
 let to_z3 ctx encoding reg =
   let rec aux reg =
-    let () = Printf.printf "%s\n" @@ reg_to_string reg in
+    (* let () = Printf.printf "%s\n" @@ reg_to_string reg in *)
     match reg with
     | Any -> encoding_get_any ctx encoding
     | Empt -> mk_empty ctx
