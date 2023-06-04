@@ -46,11 +46,11 @@ and sub_rty_bool pctx (rty1, rty2) =
   | Pty pty1, Regty _ -> sub_rty_bool pctx (pty_to_ret_rty pty1, rty2)
   | Regty _, Pty pty2 -> sub_rty_bool pctx (rty1, pty_to_ret_rty pty2)
 
-and sub_pre_regex_bool pctx (a1, a2) =
-  match (a1, a2) with
-  | _, EpsilonA -> true
-  | _, _ ->
-      sub_regex_bool pctx (SeqA (mk_regex_all, a1), SeqA (mk_regex_all, a2))
+and sub_pre_regex_bool pctx (a1, a2) = sub_regex_bool pctx (a1, a2)
+(* match (a1, a2) with *)
+(* | _, (starA anyA) -> true *)
+(* | _, _ -> sub_regex_bool pctx (a1, a2) *)
+(* sub_regex_bool pctx (SeqA (mk_regex_all, a1), SeqA (mk_regex_all, a2)) *)
 
 and sub_regex_bool pctx (regex1, regex2) =
   (* let () = *)

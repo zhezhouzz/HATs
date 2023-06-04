@@ -76,40 +76,40 @@ let rec value_type_infer typectx (value : value typed) : pty option =
   in
   rty
 
-and comp_type_infer (typectx : typectx) (comp : comp typed) : pty option =
-  let str = layout_comp comp in
-  let before_info line rulename =
-    print_infer_info1 __FUNCTION__ line rulename typectx str
-  in
-  let end_info line rulename rty =
-    let rty_str =
-      let* rty' = rty in
-      Some (layout_pty rty')
-    in
-    print_infer_info2 __FUNCTION__ line rulename typectx str rty_str;
-    rty
-  in
-  let rty =
-    match comp.x with
-    | CErr ->
-        let () = before_info __LINE__ "Err" in
-        let pty =
-          if is_basic_tp comp.ty then mk_bot_pty comp.ty
-          else _failatwith __FILE__ __LINE__ "die"
-        in
-        let res = Some pty in
-        end_info __LINE__ "Err" res
-    | CVal v ->
-        let* pty = value_type_infer typectx v #: comp.ty in
-        Some pty
-    | CAppOp _ | CApp _ ->
-        _failatwith __FILE__ __LINE__ "not in the Monadic Normal Form"
-    | CLetE _ | CMatch _ ->
-        _failatwith __FILE__ __LINE__
-          "we don't infer type of the let bindings and patten matching"
-    | CLetDeTu _ -> _failatwith __FILE__ __LINE__ "unimp"
-  in
-  rty
+(* and comp_type_infer (typectx : typectx) (comp : comp typed) : pty option = *)
+(*   let str = layout_comp comp in *)
+(*   let before_info line rulename = *)
+(*     print_infer_info1 __FUNCTION__ line rulename typectx str *)
+(*   in *)
+(*   let end_info line rulename rty = *)
+(*     let rty_str = *)
+(*       let* rty' = rty in *)
+(*       Some (layout_pty rty') *)
+(*     in *)
+(*     print_infer_info2 __FUNCTION__ line rulename typectx str rty_str; *)
+(*     rty *)
+(*   in *)
+(*   let rty = *)
+(*     match comp.x with *)
+(*     | CErr -> *)
+(*         let () = before_info __LINE__ "Err" in *)
+(*         let pty = *)
+(*           if is_basic_tp comp.ty then mk_bot_pty comp.ty *)
+(*           else _failatwith __FILE__ __LINE__ "die" *)
+(*         in *)
+(*         let res = Some pty in *)
+(*         end_info __LINE__ "Err" res *)
+(*     | CVal v -> *)
+(*         let* pty = value_type_infer typectx v #: comp.ty in *)
+(*         Some pty *)
+(*     | CAppOp _ | CApp _ -> *)
+(*         _failatwith __FILE__ __LINE__ "not in the Monadic Normal Form" *)
+(*     | CLetE _ | CMatch _ -> *)
+(*         _failatwith __FILE__ __LINE__ *)
+(*           "we don't infer type of the let bindings and patten matching" *)
+(*     | CLetDeTu _ -> _failatwith __FILE__ __LINE__ "unimp" *)
+(*   in *)
+(*   rty *)
 
 and value_type_check typectx (value : value typed) (rty : pty) : bool =
   let str = layout_value value in

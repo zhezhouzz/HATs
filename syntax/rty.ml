@@ -226,7 +226,7 @@ module F (L : Lit.T) = struct
     Regty
       {
         nty = erase_pty pty;
-        prereg = EpsilonA;
+        prereg = StarA AnyA;
         postreg = EventA (RetEvent pty);
       }
 
