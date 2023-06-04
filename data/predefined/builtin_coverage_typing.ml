@@ -42,26 +42,26 @@ let[@librty] ( / ) ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (not (v == 0) : [%v: int]) [@over]) : [%v: int] =
   v == a / b
 
-(* randomness operators *)
-
-let[@librty] int_range ?l:(a = (true : [%v: int]) [@over])
-    ?l:(b = (1 + a < v : [%v: int]) [@over]) : [%v: int] =
-  a < v && v < b
-
-let[@librty] bool_gen ?l:(_ = (true : [%v: unit]) [@over]) : [%v: bool] = true
-let[@librty] int_gen ?l:(_ = (true : [%v: unit]) [@over]) : [%v: int] = true
-let[@librty] nat_gen ?l:(_ = (true : [%v: unit]) [@over]) : [%v: int] = v >= 0
-
-let[@librty] int_range_inc ?l:(a = (true : [%v: int]) [@over])
-    ?l:(b = (a <= v : [%v: int]) [@over]) : [%v: int] =
-  a <= v && v <= b
-
-let[@librty] int_range_inex ?l:(a = (true : [%v: int]) [@over])
-    ?l:(b = (a <= v : [%v: int]) [@over]) : [%v: int] =
-  a <= v && v < b
-
 let[@librty] increment ?l:(n = (true : [%v: int]) [@over]) : [%v: int] =
   v == n + 1
 
 let[@librty] decrement ?l:(n = (true : [%v: int]) [@over]) : [%v: int] =
   v == n - 1
+
+(* randomness operators are now effectful *)
+
+(* let[@librty] int_range ?l:(a = (true : [%v: int]) [@over]) *)
+(*     ?l:(b = (1 + a < v : [%v: int]) [@over]) : [%v: int] = *)
+(*   a < v && v < b *)
+
+(* let[@librty] bool_gen ?l:(_ = (true : [%v: unit]) [@over]) : [%v: bool] = true *)
+(* let[@librty] int_gen ?l:(_ = (true : [%v: unit]) [@over]) : [%v: int] = true *)
+(* let[@librty] nat_gen ?l:(_ = (true : [%v: unit]) [@over]) : [%v: int] = v >= 0 *)
+
+(* let[@librty] int_range_inc ?l:(a = (true : [%v: int]) [@over]) *)
+(*     ?l:(b = (a <= v : [%v: int]) [@over]) : [%v: int] = *)
+(*   a <= v && v <= b *)
+
+(* let[@librty] int_range_inex ?l:(a = (true : [%v: int]) [@over]) *)
+(*     ?l:(b = (a <= v : [%v: int]) [@over]) : [%v: int] = *)
+(*   a <= v && v < b *)

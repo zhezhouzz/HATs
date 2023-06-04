@@ -1,20 +1,26 @@
-type effect = Write of (int -> unit) | Read of (unit -> int)
+type effect =
+  | Write of (int -> unit)
+  | Read of (unit -> int)
+  | BoolGen of (unit -> bool)
 
 let[@effrty] write ?l:(a = (true : [%v: int])) =
-  { pre = star any; post = (Ret (true : [%v0: unit]) : unit) }
+  { pre = starA anyA; post = (Ret (true : [%v0: unit]) : unit) }
 
 let[@effrty] read ?l:(a = (true : [%v: unit])) =
   let phi = (true : [%v: int -> bool]) in
   {
     pre =
-      (star any;
+      (starA anyA;
        Write (phi v0 : [%v0: int]);
-       star (Read (true : [%v0: unit])));
+       starA (compA (Write (true : [%v0: int]))));
     post = (Ret (phi v0 : [%v0: int]) : int);
   }
 
+let[@effrty] boolGen ?l:(a = (true : [%v: unit])) =
+  { pre = starA anyA; post = (Ret (true : [%v0: bool]) : bool) }
+
 let rec prog (dummy0 : unit) : unit =
-  let (cond : bool) = bool_gen () in
+  let (cond : bool) = perform (BoolGen ()) in
   if cond then
     let (dummy1 : unit) = perform (Write 0) in
     ()
@@ -27,9 +33,9 @@ let rec prog (dummy0 : unit) : unit =
 
 let[@assert] prog ?l:(n = (true : [%v: unit]) [@over]) =
   {
-    pre = star any;
+    pre = starA anyA;
     post =
-      ((star any;
+      ((starA anyA;
         Write (v0 mod 2 == 0 : [%v0: int]);
         Ret (true : [%v0: unit])) : unit);
   }

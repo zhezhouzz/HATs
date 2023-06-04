@@ -165,9 +165,9 @@ and regex_of_ocamlexpr_aux expr =
     match expr.pexp_desc with
     | Pexp_ident id ->
         let id = To_id.longid_to_id id in
-        if String.equal "epsilon" id then EpsilonA
-        else if String.equal "empty" id then EmptyA
-        else if String.equal "any" id then AnyA
+        if String.equal "epsilonA" id then EpsilonA
+        else if String.equal "emptyA" id then EmptyA
+        else if String.equal "anyA" id then AnyA
         else
           _failatwith __FILE__ __LINE__
             (spf "the automata var (%s) are disallowed" id)
@@ -175,14 +175,15 @@ and regex_of_ocamlexpr_aux expr =
         let f = To_expr.id_of_ocamlexpr func in
         let args = List.map snd args in
         match (f, args) with
-        | "star", [ e1 ] -> StarA (aux e1)
-        | "complement", [ e1 ] -> ComplementA (aux e1)
+        | "starA", [ e1 ] -> StarA (aux e1)
+        | "compA", [ e1 ] -> ComplementA (aux e1)
         | "mu", _ ->
             _failatwith __FILE__ __LINE__
               "the recursive automata are disallowed"
         | "lorA", [ a; b ] -> LorA (aux a, aux b)
         | "landA", [ a; b ] -> LandA (aux a, aux b)
-        | _, _ -> _failatwith __FILE__ __LINE__ "die")
+        | _, _ -> _failatwith __FILE__ __LINE__ @@ spf "unknown regular op %s" f
+        )
     | Pexp_sequence (a, b) -> SeqA (aux a, aux b)
     | Pexp_construct _ -> EventA (sevent_of_ocamlexpr_aux expr)
     | _ -> _failatwith __FILE__ __LINE__ "die"

@@ -137,10 +137,13 @@ let print_check_regex_info file line rulename { typectx; preA; curA } str rty =
   print_typing_rule file line "Check" rulename;
   print_typectx typectx;
   Env.show_debug_typing (fun () ->
-      Pp.printf "@{<bold>PreA:@} %s\n⊢@{<bold>CurA:@} :%s\n@{<hi_magenta>%s@} ⇦"
+      Pp.printf
+        "@{<bold>⊢[@} @{<orange>%s@} @{<bold>]@}\n\
+         @{<hi_magenta>%s@} @{<bold>;;@}\n\
+         @{<hi_magenta>%s@}\n"
         (layout_regex preA) (layout_regex curA)
         (short_str (Env.get_max_printing_size ()) @@ str);
-      Pp.printf "@{<cyan>%s@}\n\n" @@ rty)
+      Pp.printf "@{<cyan>⇦ %s@}\n" @@ rty)
 
 let _force_not_empty_list file line = function
   | [] -> _failatwith file line "die"
