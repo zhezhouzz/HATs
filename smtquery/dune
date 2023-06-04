@@ -6,6 +6,7 @@
    z3aux
    litencoding
    propencoding
+   z3reg
    regencoding
    check
    smtquery

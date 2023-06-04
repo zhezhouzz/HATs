@@ -164,7 +164,7 @@ let inclusion_query ctx r1 r2 =
         | Some str -> str
         | None -> _failatwith __FILE__ __LINE__ "die"
       in
-      let mt_list = Regencoding.encoding_code_trace encoding str in
+      let mt_list = Regencoding.RegZ3.code_trace encoding str in
       (* ( Env.show_debug_queries @@ fun _ -> *)
       (*   Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n" *)
       (*     (layout_counterexample mt_list) ); *)

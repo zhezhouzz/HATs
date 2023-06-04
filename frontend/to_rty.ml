@@ -51,9 +51,8 @@ let rec pprint_pty rty =
 and pprint_rty = function
   | Pty pty -> pprint_pty pty
   | Regty { nty; prereg; postreg } ->
-      spf "%s ⥤ %s" (pprint_regex prereg)
-      @@ tpA
-      @@ spf "%s | %s" (Nt.layout nty) (pprint_regex postreg)
+      spf "[%s | %s ⇒ %s]" (Nt.layout nty) (pprint_regex prereg)
+        (pprint_regex postreg)
 
 and pprint_sevent = function
   | GuardEvent phi ->

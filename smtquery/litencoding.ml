@@ -29,6 +29,7 @@ let rec typed_lit_to_z3 ctx lit =
       | Op.BuiltinOp ">", [ a; b ] -> Arithmetic.mk_gt ctx a b
       | Op.BuiltinOp "+", [ a; b ] -> Arithmetic.mk_add ctx [ a; b ]
       | Op.BuiltinOp "-", [ a; b ] -> Arithmetic.mk_sub ctx [ a; b ]
+      | Op.BuiltinOp "mod", [ a; b ] -> Arithmetic.Integer.mk_mod ctx a b
       | Op.BuiltinOp "*", [ a; b ] -> Arithmetic.mk_mul ctx [ a; b ]
       | Op.BuiltinOp "/", [ a; b ] -> Arithmetic.mk_div ctx a b
       | _ -> failwith @@ spf "unknown operator: %s" (Op.to_string op.x))

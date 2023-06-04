@@ -29,6 +29,22 @@ let check opctx' structure normalized_structure =
         with
         | None -> _failatwith __FILE__ __LINE__ ""
         | Some (_, comp) ->
+            let () = Printf.printf "%s\n" @@ Nt.layout comp.P.ty in
+            let () =
+              if not (Nt.eq comp.P.ty (R.erase rty)) then
+                let () =
+                  Printf.printf
+                    "The erased type of the refinement type mismacted the \
+                     implementation:\n\
+                     %s (rty) !=\n\
+                     %s (imp)\n"
+                    (Nt.layout (R.erase rty))
+                    (Nt.layout comp.P.ty)
+                in
+                _failatwith __FILE__ __LINE__ "input error"
+              else ()
+            in
+            (* let () = failwith "end" in *)
             let res = Bidirectional.comp_type_check { rctx; opctx } comp rty in
             let () =
               if res then
