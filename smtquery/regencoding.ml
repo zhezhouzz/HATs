@@ -51,7 +51,9 @@ let to_z3 ctx encoding reg =
     (* | Star (Complement Empt) -> mk_full ctx *)
     | Star r -> Seq.mk_re_star ctx @@ aux r
     (* | Complement Empt -> mk_full ctx *)
-    | Complement r -> Seq.mk_re_complement ctx @@ aux r
+    | Complement r ->
+        let al = aux (Star Any) in
+        Seq.mk_re_intersect ctx [ al; Seq.mk_re_complement ctx @@ aux r ]
   in
   aux reg
 
