@@ -61,6 +61,9 @@ module type T = sig
 
   val do_multisubst_comp :
     (string * value typed) list -> comp typed -> comp typed
+
+  val stat_count_value_branchs : value typed -> int
+  val stat_count_value_vars : value typed -> int
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -110,6 +113,54 @@ struct
   let mk_var name : comp typed = mk_noty @@ var_ name
 
   open Sugar
+
+  let rec stat_count_comp_branchs comp =
+    let rec aux comp =
+      match comp.x with
+      | CErr | CApp _ | CAppOp _ -> 1
+      | CVal v -> stat_count_value_branchs v #: comp.ty
+      | CLetDeTu { letbody; _ } -> aux letbody
+      | CMatch { match_cases; _ } ->
+          let bs = List.map (fun { exp; _ } -> aux exp) match_cases in
+          List.fold_left (fun sum n -> sum + n) 0 bs
+      | CLetE { letbody; _ } -> aux letbody
+    in
+    aux comp
+
+  and stat_count_value_branchs comp : int =
+    let aux v =
+      match v.x with
+      | VVar _ | VConst _ | VTu _ -> 1
+      | VLam { lambody; _ } -> stat_count_comp_branchs lambody
+      | VFix { fixbody; _ } -> stat_count_comp_branchs fixbody
+    in
+    aux comp
+
+  let rec stat_count_comp_vars comp =
+    let rec aux comp =
+      match comp.x with
+      | CErr | CApp _ | CAppOp _ -> 0
+      | CVal v -> stat_count_value_vars v #: comp.ty
+      | CLetDeTu { letbody; _ } -> 1 + aux letbody
+      | CMatch { match_cases; _ } ->
+          let bs =
+            List.map
+              (fun { args; exp; _ } -> List.length args + aux exp)
+              match_cases
+          in
+          List.fold_left (fun sum n -> sum + n) 0 bs
+      | CLetE { letbody; _ } -> 1 + aux letbody
+    in
+    aux comp
+
+  and stat_count_value_vars comp =
+    let aux v =
+      match v.x with
+      | VVar _ | VConst _ | VTu _ -> 1
+      | VLam { lambody; _ } -> 1 + stat_count_comp_vars lambody
+      | VFix { fixbody; _ } -> 2 + stat_count_comp_vars fixbody
+    in
+    aux comp
 
   let to_v_ = function
     | CVal x -> x

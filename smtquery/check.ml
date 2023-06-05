@@ -42,6 +42,25 @@ let get_unknown_fv ctx m unknown_fv =
 (* let ctx = *)
 (*   mk_context [ ("model", "true"); ("proof", "false"); ("timeout", "1999") ] *)
 
+let stat_smt_query_counter = ref 0
+let stat_inclusion_query_counter = ref 0
+let stat_max_inclusion_alphabet = ref 0
+let stat_max_inclusion_automaton_size = ref 0
+
+let stat_init () =
+  stat_smt_query_counter := 0;
+  stat_inclusion_query_counter := 0;
+  stat_max_inclusion_alphabet := 0;
+  stat_max_inclusion_automaton_size := 0
+
+let stat_get_cur () =
+  ( !stat_smt_query_counter,
+    !stat_inclusion_query_counter,
+    !stat_max_inclusion_alphabet,
+    !stat_max_inclusion_automaton_size )
+
+let record_max original n = if n > !original then original := n else ()
+
 let smt_solve ctx assertions =
   (* let _ = printf "check\n" in *)
   let solver = mk_solver ctx None in
@@ -60,6 +79,7 @@ let smt_solve ctx assertions =
   (*   @@ Goal.get_formulas g *)
   (* in *)
   let _ = Solver.add solver (get_formulas g) in
+  let _ = stat_smt_query_counter := !stat_smt_query_counter + 1 in
   solver_result solver
 
 let smt_neg_and_solve ctx pre vc =
@@ -119,10 +139,9 @@ let mk_q_version1 ctx r1 r2 =
   (encoding, [ q1; Boolean.mk_not ctx q2 ])
 
 let mk_q_version2 ctx r1 r2 =
-  let encoding, r =
-    Regencoding.to_z3_one_reg ctx
-      Language.NRegex.(Intersect [ r1; Complement r2 ])
-  in
+  let r12 = Language.NRegex.(Intersect [ r1; Complement r2 ]) in
+  let encoding, r = Regencoding.to_z3_one_reg ctx r12 in
+  let encoded_size = Regencoding.get_size encoding r12 in
   let sequence = Expr.mk_const_s ctx sequence_name (Seq.mk_string_sort ctx) in
   let q = Seq.mk_seq_in_re ctx sequence r in
   (* let () = *)
@@ -139,7 +158,7 @@ let mk_q_version2 ctx r1 r2 =
     Env.show_debug_queries @@ fun _ ->
     Printf.printf "Query:\n%s\n" (Expr.to_string q)
   in
-  (encoding, [ q ])
+  (encoding, encoded_size, [ q ])
 
 let layout_counterexample mt_list =
   match mt_list with
@@ -148,11 +167,17 @@ let layout_counterexample mt_list =
 
 let inclusion_query ctx r1 r2 =
   (* let open Sugar in *)
-  let encoding, qs = mk_q_version2 ctx r1 r2 in
+  let encoding, encoded_size, qs = mk_q_version2 ctx r1 r2 in
+  let _ =
+    record_max stat_max_inclusion_alphabet
+    @@ Z3reg.RegZ3BackendV0.get_cardinal encoding
+  in
+  let _ = record_max stat_max_inclusion_automaton_size @@ encoded_size in
   (* let () = *)
   (*   if 1 == !debug_counter then failwith "end" *)
   (*   else debug_counter := !debug_counter + 1 *)
   (* in *)
+  let _ = stat_inclusion_query_counter := !stat_inclusion_query_counter + 1 in
   match handle_check_res (fun () -> smt_solve ctx qs) with
   | None ->
       ( Env.show_debug_queries @@ fun _ ->

@@ -43,6 +43,7 @@ let char_to_int c =
 module RegZ3BackendV0 = struct
   type encoding = { tab : (string, int) Hashtbl.t; next : int ref }
 
+  let get_cardinal { tab; _ } = Hashtbl.length tab
   let init () = { tab = Hashtbl.create range_len; next = ref 0 }
 
   let next_next n =
@@ -144,6 +145,7 @@ module RegZ3BackendV1 = struct
 
   type encoding = { tab : (string, int list) Hashtbl.t; next : int list ref }
 
+  let get_cardinal { tab; _ } = Hashtbl.length tab
   let init () = { tab = Hashtbl.create range_len; next = ref [ 0 ] }
 
   let insert_mt { tab; next } mt =

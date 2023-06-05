@@ -20,6 +20,29 @@ let parse_reg encoding reg =
   in
   aux reg
 
+let get_size encoding reg =
+  let rec aux reg =
+    (* let () = Printf.printf "%s\n" @@ reg_to_string reg in *)
+    match reg with
+    | Any -> RegZ3.get_cardinal encoding
+    | Empt | Epsilon | Minterm _ -> 1
+    (* NOTE: z3 will raise exception when the length of the list < 2 *)
+    | Union rs ->
+        let bs = List.map aux rs in
+        List.fold_left (fun sum n -> sum + n) 1 bs
+    | Intersect rs ->
+        let bs = List.map aux rs in
+        List.fold_left (fun sum n -> sum + n) 1 bs
+    | Concat rs ->
+        let bs = List.map aux rs in
+        List.fold_left (fun sum n -> sum + n) (List.length rs) bs
+    | Star r -> 1 + aux r
+    | Complement r ->
+        let n = aux (Star Any) in
+        1 + n + aux r
+  in
+  aux reg
+
 let to_z3 ctx encoding reg =
   let rec aux reg =
     (* let () = Printf.printf "%s\n" @@ reg_to_string reg in *)
