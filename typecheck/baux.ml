@@ -129,7 +129,7 @@ let print_check_info file line rulename typectx str rty =
   print_typing_rule file line "Check" rulename;
   print_typectx typectx;
   Env.show_debug_typing (fun () ->
-      Pp.printf "⊢ n@{<hi_magenta>%s@} ⇦"
+      Pp.printf "⊢ @{<hi_magenta>%s@} ⇦"
         (short_str (Env.get_max_printing_size ()) @@ str);
       Pp.printf "@{<cyan>%s@}\n\n" @@ rty)
 

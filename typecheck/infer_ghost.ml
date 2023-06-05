@@ -115,7 +115,7 @@ let solution_instantiate ictx solution lits =
 let mk_feature_tab lits =
   let rec aux lits =
     match lits with
-    | [] -> _failatwith __FILE__ __LINE__ "die"
+    | [] -> [ [ Lit mk_lit_true ] ]
     | [ lit ] -> [ [ Lit lit ]; [ Not (Lit lit) ] ]
     | lit :: rs ->
         let res = aux rs in

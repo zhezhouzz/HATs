@@ -125,10 +125,90 @@ end
 module POpTypectx = struct
   include Rty
   include Typectx.FOp
+  open Sugar
 
-  type ctx = pty poly_ctx
+  type ctx = pty list poly_ctx
 
-  let to_nctx rctx = List.map (fun (x, ty) -> (x, erase_pty ty)) rctx
+  let filter_map_rty f code =
+    List.filter_map
+      (fun code ->
+        let open Structure in
+        match code with
+        | EquationEntry _ | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        | Rty { name; kind; rty } -> f (name, kind, rty_force_pty rty))
+      code
+
+  let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, [ ty ])) rctx
+
+  let to_opctx_if_cap rctx =
+    let cond x = String.equal x (String.capitalize_ascii x) in
+    let effpctx =
+      List.filter_map
+        (fun (x, ty) -> if cond x then Some (x, ty) else None)
+        rctx
+    in
+    let pctx = List.filter (fun (x, _) -> not (cond x)) rctx in
+    (effpctx, pctx)
+
+  let to_effopctx l =
+    let tab = Hashtbl.create 10 in
+    let () =
+      List.iter
+        (fun (name, pty) ->
+          match Hashtbl.find_opt tab name with
+          | None -> Hashtbl.add tab name [ pty ]
+          | Some ptys -> Hashtbl.replace tab name (pty :: ptys))
+        l
+    in
+    let l = List.of_seq @@ Hashtbl.to_seq tab in
+    let l = List.map (fun (x, ty) -> (Op.EffOp x, ty)) l in
+    l
+
+  let to_pureopctx l = List.map (fun (x, ty) -> (Op.BuiltinOp x, [ ty ])) l
+
+  let from_code code =
+    let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in
+    (* let () = Pp.printf "@{<bold>R:@} %s\n" (NOpTypectx.layout_typed_l opctx) in *)
+    (* let () = failwith "end" in *)
+    let l =
+      from_kv_list
+      @@ filter_map_rty
+           (fun (name, kind, rty) ->
+             let open Structure in
+             match kind with RtyLib -> Some (name, rty) | RtyToCheck -> None)
+           code
+    in
+    let pure_opctx, rctx =
+      List.partition (fun (x, _) -> NOpTypectx.exists opctx (Op.BuiltinOp x)) l
+    in
+    let pure_opctx = to_pureopctx pure_opctx in
+    let eff_opctx, rctx = to_opctx_if_cap rctx in
+    let eff_opctx = to_effopctx eff_opctx in
+    let opctx = pure_opctx @ eff_opctx in
+    (opctx, rctx)
+
+  (* let op_and_rctx_from_code code = *)
+  (*   let effctx, rctx = from_code code in *)
+  (*   let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l rctx) in *)
+  (*   let opctx, rctx = *)
+  (*     List.partition *)
+  (*       (fun (x, _) -> NOpTypectx.exists opctx (Op.BuiltinOp x)) *)
+  (*       rctx *)
+  (*   in *)
+  (*   let opctx = effctx @ to_opctx opctx in *)
+  (*   (\* let () = *\) *)
+  (*   (\*   Pp.printf "@{<bold>Op:@} %s\n" *\) *)
+  (*   (\*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *\) *)
+  (*   (\* in *\) *)
+  (*   (opctx, rctx) *)
+
+  let to_nctx rctx =
+    List.map
+      (fun (x, ty) ->
+        match ty with
+        | ty :: _ -> (x, erase_pty ty)
+        | _ -> _failatwith __FILE__ __LINE__ "die")
+      rctx
 end
 
 module PTypectx = struct
@@ -174,35 +254,6 @@ module PTypectx = struct
   (*       let open Structure in *)
   (*       match kind with RtyLib -> None | RtyToCheck -> Some (name, rty)) *)
   (*     code *)
-
-  let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) rctx
-
-  let to_opctx_if_cap rctx =
-    let cond x = String.equal x (String.capitalize_ascii x) in
-    let effpctx =
-      List.filter_map
-        (fun (x, ty) -> if cond x then Some (Op.EffOp x, ty) else None)
-        rctx
-    in
-    let pctx = List.filter (fun (x, _) -> not (cond x)) rctx in
-    (effpctx, pctx)
-
-  let op_and_rctx_from_code code =
-    let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in
-    let rctx = from_code code in
-    let effctx, rctx = to_opctx_if_cap rctx in
-    let () = Pp.printf "@{<bold>R:@} %s\n" (layout_typed_l rctx) in
-    let opctx, rctx =
-      List.partition
-        (fun (x, _) -> NOpTypectx.exists opctx (Op.BuiltinOp x))
-        rctx
-    in
-    let opctx = effctx @ to_opctx opctx in
-    (* let () = *)
-    (*   Pp.printf "@{<bold>Op:@} %s\n" *)
-    (*     (ROpCtx.layout_typed_l Op.to_string typectx.opctx) *)
-    (* in *)
-    (opctx, rctx)
 end
 
 module RTypectx = struct

@@ -12,12 +12,10 @@ let init_builtinctx () =
   let topnopctx =
     NOpTypectx.to_builtin @@ StructureRaw.mk_normal_top_ctx code
   in
-  (* let () = *)
-  (*   Printf.printf "%s\n" (NOpTypectx.layout_typed_l Op.to_string topnopctx) *)
-  (* in *)
+  (* let () = Printf.printf "%s\n" (NOpTypectx.layout_typed_l topnopctx) in *)
   (* let () = failwith "end" in *)
   let code = Ntypecheck.opt_to_typed_structure topnopctx [] code in
-  let oprctx = PTypectx.to_opctx @@ PTypectx.from_code code in
+  let oprctx = POpTypectx.to_opctx @@ PTypectx.from_code code in
   (oprctx, topnopctx)
 
 let print_source_code_ meta_config_file source_file =

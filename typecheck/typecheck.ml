@@ -1,5 +1,6 @@
 open Language
 module PCtx = PTypectx
+module POpCtx = POpTypectx
 module R = Rty
 module P = Rty.P
 module ECtx = Eqctx
@@ -9,7 +10,7 @@ let check opctx' structure normalized_structure =
   (* let () = *)
   (*   Printf.printf "Structure:\n%s\n" @@ Structure.layout_structure structure *)
   (* in *)
-  let opctx, rctx = PCtx.op_and_rctx_from_code structure in
+  let opctx, rctx = POpCtx.from_code structure in
   let opctx = opctx @ opctx' in
   (* let eqctx = Eqctx.from_code structure in *)
   (* let () = Printf.printf "!!! %s\n" @@ Eqctx.layout_equations eqctx in *)

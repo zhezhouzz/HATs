@@ -1,30 +1,56 @@
-type effect = Insert of (int -> unit) | Delete of (int -> unit)
+type effect =
+  | Insert of (int -> unit)
+  | Mem of (int -> bool)
+  | BoolGen of (unit -> bool)
+  | EvenGen of (unit -> int)
 
 let[@effrty] insert ?l:(a = (true : [%v: int])) =
   {
-    pre = star (complement (Insert (v0 == a : [%v0: int])));
+    pre = starA (compA (Insert (v0 == a : [%v0: int])));
     post = (Ret (true : [%v0: unit]) : unit);
   }
 
-let[@effrty] delete ?l:(a = (true : [%v: int])) =
+let[@effrty] mem ?l:(a = (true : [%v: int])) =
+  let phi = (true : [%v: int -> bool]) in
   {
     pre =
-      (Insert (v0 == a : [%v0: int]);
-       star (complement (Delete (v0 == a : [%v0: int]))));
-    post = (Ret (true : [%v0: unit]) : unit);
+      (starA anyA;
+       Insert (phi v0 : [%v0: int]);
+       starA anyA);
+    post = (Ret (v0 : [%v0: bool]) : bool);
   }
 
-let rec prog (n : int) : unit =
-  if n <= 0 then ()
-  else
-    let (dummy1 : unit) = perform (Insert n) in
-    let (dummy2 : unit) = prog (n - 1) in
-    ()
-
-let[@assert] prog ?l:(n = (0 <= v : [%v: int]) [@over]) =
+let[@effrty] mem ?l:(a = (true : [%v: int])) =
+  let phi = (true : [%v: int -> bool]) in
   {
-    pre = epsilon;
+    pre = starA (compA (Insert (phi v0 : [%v0: int])));
+    post = (Ret (not v0 : [%v0: bool]) : bool);
+  }
+
+let[@effrty] boolGen ?l:(a = (true : [%v: unit])) =
+  { pre = starA anyA; post = (Ret (true : [%v0: bool]) : bool) }
+
+let[@effrty] evenGen ?l:(a = (true : [%v: unit])) =
+  { pre = starA anyA; post = (Ret (v0 mod 2 == 0 : [%v0: int]) : int) }
+
+let rec prog (dummy0 : unit) : unit =
+  let (cond : bool) = perform (BoolGen ()) in
+  if cond then ()
+  else
+    let (n : int) = perform (EvenGen ()) in
+    let (ifin : bool) = perform (Mem n) in
+    if ifin then
+      let (dummy1 : unit) = prog () in
+      ()
+    else
+      let (dummy2 : unit) = perform (Insert n) in
+      let (dummy3 : unit) = prog () in
+      ()
+
+let[@assert] prog ?l:(n = (true : [%v: unit]) [@over]) =
+  {
+    pre = starA (compA (Insert (v0 mod 2 == 1 : [%v0: int])));
     post =
-      ((star (Insert (0 < v0 && v0 <= n : [%v0: int]));
+      ((starA (compA (Insert (v0 mod 2 == 1 : [%v0: int])));
         Ret (true : [%v0: unit])) : unit);
   }

@@ -66,6 +66,10 @@ and sevent_check opctx ctx retbty sevent =
             _failatwith __FILE__ __LINE__
               "the pre-condition should not have return event"
         | Some retbty ->
+            (* let () = *)
+            (*   Printf.printf "%s: %s ?= %s\n" "ret" (Nt.layout retbty) *)
+            (*     (Nt.layout (erase_pty pty)) *)
+            (* in *)
             _check_equality __FILE__ __LINE__ Nt.eq retbty (erase_pty pty)
       in
       RetEvent pty
@@ -76,6 +80,9 @@ and sevent_check opctx ctx retbty sevent =
         List.map
           Nt.(
             fun ({ x; ty }, ty') ->
+              (* let () = *)
+              (*   Printf.printf "%s: %s ?= %s\n" op (Nt.layout ty) (Nt.layout ty') *)
+              (* in *)
               let ty = _check_equality __FILE__ __LINE__ eq ty ty' in
               { x; ty })
           (_safe_combine __FILE__ __LINE__ vs argsty)

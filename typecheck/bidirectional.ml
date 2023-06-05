@@ -219,7 +219,11 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
   in
   let comp_reg_check_letappop mctx (lhs, op, appopargs, letbody) rty =
     let () = before_info __LINE__ "LetAppOp" in
-    let f_rty = POpCtx.get_ty mctx.typectx.opctx op.x in
+    let f_rty =
+      match POpCtx.get_ty mctx.typectx.opctx op.x with
+      | [ ty ] -> ty
+      | _ -> _failatwith __FILE__ __LINE__ "die"
+    in
     let b =
       let* rhs_rty = multi_app_type_infer_aux mctx.typectx f_rty appopargs in
       let rhs_pty = rty_force_pty rhs_rty in
@@ -256,8 +260,8 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
   in
   let comp_reg_check_letperform mctx (lhs, opname, appopargs, letbody) rty =
     let () = before_info __LINE__ "LetPerform" in
-    let f_rty = POpCtx.get_ty mctx.typectx.opctx (Op.EffOp opname) in
-    let b =
+    let f_rtys = POpCtx.get_ty mctx.typectx.opctx (Op.EffOp opname) in
+    let get_b f_rty =
       let* rhs_rty = multi_app_type_infer_aux mctx.typectx f_rty appopargs in
       let previousA = smart_seq (mctx.preA, mctx.curA) in
       let* rhs_reg =
@@ -297,6 +301,12 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
         match mctxs with [ x ] -> x | _ -> _failatwith __FILE__ __LINE__ "die"
       in
       Some (comp_reg_check mctx' letbody rty)
+    in
+    let b =
+      List.fold_left
+        (fun b f_rty ->
+          match b with Some true -> Some true | _ -> get_b f_rty)
+        None f_rtys
     in
     let b : bool = match b with Some b -> b | None -> false in
     end_info __LINE__ "LetPerform" b
