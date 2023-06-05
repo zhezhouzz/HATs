@@ -90,6 +90,7 @@ let model_verify_bool sub_pty_bool (global_m, ret_m, local_m) =
   (* in *)
   let b = not (sub_pty_bool bindings (lhs_pty, rhs_pty)) in
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Pp.printf "%s |- %s ≮: @{<bold>%s@}\n@{<bold>Result:@} %b\n"
       (List.split_by_comma
          (fun { pty; _ } -> spf "%s" (Rty.layout_pty pty))
@@ -201,3 +202,7 @@ let desymbolic ctx mts regex =
   in
   let res = aux regex in
   simp res
+
+let get_max_lits () =
+  let n = !Head.stat_max_lits in
+  if n == 0 then 1 else n

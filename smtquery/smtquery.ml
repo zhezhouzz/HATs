@@ -56,6 +56,9 @@ let check_inclusion_counterexample (r1, r2) =
           (Check.layout_counterexample mt_list) );
       Some mt_list
 
+let stat_init = Check.stat_init
+let stat_get_cur = Check.stat_get_cur
+
 open Language.NRegex
 
 (* let test0 () = *)

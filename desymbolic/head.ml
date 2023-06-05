@@ -150,6 +150,10 @@ let tab_cardinal (tab : 'a tab) =
   | PtyTab { ptytab = m } -> PtyMap.cardinal m
   | EmptyTab -> 0
 
+let head_cardinal { global_tab; ret_tab; local_tab } =
+  tab_cardinal global_tab + tab_cardinal ret_tab
+  + StrMap.fold (fun _ tab sum -> sum + tab_cardinal tab) local_tab 0
+
 let tab_vs (tab : 'a tab) =
   match tab with
   | LitTab { vs; _ } ->
@@ -183,12 +187,24 @@ let ptylist_to_tab l =
 
 open Rty
 
+let stat_max_minterms = ref 0
+let stat_max_lits = ref 0
+let record_max original n = if n > !original then original := n else ()
+
+let num_lits { global_lits; global_pty; local_lits } =
+  List.length global_lits + List.length global_pty
+  + StrMap.fold (fun _ (_, tab) sum -> sum + List.length tab) local_lits 0
+
 let make_tab regex =
-  let { global_lits; global_pty; local_lits } = gather_from_regex regex in
+  let g = gather_from_regex regex in
+  let num_lits = num_lits g in
+  let () = record_max stat_max_lits num_lits in
+  let { global_lits; global_pty; local_lits } = g in
   let global_tab = litlist_to_tab ([], global_lits) in
   let local_tab = StrMap.map litlist_to_tab local_lits in
   let ret_tab = ptylist_to_tab global_pty in
-  { global_tab; ret_tab; local_tab }
+  let res = { global_tab; ret_tab; local_tab } in
+  res
 
 let mk_minterm_ids n = List.init (NRegex.pow 2 n) (fun x -> x)
 let mk_minterms_from_tab m = mk_minterm_ids (tab_cardinal m)
@@ -205,7 +221,7 @@ let mk_mts { global_tab; ret_tab; local_tab } =
 
 let ctx_init regex =
   let tab = make_tab regex in
-  let () = pprint_head tab in
+  let () = Env.show_debug_debug @@ fun _ -> pprint_head tab in
   let mts = mk_mts tab in
-  let () = NRegex.pprint_mts mts in
+  let () = Env.show_debug_debug @@ fun _ -> NRegex.pprint_mts mts in
   (tab, mts)

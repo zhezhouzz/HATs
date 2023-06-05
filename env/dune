@@ -3,6 +3,7 @@
  (wrapped false)
  (modules
    env
+   stat
    ; load_env
  )
  (libraries core utils)

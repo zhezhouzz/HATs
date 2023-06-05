@@ -5,6 +5,7 @@ From CT Require Import OperationalSemantics.
 From CT Require Import BasicTypingProp.
 From CT Require Import RefinementType.
 From CT Require Import Denotation.
+From CT Require Import Instantiation.
 
 Import Atom.
 Import CoreLang.
@@ -16,6 +17,7 @@ Import OperationalSemantics.
 Import BasicTyping.
 Import RefinementType.
 Import Denotation.
+Import Instantiation.
 
 (** Well-formedness *)
 Inductive wf_pty: listctx pty -> pty -> Prop :=
@@ -43,7 +45,8 @@ Inductive wf_hty: listctx pty -> hty -> Prop :=
 Notation " Γ '⊢WF' τ " := (wf_hty Γ τ) (at level 20, τ constr, Γ constr).
 Notation " Γ '⊢WFp' τ " := (wf_pty Γ τ) (at level 20, τ constr, Γ constr).
 
-Definition subtyping (Γ: listctx pty) (τ1 τ2: hty) : Prop := forall st, ctxRst Γ st -> forall e, { st }⟦ τ1 ⟧ e -> { st }⟦ τ2 ⟧ e.
+Definition subtyping (Γ: listctx pty) (τ1 τ2: hty) : Prop :=
+  forall env st, ctxRst Γ env -> st ⫕ env -> forall e, { st }⟦ τ1 ⟧ (tm_msubst env e) -> { st }⟦ τ2 ⟧ (tm_msubst env e).
 
 Notation " Γ '⊢' τ1 '⪡' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
 
@@ -134,5 +137,7 @@ Lemma well_formed_builtin_typing: forall op ρx A B ρ,
                   (forall (c: constant), α +;+ (trevent op v_x) ⇓ c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
 Admitted.
 
-Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty), Γ ⊢ e ⋮t τ -> forall st, ctxRst Γ st -> {st}⟦ τ ⟧ e.
+Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty),
+    Γ ⊢ e ⋮t τ ->
+    forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ τ ⟧ (tm_msubst env e).
 Admitted.

@@ -42,20 +42,20 @@ let get_unknown_fv ctx m unknown_fv =
 (* let ctx = *)
 (*   mk_context [ ("model", "true"); ("proof", "false"); ("timeout", "1999") ] *)
 
-let stat_smt_query_counter = ref 0
-let stat_inclusion_query_counter = ref 0
+let stat_smt_query_time_record = ref []
+let stat_inclusion_query_time_record = ref []
 let stat_max_inclusion_alphabet = ref 0
 let stat_max_inclusion_automaton_size = ref 0
 
 let stat_init () =
-  stat_smt_query_counter := 0;
-  stat_inclusion_query_counter := 0;
+  stat_smt_query_time_record := [];
+  stat_inclusion_query_time_record := [];
   stat_max_inclusion_alphabet := 0;
   stat_max_inclusion_automaton_size := 0
 
 let stat_get_cur () =
-  ( !stat_smt_query_counter,
-    !stat_inclusion_query_counter,
+  ( !stat_smt_query_time_record,
+    !stat_inclusion_query_time_record,
     !stat_max_inclusion_alphabet,
     !stat_max_inclusion_automaton_size )
 
@@ -79,8 +79,11 @@ let smt_solve ctx assertions =
   (*   @@ Goal.get_formulas g *)
   (* in *)
   let _ = Solver.add solver (get_formulas g) in
-  let _ = stat_smt_query_counter := !stat_smt_query_counter + 1 in
-  solver_result solver
+  let runtime, res = Sugar.clock (fun () -> solver_result solver) in
+  let _ =
+    stat_smt_query_time_record := !stat_smt_query_time_record @ [ runtime ]
+  in
+  res
 
 let smt_neg_and_solve ctx pre vc =
   (* let () = *)
@@ -177,8 +180,14 @@ let inclusion_query ctx r1 r2 =
   (*   if 1 == !debug_counter then failwith "end" *)
   (*   else debug_counter := !debug_counter + 1 *)
   (* in *)
-  let _ = stat_inclusion_query_counter := !stat_inclusion_query_counter + 1 in
-  match handle_check_res (fun () -> smt_solve ctx qs) with
+  let runtime, res =
+    Sugar.clock (fun () -> handle_check_res (fun () -> smt_solve ctx qs))
+  in
+  let _ =
+    stat_inclusion_query_time_record :=
+      !stat_inclusion_query_time_record @ [ runtime ]
+  in
+  match res with
   | None ->
       ( Env.show_debug_queries @@ fun _ ->
         Pp.printf "@{<orange>inclusion is valid:@}\n" );

@@ -279,9 +279,13 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
               | Some x -> x #: (erase_pty rarg.pty)
             in
             let () =
+              Env.show_debug_debug @@ fun _ ->
               Pp.printf "@{<bold>previousA: @}%s\n" (layout_regex previousA)
             in
-            let () = Pp.printf "@{<bold>prereg: @}%s\n" (layout_regex prereg) in
+            let () =
+              Env.show_debug_debug @@ fun _ ->
+              Pp.printf "@{<bold>prereg: @}%s\n" (layout_regex prereg)
+            in
             Infer_ghost.infer_prop_func mctx.typectx.rctx previousA
               (prop_func, prereg) postreg
         | Regty { prereg; postreg; _ } ->

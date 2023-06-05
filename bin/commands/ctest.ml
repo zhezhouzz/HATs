@@ -28,13 +28,18 @@ let print_source_code_ meta_config_file source_file =
   let oprctx, opnctx = init_builtinctx () in
   let topnopctx = NOpTypectx.new_to_rights topnopctx @@ opnctx in
   let () =
+    Env.show_debug_typing @@ fun _ ->
     Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout topnctx
   in
   let () =
+    Env.show_debug_typing @@ fun _ ->
     Printf.printf "Top Operation Type Context:\n%s\n\n"
     @@ NOpTypectx.pretty_layout topnopctx
   in
-  let () = Printf.printf "%s\n" @@ StructureRaw.layout_structure code in
+  let () =
+    Env.show_debug_typing @@ fun _ ->
+    Printf.printf "%s\n" @@ StructureRaw.layout_structure code
+  in
   (oprctx, topnctx, topnopctx, code)
 
 let print_typed_source_code_ meta_config_file source_file =
@@ -42,7 +47,10 @@ let print_typed_source_code_ meta_config_file source_file =
     print_source_code_ meta_config_file source_file
   in
   let code = Ntypecheck.opt_to_typed_structure topnopctx topnctx code in
-  let () = Printf.printf "%s\n" @@ Structure.layout_structure code in
+  let () =
+    Env.show_debug_typing @@ fun _ ->
+    Printf.printf "%s\n" @@ Structure.layout_structure code
+  in
   (oprctx, topnctx, topnopctx, code)
 
 let print_typed_normalized_source_code_ meta_config_file source_file =
@@ -51,6 +59,7 @@ let print_typed_normalized_source_code_ meta_config_file source_file =
   in
   let normalized = Normalize.get_normalized_code code in
   let () =
+    Env.show_debug_typing @@ fun _ ->
     List.iter
       ~f:(fun (name, e) ->
         Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp e))
@@ -58,11 +67,14 @@ let print_typed_normalized_source_code_ meta_config_file source_file =
   in
   (oprctx, code, normalized)
 
+let default_stat_file = ".stat.json"
+
 let type_check_ meta_config_file source_file =
   let oprctx, code, normalized =
     print_typed_normalized_source_code_ meta_config_file source_file
   in
   let ress = Typecheck.check oprctx code normalized in
+  let () = Stat.dump default_stat_file ress in
   ()
 
 let cmd_config_source summary f =

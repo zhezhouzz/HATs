@@ -127,6 +127,7 @@ let mk_feature_tab lits =
   List.map (fun conjs -> And conjs) dnf
 
 let layout_ftab ftab =
+  Env.show_debug_queries @@ fun _ ->
   Pp.printf "ftab\n";
   List.iteri (fun idx prop -> Pp.printf "%i: %s\n" idx @@ layout_prop prop) ftab
 
@@ -219,6 +220,7 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
     List.filter
       (fun solution ->
         let () =
+          Env.show_debug_queries @@ fun _ ->
           Pp.printf "@{<bold>Check Solution: @}%s\n"
           @@ layout_solution ictx solution
         in
@@ -226,6 +228,7 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
           template_subst_regex ictx (prop_func.x, solution) templateA
         in
         let () =
+          Env.show_debug_queries @@ fun _ ->
           Pp.printf "%s @{<bold><:@} %s\n" (layout_regex previousA)
             (layout_regex specA)
         in
@@ -237,6 +240,7 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
   | None -> None
   | Some solution ->
       let () =
+        Env.show_debug_queries @@ fun _ ->
         Pp.printf "@{<bold>Solution: @}%s\n" @@ layout_solution ictx solution
       in
       let postreg = template_subst_regex ictx (prop_func.x, solution) postreg in

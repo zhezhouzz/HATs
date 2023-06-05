@@ -71,12 +71,14 @@ and sub_regex_bool pctx (regex1, regex2) =
     | regex1, regex2 -> sub_regex_bool_aux pctx (regex1, regex2)
   in
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Printf.printf "R: %s\nResult:%b\n" (PTypectx.layout_typed_l pctx) res
   in
   res
 
 and sub_regex_bool_aux pctx (regex1, regex2) =
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Printf.printf "sub_regex_bool_aux R: %s\n" (PTypectx.layout_typed_l pctx)
   in
   let ctx, mts = Desymbolic.ctx_init (LorA (regex1, regex2)) in
@@ -84,6 +86,7 @@ and sub_regex_bool_aux pctx (regex1, regex2) =
     NRegex.mts_filter_map
       (fun mt ->
         let () =
+          Env.show_debug_queries @@ fun _ ->
           Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt)
         in
         let b =
@@ -95,14 +98,16 @@ and sub_regex_bool_aux pctx (regex1, regex2) =
         if b then Some mt.NRegex.local_embedding else None)
       mts
   in
-  let () = NRegex.pprint_mts mts in
+  let () = Env.show_debug_queries @@ fun _ -> NRegex.pprint_mts mts in
   let regex1 = Desymbolic.desymbolic ctx mts regex1 in
   let regex2 = Desymbolic.desymbolic ctx mts regex2 in
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n"
       (NRegex.reg_to_string regex1)
   in
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
       (NRegex.reg_to_string regex2)
   in
@@ -115,10 +120,14 @@ and sub_regex_bool_aux pctx (regex1, regex2) =
     match res with
     | None -> true
     | Some mt_list ->
-        Desymbolic.display_trace pctx ctx mt_list;
+        ( Env.show_debug_debug @@ fun _ ->
+          Desymbolic.display_trace pctx ctx mt_list );
         false
   in
-  let () = Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res in
+  let () =
+    Env.show_debug_queries @@ fun _ ->
+    Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res
+  in
   res
 
 let is_bot_rty pctx = function

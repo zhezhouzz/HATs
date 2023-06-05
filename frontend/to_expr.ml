@@ -197,8 +197,8 @@ let expr_of_ocamlexpr expr =
             cases
         in
         (Match (aux case_target, cs)) #: None
-    | Pexp_fun (_, _, arg, expr) ->
-        let arg = To_pat.pattern_to_term arg in
+    | Pexp_fun (_, _, arg0, expr) ->
+        let arg = To_pat.pattern_to_term arg0 in
         let () =
           match arg.ty with
           | None ->
@@ -208,7 +208,9 @@ let expr_of_ocamlexpr expr =
         let lamarg =
           match arg.x with
           | Var x -> x #: arg.ty
-          | _ -> failwith "Syntax error: lambda function wrong argument"
+          | _ ->
+              let () = Printf.printf "%s\n" (To_pat.layout_ arg0) in
+              failwith "Syntax error: lambda function wrong argument"
         in
         (Lam { lamarg; lambody = aux expr }) #: None
         (* un-curry *)

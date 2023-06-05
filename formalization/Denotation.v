@@ -17,6 +17,7 @@ Import RefinementType.
 Import Substitution.
 Import Qualifier.
 Import Equation.
+Import mapset.
 
 Inductive repeat_tr: (trace -> Prop) -> trace -> Prop :=
 | repeat_tr0: forall p, repeat_tr p ϵ
@@ -105,14 +106,16 @@ Notation " '{' n ';' bst ';' st '}⟦' ρ '⟧' " :=
   (htyR n bst st ρ) (at level 20, format "{ n ; bst ; st }⟦ ρ ⟧", bst constr, st constr, ρ constr).
 Notation " '{' st '}⟦' ρ '⟧' " := (fun e => htyR 0 b∅ st ρ e) (at level 20, format "{ st }⟦ ρ ⟧", st constr, ρ constr).
 
-Inductive ctxRst: listctx pty -> substitution -> Prop :=
+Definition substitution_included_by_env (st: amap constant) (env: amap value) : Prop :=
+  forall (x: atom), st !! x = None <-> env !! x = None /\ (forall (c: constant), st !! x = Some c <-> env !! x = Some (vconst c)).
+
+Notation " st '⫕' env " :=
+  (substitution_included_by_env st env) (at level 20, format "st ⫕ env").
+
+Inductive ctxRst: listctx pty -> amap value -> Prop :=
 | ctxRst0: ctxRst [] ∅
-| ctxRst1: forall Γ st (x: atom) B ϕ (c: constant),
-    ctxRst Γ st ->
-    ok_ctx (Γ ++ [(x, {v:B | ϕ})]) ->
-    { st }p⟦ {v:B | ϕ} ⟧ c ->
-    ctxRst (Γ ++ [(x, {v:B | ϕ})]) (<[ x := c ]> st)
-| ctxRst2: forall Γ st (x: atom) ρ T A B,
-    ctxRst Γ st ->
-    ok_ctx (Γ ++ [(x, (-: ρ ⤑[: T | A ⇒ B ]))]) ->
-    ctxRst (Γ ++ [(x, (-: ρ ⤑[: T | A ⇒ B ]))]) st.
+| ctxRst1: forall Γ (st: substitution) env (x: atom) ρ (v: value),
+    ctxRst Γ env ->
+    ok_ctx (Γ ++ [(x, ρ)]) ->
+    (forall st, st ⫕ env -> { st }p⟦ ρ ⟧ v) ->
+    ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> env).

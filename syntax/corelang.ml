@@ -62,8 +62,11 @@ module type T = sig
   val do_multisubst_comp :
     (string * value typed) list -> comp typed -> comp typed
 
+  val stat_count_comp_branchs : comp typed -> int
   val stat_count_value_branchs : value typed -> int
+  val stat_count_comp_vars : comp typed -> int
   val stat_count_value_vars : value typed -> int
+  val stat_is_rec : comp typed -> bool
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -113,6 +116,12 @@ struct
   let mk_var name : comp typed = mk_noty @@ var_ name
 
   open Sugar
+
+  let stat_is_rec comp =
+    match comp.x with
+    | CVal (VFix _) -> true
+    | CVal (VLam _) -> false
+    | _ -> _failatwith __FILE__ __LINE__ "die"
 
   let rec stat_count_comp_branchs comp =
     let rec aux comp =
