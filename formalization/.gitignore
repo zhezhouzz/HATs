@@ -4,5 +4,6 @@
 *.vos
 *.aux
 *.cache
-.Makefile.d
-Makefile.conf
+.Makefile.coq.d
+Makefile.coq
+Makefile.coq.conf
