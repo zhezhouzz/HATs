@@ -146,10 +146,22 @@ Lemma well_formed_builtin_typing: forall op ρx A B ρ,
                               (forall (c: constant), α +;+ (trevent op v_x) ⇓ c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
 Admitted.
 
-Lemma reduction_tlete:  forall e_x e α β (v_x: value) β' v,
-    α ⊧ e_x ↪*{ β } v_x ->
-    α +;+ β ⊧ (e ^t^ v_x) ↪*{ β' } v ->
-    α ⊧ tlete e_x e ↪*{ β +;+ β' } v.
+Lemma reduction_tlete:  forall e_x e α β v,
+    α ⊧ tlete e_x e ↪*{ β } v <->
+    (exists (βx βe: trace) (v_x: value),
+      β = βx +;+ βe /\ α ⊧ e_x ↪*{ βx } v_x /\ α +;+ βx ⊧ (e ^t^ v_x) ↪*{ βe } v).
+Admitted.
+
+(* I have proved this lemma in Poirot. *)
+Lemma msubst_open: forall (env: env) e (v_x: value) (x: atom),
+    x # (dom _ env ∪ stale e ∪ stale v_x) ->
+    tm_msubst env e ^t^ v_x = tm_msubst (<[x := v_x]> env) (e ^t^ x).
+Admitted.
+
+Lemma am_concat: forall n bst st A B α β,
+  ({n;bst;st}a⟦A⟧) α ->
+  ({n;bst;st}a⟦B⟧) β ->
+  ({n;bst;st}a⟦ aconcat A B ⟧) (α +;+ β).
 Admitted.
 
 Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty),
@@ -170,4 +182,28 @@ Proof.
     clear t t0.
     assert ((tm_msubst env (tlete e_x e)) = (tlete (tm_msubst env e_x) (tm_msubst env e))) as Hrewrite; auto.
     rewrite Hrewrite. clear Hrewrite.
+    simpl.
+    intros.
+    rewrite reduction_tlete in H6. mydestr; subst. rewrite msubst_open with (x:=x) in H8. 2: { admit. }
+    specialize (H env st H1 H2). simpl in H.
+    assert (amlist_typed Bx_ρx Tx) as HH1. admit.
+    rename x0 into βx. rename x2 into v_x. rename x1 into βe.
+    specialize (H HH1 α βx v_x H5 H7). destruct H as (Bxi & ρxi & HinBx_ρx & Hβx & Hv_x).
+    apply a in HinBx_ρx. destruct HinBx_ρx as (Bi & ρi & Hin).
+    specialize (H0 _ _ _ _ Hin (<[ x := v_x]> env) st). (* Here st should be 1: st when v_x is a function 2: <[ x := v_x]> st when v_x is a constant *)
+    assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> env)) as HH2. admit.
+    assert (st⫕<[x:=v_x]> env) as HH3. admit.
+    specialize (H0 HH2 HH3). simpl in H0.
+    assert (amlist_typed [(Bi, ρi)] T) as HH4. admit.
+    specialize (H0 HH4 (α +;+ βx) βe v).
+    assert (closed_am 0 (dom aset st) (aconcat A Bxi)) as HH5. admit.
+    assert (
+        (closed_am 0 (dom aset st) (aconcat A Bxi)) /\
+        (∃ α1 α2 : trace, α +;+ βx = α1 +;+ α2 ∧ ({0;b∅;st}a⟦A⟧) α1 ∧ ({0;b∅;st}a⟦Bxi⟧) α2)) as Hconcat.
+    { split; eauto. }
+    specialize (H0 Hconcat H8). clear Hconcat.
+    destruct H0 as (Bi' & ρi' & Heq & Hβe & Hv). destruct Heq. 2: { inversion H. } inversion H; subst.
+    rename Bi' into Bi. rename ρi' into ρi.
+    exists (aconcat Bxi Bi), ρi.
+    split. apply a0; eauto. split; auto. apply am_concat; auto.
 Admitted.
