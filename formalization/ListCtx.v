@@ -308,8 +308,8 @@ Ltac listctx_set_simpl := listctx_set_simpl4.
 Ltac listctx_set_solver1 :=
   repeat (listctx_set_simpl;
           match goal with
-          | [|- (_: atom) <> _] => fast_set_solver !!
-          | [|- (_: atom) = _] => fast_set_solver !!
+          | [|- _ <> _] => fast_set_solver !!
+          | [|- _ = _] => fast_set_solver !!
           | [|- _ ∉ _] => fast_set_solver !!
           | [|- _ ∈ _] => fast_set_solver !!
           | [|- _ ⊆ _] => fast_set_solver !!
