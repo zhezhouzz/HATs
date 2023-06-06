@@ -86,6 +86,7 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     A_ρa_B_ρb_list_AB_ρb BxB_ρ Bx_ρx_B_ρ ->
     (forall x, x ∉ L ->
           forall Bxi ρxi Bi ρi,
+            In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
             (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]]) ->
     Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ BxB_ρ ]
 | TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ρx T opevent Bi ρi (L: aset),
