@@ -69,10 +69,10 @@ Scheme value_has_type_mutual_rec := Induction for value_has_type Sort Prop
 Global Hint Constructors tm_has_type: core.
 Global Hint Constructors value_has_type: core.
 
-Lemma basic_typing_contains_fv_tm: forall Γ e T, Γ ⊢t e ⋮t T -> fv_tm e ⊆ dom _ Γ.
+Lemma basic_typing_contains_fv_tm: forall Γ e T, Γ ⊢t e ⋮t T -> fv_tm e ⊆ dom Γ.
 Admitted.
 
-Lemma basic_typing_contains_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> fv_value e ⊆ dom _ Γ.
+Lemma basic_typing_contains_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> fv_value e ⊆ dom Γ.
 Admitted.
 
 Ltac instantiate_atom_listctx :=

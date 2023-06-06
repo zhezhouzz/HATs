@@ -31,7 +31,7 @@ Definition bpropR (bst: bsubstitution) (st: substitution) (ϕ: qualifier) (c: co
   end.
 
 Fixpoint langA (n: nat) (bst: bsubstitution) (st: substitution) (a: am) (α: trace) {struct a} : Prop :=
-  closed_am n (dom _ st) a /\
+  closed_am n (dom st) a /\
     match a with
     | aemp => False
     | aϵ => α = ϵ
@@ -55,7 +55,7 @@ Notation " '{' st '}a⟦' ρ '⟧' " := (fun e => langA 0 b∅ st ρ e) (at leve
 (*   end. *)
 
 Fixpoint ptyR (n: nat) (bst: bsubstitution) (st: substitution) (t: ty) (ρ: pty) (e: tm) : Prop :=
-  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty n (dom _ st) ρ /\
+  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty n (dom st) ρ /\
     match ρ with
     | {v: b | ϕ } => forall (c: constant), e ↪* c -> ∅ ⊢t c ⋮v b /\ bpropR bst st ϕ c
     | -: {v:b | ϕ} ⤑[: T | A ⇒ B ] =>
@@ -82,8 +82,7 @@ Fixpoint ptyR (n: nat) (bst: bsubstitution) (st: substitution) (t: ty) (ρ: pty)
                                α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
                                exists Bi ρi, In (Bi, ρi) B /\
                                           { n ; bst ; st }a⟦ Bi ⟧ β /\
-                                          ptyR n bst st t2 ρi v
-         end
+                                          ptyR n bst st t2 ρi v end
     end.
 
 Notation " '{' n ';' bst ';' st '}p⟦' ρ '⟧' " :=

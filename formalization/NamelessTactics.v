@@ -4,6 +4,7 @@ From CT Require Import Tactics.
 From CT Require Import CoreLang.
 From Coq Require Import Logic.ClassicalFacts.
 From Coq Require Import Classical.
+From Coq Require Import Arith.Compare_dec.
 
 Import CoreLang.
 
@@ -221,7 +222,7 @@ Ltac var_dec_solver :=
       match goal with
       | [H': a < b |- _ ] => rewrite (decide_True _ _ H') in H; auto
       | [H': ~ (a < b) |- _ ] => rewrite (decide_False _ _ H') in H; auto
-      | _ => destruct (nat_lt_dec a b); subst; simpl in H; simpl
+      | _ => destruct (lt_dec a b); subst; simpl in H; simpl
       end
   | [ |- context [ decide (?a = ?a) ] ] => rw_decide_true a a; auto
   | [ |- context [ decide (?a = ?b) ] ] =>
@@ -235,7 +236,7 @@ Ltac var_dec_solver :=
       match goal with
       | [H': a < b |- _ ] => rewrite (decide_True _ _ H'); auto
       | [H': ~ (a < b) |- _ ] => rewrite (decide_False _ _ H'); auto
-      | _ => destruct (nat_lt_dec a b); subst; simpl; simpl; var_dec_solver
+      | _ => destruct (lt_dec a b); subst; simpl; simpl; var_dec_solver
       end
   | _ => progress simpl
   end.

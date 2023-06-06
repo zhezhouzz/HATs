@@ -154,7 +154,7 @@ Admitted.
 
 (* I have proved this lemma in Poirot. *)
 Lemma msubst_open: forall (env: env) e (v_x: value) (x: atom),
-    x # (dom _ env ∪ stale e ∪ stale v_x) ->
+    x # (dom env ∪ stale e ∪ stale v_x) ->
     tm_msubst env e ^t^ v_x = tm_msubst (<[x := v_x]> env) (e ^t^ x).
 Admitted.
 
@@ -196,9 +196,9 @@ Proof.
     specialize (H0 HH2 HH3). simpl in H0.
     assert (amlist_typed [(Bi, ρi)] T) as HH4. admit.
     specialize (H0 HH4 (α +;+ βx) βe v).
-    assert (closed_am 0 (dom aset st) (aconcat A Bxi)) as HH5. admit.
+    assert (closed_am 0 (dom st) (aconcat A Bxi)) as HH5. admit.
     assert (
-        (closed_am 0 (dom aset st) (aconcat A Bxi)) /\
+        (closed_am 0 (dom st) (aconcat A Bxi)) /\
         (∃ α1 α2 : trace, α +;+ βx = α1 +;+ α2 ∧ ({0;b∅;st}a⟦A⟧) α1 ∧ ({0;b∅;st}a⟦Bxi⟧) α2)) as Hconcat.
     { split; eauto. }
     specialize (H0 Hconcat H8). clear Hconcat.

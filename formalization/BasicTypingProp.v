@@ -56,8 +56,8 @@ Lemma vlam_implies_open_tyable: forall Γ e1 v2 Tx T,
   Γ ⊢t v2 ⋮v Tx -> Γ ⊢t vlam Tx e1 ⋮v Tx ⤍ T -> Γ ⊢t e1 ^t^ v2 ⋮t T.
 Admitted.
 
-Lemma tyable_includes_fv_tm: forall (Γ: context) e T, Γ ⊢t e ⋮t T -> (fv_tm e) ⊆ (dom _ Γ).
+Lemma tyable_includes_fv_tm: forall (Γ: context) e T, Γ ⊢t e ⋮t T -> (fv_tm e) ⊆ (dom Γ).
 Admitted.
 
-Lemma tyable_includes_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> (fv_value e) ⊆ (dom _ Γ).
+Lemma tyable_includes_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> (fv_value e) ⊆ (dom Γ).
 Admitted.

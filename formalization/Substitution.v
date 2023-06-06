@@ -15,11 +15,11 @@ Definition substution_eq_up_to_d (d: aset) (m m': substitution) :=
 
 Notation "m 'd≡{' d '}' m' " := (substution_eq_up_to_d d m m') (at level 20, d constr).
 
-Lemma empty_map_dom_is_empty: dom aset (∅ : substitution) = ∅.
+Lemma empty_map_dom_is_empty: dom (∅ : substitution) = ∅.
 Proof. fast_set_solver. Qed.
 
 #[global]
-Instance substitution_stale : @Stale aset substitution := dom aset.
+Instance substitution_stale : @Stale aset substitution := dom.
 Arguments substitution_stale /.
 
 (** subst *)
