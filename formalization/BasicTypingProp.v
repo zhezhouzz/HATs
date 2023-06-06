@@ -25,8 +25,8 @@ Admitted.
 Lemma basic_typing_subst_tm: forall Γ z u U (v: tm) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮t T -> Γ ⊢t {z := u}t v ⋮t T.
 Admitted.
 
-Lemma eval_op_type_safe: forall α op (v1 v: value) (T1 T: base_ty),
-    α +;+ (op :{ v1 }) ⇓ v ->
+Lemma eval_op_type_safe: forall α op (v1 v: constant) (T1 T: base_ty),
+    app{ op, v1 }⇓{α} v ->
     ty_of_op op = T1 ⤍ T ->
     ∅ ⊢t v1 ⋮v T1 /\ ∅ ⊢t v ⋮v T.
 Admitted.

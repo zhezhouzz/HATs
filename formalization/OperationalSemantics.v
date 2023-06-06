@@ -14,10 +14,10 @@ Reserved Notation "α '⊧' t1 '↪{' β '}' t2" (at level 60, t1 constr, β con
 
 (** the small step operational semantics *)
 Inductive step : trace -> tm -> trace -> tm -> Prop :=
-| ST_LetEffOp: forall (α β: trace) op (v1 v: value) e,
-    body e -> lc v1 -> lc v ->
-    α +;+ (trevent op v1) ⇓ (trretv v) ->
-    α ⊧ (tleteffop op v1 e) ↪{ trevent op v1 } (e ^t^ v)
+| ST_LetEffOp: forall (α β: trace) op (c1 c: constant) e,
+    body e -> lc c1 -> lc c ->
+    app{ op, c1 }⇓{ α } c ->
+    α ⊧ (tleteffop op c1 e) ↪{ tr{ op, c1, c} } (e ^t^ c)
 | ST_Lete1: forall α β e1 e1' e,
     body e ->
     α ⊧ e1 ↪{β} e1' ->

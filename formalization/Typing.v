@@ -89,13 +89,13 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
             In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
             (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]]) ->
     Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ BxB_ρ ]
-| TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ρx T opevent Bi ρi (L: aset),
-    is_op_am op v2 opevent ->
+| TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ϕx T opevent Bi ρi (L: aset),
+    is_op_am op v2 ϕx opevent ->
     Γ ⊢WF [: T | A ⇒ [(aconcat opevent Bi, ρi)] ] ->
-    builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(Bx, ρx)] ]) ->
+    builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(Bx, {v: ret_ty_of_op op | ϕx})] ]) ->
     Γ ⊢ v2 ⋮v ρ ->
     (forall x, x ∉ L ->
-          (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A opevent ⇒ [(Bi, ρi)]]) ->
+          (Γ ++ [(x, ({v: ret_ty_of_op op | ϕx}) ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A opevent ⇒ [(Bi, ρi)]]) ->
     Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ⇒ [(aconcat opevent Bi, ρi)] ]
 | TMatchb_true: forall Γ (v: value) e1 e2 τ,
     Γ ⊢WF τ ->
@@ -143,7 +143,7 @@ Lemma well_formed_builtin_typing: forall op ρx A B ρ,
     forall (v_x: constant), { ∅ }p⟦ ρx ⟧ v_x ->
                        forall α, { ∅ }a⟦ A ^a^ v_x ⟧ α ->
                             (exists (c: constant), { ∅ }p⟦ ρ ^p^ v_x ⟧ c) /\
-                              (forall (c: constant), α +;+ (trevent op v_x) ⇓ c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
+                              (forall (c: constant), app{op, v_x}⇓{ α } c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
 Admitted.
 
 Lemma reduction_tlete:  forall e_x e α β v,

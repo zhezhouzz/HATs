@@ -111,11 +111,12 @@ Arguments am_stale /.
   Instance hty_stale : @Stale aset hty := hty_fv.
 Arguments hty_stale /.
 
+(* The effect operator always has 2 bound variables *)
 Fixpoint am_open (k: nat) (s: value) (a : am): am :=
   match a with
   | aemp => aemp
   | aϵ => aϵ
-  | aevent op ϕ => aevent op (qualifier_open (S k) s ϕ)
+  | aevent op ϕ => aevent op (qualifier_open (S (S k)) s ϕ)
   | aconcat a b => aconcat (am_open k s a) (am_open k s b)
   | aunion a b => aunion (am_open k s a) (am_open k s b)
   | astar a => astar (am_open k s a)
@@ -203,7 +204,7 @@ Inductive valid_hty: hty -> Prop :=
 Inductive lc_am_idx: nat -> am -> Prop :=
 | lc_aemp : forall n, lc_am_idx n aemp
 | lc_aϵ : forall n, lc_am_idx n aϵ
-| lc_aevent: forall n op ϕ, lc_qualifier_idx (S n) ϕ -> lc_am_idx n (aevent op ϕ)
+| lc_aevent: forall n op ϕ, lc_qualifier_idx (S (S n)) ϕ -> lc_am_idx n (aevent op ϕ)
 | lc_aconcat : forall n a b, lc_am_idx n a -> lc_am_idx n b -> lc_am_idx n (aconcat a b)
 | lc_aunion : forall n a b, lc_am_idx n a -> lc_am_idx n b -> lc_am_idx n (aunion a b)
 | lc_astar: forall n a, lc_am_idx n a -> lc_am_idx n (astar a)
@@ -220,8 +221,8 @@ Inductive lc_pty_idx: nat -> pty -> Prop :=
 
 Inductive lc_hty_idx: nat -> hty -> Prop :=
 | lc_hty_idx_: forall n T A B,
-    lc_am_idx (S n) A ->
-    (forall Bi ρi, In (Bi, ρi) B -> lc_am_idx (S n) Bi /\ lc_pty_idx (S n) ρi) ->
+    lc_am_idx n A ->
+    (forall Bi ρi, In (Bi, ρi) B -> lc_am_idx n Bi /\ lc_pty_idx n ρi) ->
     lc_hty_idx n [: T | A ⇒ B ].
 
 Definition lc_pty ρ := lc_pty_idx 0 ρ.
@@ -278,9 +279,11 @@ Definition mk_top ty := {v: ty | mk_q_under_top }.
 Definition mk_eq_var ty (x: atom) := {v: ty | mk_q_eq_var x }.
 (* Definition mk_op_c_am op (c: constant) := aevent op (mk_q_eq_constant c). *)
 (* Definition mk_op_var_am op (x: atom) := aevent op (mk_q_eq_var x). *)
-Inductive is_op_am: effop -> value -> am -> Prop :=
-| mk_op_c_am: forall op (c: constant), is_op_am op c (aevent op (mk_q_eq_constant c))
-| mk_op_var_am: forall op (x: atom), is_op_am op x (aevent op (mk_q_eq_var x)).
+
+(* dummy implementation, see paper *)
+Inductive is_op_am: effop -> value -> qualifier -> am -> Prop :=
+| mk_op_c_am: forall op (c: constant) ϕ, is_op_am op c ϕ (aevent op (mk_q_eq_constant c))
+| mk_op_var_am: forall op (x: atom) ϕ, is_op_am op x ϕ (aevent op (mk_q_eq_var x)).
 
 (* Dummy implementation  *)
 Inductive builtin_typing_relation: effop -> pty -> Prop :=

@@ -30,12 +30,19 @@ Definition bpropR (bst: bsubstitution) (st: substitution) (ϕ: qualifier) (c: co
   | (bp[ _ | _ | p ]) => p (<b[↦ c ]> bst) st
   end.
 
+Definition bpropR2 (bst: bsubstitution) (st: substitution) (ϕ: qualifier) (c1: constant) (c2: constant) : Prop :=
+  match ϕ with
+  | (bp[ _ | _ | p ]) => p (<b[↦ c2 ]> (<b[↦ c1 ]> bst)) st
+  end.
+
 Fixpoint langA (n: nat) (bst: bsubstitution) (st: substitution) (a: am) (α: trace) {struct a} : Prop :=
   closed_am n (dom st) a /\
     match a with
     | aemp => False
     | aϵ => α = ϵ
-    | aevent op ϕ => ∃ (c: constant), α = trevent op c /\ ∅ ⊢t c ⋮v TNat /\ bpropR bst st ϕ c
+    | aevent op ϕ =>
+        ∃ (c1 c: constant),
+  α = tr{op, c1, c} /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\ bpropR2 bst st ϕ c1 c
 | aconcat a1 a2 => exists α1 α2, α = α1 +;+ α2 ∧ langA n bst st a1 α1 /\ langA n bst st a2 α2
 | aunion a1 a2 => langA n bst st a1 α ∨ langA n bst st a2 α
 | astar a => repeat_tr (langA n bst st a) α
