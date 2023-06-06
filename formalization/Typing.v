@@ -18,6 +18,7 @@ Import BasicTyping.
 Import RefinementType.
 Import Denotation.
 Import Instantiation.
+Import Substitution.
 
 (** Well-formedness *)
 Inductive wf_pty: listctx pty -> pty -> Prop :=
@@ -28,7 +29,7 @@ Inductive wf_pty: listctx pty -> pty -> Prop :=
     amlist_typed B T ->
     (forall x, x ∉ L ->
           (forall Bi ρi, In (Bi, ρi) B ->
-              valid_am Bi /\ wf_pty (Γ ++ [(x, ρ)]) ρi
+                    valid_am Bi /\ wf_pty (Γ ++ [(x, ρ)]) ρi
           )
     ) ->
     wf_pty Γ (-: ρ ⤑[: T | A ⇒ B ]).
@@ -53,6 +54,12 @@ Notation " Γ '⊢' τ1 '⪡' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 
 Reserved Notation "Γ '⊢' e '⋮t' τ" (at level 20).
 Reserved Notation "Γ '⊢' e '⋮v' τ"  (at level 20).
 
+Definition A_ρa_B_ρb_list_A_ρa (l: list (am * pty) ) (tril: list (am * pty * am * pty)) :=
+  forall A ρa, In (A, ρa) l <-> (exists B ρb, In (A, ρa, B, ρb) tril).
+
+Definition A_ρa_B_ρb_list_AB_ρb (l: list (am * pty) ) (tril: list (am * pty * am * pty)) :=
+  forall A B ρb, In (aconcat A B, ρb) l <-> (exists ρa, In (A, ρa, B, ρb) tril).
+
 (** Typing *)
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TValue: forall Γ v ρ,
@@ -61,29 +68,30 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TSub: forall Γ e (τ1 τ2: hty),
     Γ ⊢WF τ2 ->
     Γ ⊢ e ⋮t τ1 -> Γ ⊢ τ1 ⪡ τ2 -> (Γ ⊢ e ⋮t τ2)
-| TLetE: forall Γ e_x e Tx Ax Bx T A B (L: aset),
-    Γ ⊢WF [: T | A ⇒ B ] ->
-    Γ ⊢ e_x ⋮t [: Tx | Ax ⇒ Bx ] ->
-    (forall Bxi ρxi, In (Bxi, ρxi) Bx ->
-                exists Bi ρi, In (aconcat Bxi Bi, ρi) B /\
-                           (forall x, x ∉ L ->
-                                 (Γ ++ [(x, ρxi)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A Bxi ⇒ [(Bi, ρi)]])
-    ) ->
-    Γ ⊢ (tlete e_x e) ⋮t [: T | A ⇒ B ]
-| TApp: forall Γ (v1 v2: value) e ρ Tx Ax Bx T A B (L: aset),
-    Γ ⊢WF [: T | A ⇒ B ] ->
+| TLetE: forall Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
+    Γ ⊢WF [: T | A ⇒ BxB_ρ ] ->
+    Γ ⊢ e_x ⋮t [: Tx | A ⇒ Bx_ρx ] ->
+    A_ρa_B_ρb_list_A_ρa Bx_ρx Bx_ρx_B_ρ ->
+    A_ρa_B_ρb_list_AB_ρb BxB_ρ Bx_ρx_B_ρ ->
+    (forall x, x ∉ L ->
+          forall Bxi ρxi Bi ρi,
+            In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
+            (Γ ++ [(x, ρxi)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A Bxi ⇒ [(Bi, ρi)]]) ->
+    Γ ⊢ (tlete e_x e) ⋮t [: T | A ⇒ BxB_ρ ]
+| TApp: forall Γ (v1 v2: value) e ρ Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
+    Γ ⊢WF [: T | A ⇒ BxB_ρ ] ->
     Γ ⊢ v2 ⋮v ρ ->
-    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | Ax ⇒ Bx ]) ->
-    (forall Bxi ρxi, In (Bxi, ρxi) Bx ->
-                exists Bi ρi, In (aconcat (Bxi ^a^ v2) Bi, ρi) B /\
-                           (forall x, x ∉ L ->
-                                 (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]])
-    ) ->
-    Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ B ]
-| TEffOp: forall Γ (op: effop) (v2: value) e ρ Ax Bx ρx T A opevent Bi ρi (L: aset),
+    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | astar ∘ ⇒ Bx_ρx ]) ->
+    A_ρa_B_ρb_list_A_ρa Bx_ρx Bx_ρx_B_ρ ->
+    A_ρa_B_ρb_list_AB_ρb BxB_ρ Bx_ρx_B_ρ ->
+    (forall x, x ∉ L ->
+          forall Bxi ρxi Bi ρi,
+            (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]]) ->
+    Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ BxB_ρ ]
+| TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ρx T opevent Bi ρi (L: aset),
     is_op_am op v2 opevent ->
     Γ ⊢WF [: T | A ⇒ [(aconcat opevent Bi, ρi)] ] ->
-    builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | Ax ⇒ [(Bx, ρx)] ]) ->
+    builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(Bx, ρx)] ]) ->
     Γ ⊢ v2 ⋮v ρ ->
     (forall x, x ∉ L ->
           (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A opevent ⇒ [(Bi, ρi)]]) ->
@@ -100,7 +108,7 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     Γ ⊢ e2 ⋮t τ ->
     ⌊ Γ ⌋* ⊢t e1 ⋮t ⌊ τ ⌋ ->
     Γ ⊢ (tmatchb v e1 e2) ⋮t τ
-with value_type_check : listctx pty -> tm -> pty -> Prop :=
+with value_type_check : listctx pty -> value -> pty -> Prop :=
 | TContant: forall Γ (c: constant),
     Γ ⊢WFp (mk_eq_constant c) ->
     Γ ⊢ c ⋮v (mk_eq_constant c)
@@ -132,12 +140,33 @@ Admitted.
 Lemma well_formed_builtin_typing: forall op ρx A B ρ,
     builtin_typing_relation op (-: ρx ⤑[: ret_ty_of_op op | A ⇒ [(B, ρ)] ]) ->
     forall (v_x: constant), { ∅ }p⟦ ρx ⟧ v_x ->
-           forall α, { ∅ }a⟦ A ^a^ v_x ⟧ α ->
-                (exists (c: constant), { ∅ }p⟦ ρ ^p^ v_x ⟧ c) /\
-                  (forall (c: constant), α +;+ (trevent op v_x) ⇓ c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
+                       forall α, { ∅ }a⟦ A ^a^ v_x ⟧ α ->
+                            (exists (c: constant), { ∅ }p⟦ ρ ^p^ v_x ⟧ c) /\
+                              (forall (c: constant), α +;+ (trevent op v_x) ⇓ c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
+Admitted.
+
+Lemma reduction_tlete:  forall e_x e α β (v_x: value) β' v,
+    α ⊧ e_x ↪*{ β } v_x ->
+    α +;+ β ⊧ (e ^t^ v_x) ↪*{ β' } v ->
+    α ⊧ tlete e_x e ↪*{ β +;+ β' } v.
 Admitted.
 
 Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ ->
     forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ τ ⟧ (tm_msubst env e).
+Proof.
+  apply (term_type_check_rec
+           (fun Γ (v: value) ρ _ => forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ pty_to_rty ρ ⟧ (value_msubst env v))
+           (fun Γ e (τ: hty) _ => forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ τ ⟧ (tm_msubst env e))
+        ); intros.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - auto_pose_fv x. repeat specialize_with x.
+    clear t t0.
+    assert ((tm_msubst env (tlete e_x e)) = (tlete (tm_msubst env e_x) (tm_msubst env e))) as Hrewrite; auto.
+    rewrite Hrewrite. clear Hrewrite.
 Admitted.
