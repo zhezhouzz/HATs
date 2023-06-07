@@ -28,8 +28,8 @@ and force_rty rty =
 and force_sevent = function
   | Raw.GuardEvent phi -> GuardEvent (force_qualifier phi)
   | Raw.RetEvent pty -> RetEvent (force_pty pty)
-  | Raw.EffEvent { op; vs; phi } ->
-      EffEvent { op; vs; phi = force_qualifier phi }
+  | Raw.EffEvent { op; vs; v; phi } ->
+      EffEvent { op; vs; v; phi = force_qualifier phi }
 
 and force_regex regex =
   let rec aux regex =
@@ -70,8 +70,8 @@ and besome_rty rty =
 and besome_sevent = function
   | GuardEvent phi -> Raw.GuardEvent (besome_qualifier phi)
   | RetEvent pty -> Raw.RetEvent (besome_pty pty)
-  | EffEvent { op; vs; phi } ->
-      Raw.EffEvent { op; vs; phi = besome_qualifier phi }
+  | EffEvent { op; vs; v; phi } ->
+      Raw.EffEvent { op; vs; v; phi = besome_qualifier phi }
 
 and besome_regex regex =
   let rec aux regex =

@@ -59,34 +59,34 @@ let check_inclusion_counterexample (r1, r2) =
 let stat_init = Check.stat_init
 let stat_get_cur = Check.stat_get_cur
 
-open Language.NRegex
-
 (* let test0 () = *)
 (*   let open Zzdatatype.Datatype in *)
 (*   let m = StrMap.add "z" 3 StrMap.empty in *)
 (*   let x = (StrMap.map (fun x -> x + 1) m, m) in *)
 
-let test0 () =
-  (* let r1 = Epslion in *)
-  let r1 =
-    Minterm
-      {
-        op = "Put";
-        global_embedding = 1;
-        ret_embedding = 1;
-        local_embedding = 3;
-      }
-  in
-  (* let r2 = Concat [ Epslion; r1 ] in *)
-  let r2 =
-    Language.Rty.(
-      SeqA
-        ( EventA (GuardEvent mk_false),
-          EventA (EffEvent { op = "Put"; vs = []; phi = mk_true }) ))
-  in
-  let dctx, mts = Desymbolic.ctx_init r2 in
-  let () =
-    Printf.printf "%b"
-      (check_inclusion_bool (r1, Desymbolic.desymbolic dctx mts r2))
-  in
-  ()
+let test0 () = ()
+(* open Language.NRegex *)
+(* let test0 () = *)
+(*   (\* let r1 = Epslion in *\) *)
+(*   let r1 = *)
+(*     Minterm *)
+(*       { *)
+(*         op = "Put"; *)
+(*         global_embedding = 1; *)
+(*         ret_embedding = 1; *)
+(*         local_embedding = 3; *)
+(*       } *)
+(*   in *)
+(*   (\* let r2 = Concat [ Epslion; r1 ] in *\) *)
+(*   let r2 = *)
+(*     Language.Rty.( *)
+(*       SeqA *)
+(*         ( EventA (GuardEvent mk_false), *)
+(*           EventA (EffEvent { op = "Put"; vs = []; phi = mk_true }) )) *)
+(*   in *)
+(*   let dctx, mts = Desymbolic.ctx_init r2 in *)
+(*   let () = *)
+(*     Printf.printf "%b" *)
+(*       (check_inclusion_bool (r1, Desymbolic.desymbolic dctx mts r2)) *)
+(*   in *)
+(*   () *)

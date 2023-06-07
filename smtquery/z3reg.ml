@@ -72,6 +72,10 @@ module RegZ3BackendV0 = struct
     let n = Hashtbl.find tab (mt_to_string mt) in
     i_to_z3 ctx n
 
+  let mt_to_string { tab; _ } mt =
+    let n = Hashtbl.find tab (mt_to_string mt) in
+    String.init 1 (fun _ -> int_to_char n)
+
   let get_any ctx { tab; _ } =
     (* let l = List.of_seq (Hashtbl.to_seq_values tab) in *)
     (* let () = *)

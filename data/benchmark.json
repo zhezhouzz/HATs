@@ -1,5 +1,5 @@
 {
-  "benchmark_dir": "data/benchmark",
+  "benchmark_dir": "data/benchmark_ob",
   "benchmarks_info": [
     {
       "benchmark_source": "Protocols",
