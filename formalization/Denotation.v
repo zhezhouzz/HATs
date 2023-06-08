@@ -15,7 +15,7 @@ Import ListCtx.
 Import OperationalSemantics.
 Import BasicTyping.
 Import RefinementType.
-Import Substitution.
+(* Import Substitution. *)
 Import Qualifier.
 Import Equation.
 Import mapset.
@@ -29,9 +29,6 @@ Inductive repeat_tr: (trace -> Prop) -> trace -> Prop :=
 Definition bpropR (ϕ: qualifier) (c: constant) : Prop :=
   denote_qualifier (ϕ ^q^ c).
 
-Definition bpropR2 (ϕ: qualifier) (c1: constant) (c2: constant) : Prop :=
-  denote_qualifier (ϕ ^q^ c1 ^q^ c2).
-
 Fixpoint langA (a: am) (α: trace) {struct a} : Prop :=
   closed_am ∅ a /\
     match a with
@@ -40,7 +37,7 @@ Fixpoint langA (a: am) (α: trace) {struct a} : Prop :=
     | aevent op ϕ =>
         exists (c1 c: constant),
           α = tr{op, c1, c} /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\
-          bpropR2 ϕ c1 c
+          denote_qualifier (ϕ ^q^ c1 ^q^ c)
     | aconcat a1 a2 =>
         exists α1 α2, α = α1 +;+ α2 ∧ langA a1 α1 /\ langA a2 α2
     | aunion a1 a2 => langA a1 α ∨ langA a2 α
@@ -62,9 +59,7 @@ Notation "'a⟦' a '⟧' " :=
 Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
   ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
     match ρ with
-    | {v: b | ϕ } =>
-        (* NOTE: why we type [c] here? *)
-        forall (c: constant), e ↪* c -> ∅ ⊢t c ⋮v b /\ bpropR ϕ c
+    | {v: b | ϕ } => forall (c: constant), e ↪* c -> bpropR ϕ c
     | -: {v:b | ϕ} ⤑[: T | A ⇒ B ] =>
         match t with
         | TBase _ => False
@@ -110,15 +105,22 @@ Definition htyR τ (e: tm) : Prop :=
                    p⟦ ρi ⟧ v
   end.
 
-Notation "'⟦' τ '⟧' " :=
-  (htyR τ) (at level 20, format "⟦ τ ⟧", τ constr).
+Notation "'⟦' τ '⟧' " := (htyR τ) (at level 20, format "⟦ τ ⟧", τ constr).
+Notation "'⟦' τ '⟧p' " := (ptyR τ) (at level 20, format "⟦ τ ⟧p", τ constr).
 
-(* TODO: make this a computation? *)
-Definition substitution_included_by_env (st: amap constant) (env: env) : Prop :=
-  forall (x: atom), st !! x = None <-> env !! x = None /\ (forall (c: constant), st !! x = Some c <-> env !! x = Some (vconst c)).
+(* (* TODO: make this a computation? *) *)
+(* Definition substitution_included_by_env (st: amap constant) (env: env) : Prop := *)
+(*   forall (x: atom), st !! x = None <-> env !! x = None /\ (forall (c: constant), st !! x = Some c <-> env !! x = Some (vconst c)). *)
 
-Notation " st '⫕' env " :=
-  (substitution_included_by_env st env) (at level 20, format "st ⫕ env").
+(* Notation " st '⫕' env " := *)
+(*   (substitution_included_by_env st env) (at level 20, format "st ⫕ env"). *)
+
+Notation "'m{' x '}p'" := (msubst pty_subst x) (at level 20, format "m{ x }p", x constr).
+Notation "'m{' x '}a'" := (msubst am_subst x) (at level 20, format "m{ x }a", x constr).
+Notation "'m{' x '}pa'" := (msubst postam_subst x) (at level 20, format "m{ x }pa", x constr).
+Notation "'m{' x '}h'" := (msubst hty_subst x) (at level 20, format "m{ x }h", x constr).
+Notation "'m{' x '}v'" := (msubst value_subst x) (at level 20, format "m{ x }v", x constr).
+Notation "'m{' x '}t'" := (msubst tm_subst x) (at level 20, format "m{ x }t", x constr).
 
 Inductive ctxRst: listctx pty -> env -> Prop :=
 | ctxRst0: ctxRst [] ∅

@@ -12,7 +12,7 @@ Import Tactics.
 Import NamelessTactics.
 Import OperationalSemantics.
 Import BasicTyping.
-Import Substitution.
+(* Import Substitution. *)
 Import Qualifier.
 Import ListCtx.
 Import List.
@@ -35,9 +35,19 @@ Admitted.
 Notation "∘" := aany (at level 5).
 Notation "a∅" := aemp (at level 80, right associativity).
 
+(* Inductive pty : Type := *)
+(* | basepty (b: base_ty) (ϕ: qualifier) *)
+(* | arrpty (ρ: pty) (T: ty) (pre: am) (B: postam) *)
+(* with postam: Type := *)
+(* | post_nil *)
+(* | post_cons (A: am) (ρ: pty) (B: postam) *)
+(* . *)
+
 Inductive pty : Type :=
 | basepty (B: base_ty) (ϕ: qualifier)
 | arrpty (ρ: pty) (T: ty) (pre: am) (post: list (am * pty)).
+
+(* Print pty_ind. *)
 
 Inductive hty : Type :=
 | hty_ (T: ty) (pre: am) (post: list (am * pty)).
@@ -96,9 +106,11 @@ Fixpoint pty_fv ρ : aset :=
   | -: ρ ⤑[: _ | a ⇒ b ] => (pty_fv ρ) ∪ (am_fv a) ∪ (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) b))
   end.
 
+Definition postam_fv (B : (list (am * pty))) := (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) B)).
+
 Definition hty_fv ρ : aset :=
   match ρ with
-  | [: _ | a ⇒ b ] => (am_fv a) ∪ (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) b))
+  | [: _ | a ⇒ b ] => (am_fv a) ∪ postam_fv b
   end.
 
 #[global]
@@ -107,6 +119,9 @@ Arguments pty_stale /.
 #[global]
   Instance am_stale : @Stale aset am := am_fv.
 Arguments am_stale /.
+#[global]
+  Instance postam_stale : @Stale aset (list (am * pty)) := postam_fv.
+Arguments postam_stale /.
 #[global]
   Instance hty_stale : @Stale aset hty := hty_fv.
 Arguments hty_stale /.
@@ -164,13 +179,18 @@ Fixpoint pty_subst (k: atom) (s: value) (ρ: pty) : pty :=
       -: pty_subst k s ρ ⤑[: T | am_subst k s a ⇒ (List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) b)]
   end.
 
+Definition postam_subst (k: atom) (s: value) (B: list (am * pty)): list (am * pty) :=
+  List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) B.
+
+
 Definition hty_subst (k: atom) (s: value) (a : hty): hty :=
   match a with
-  | [: T | a ⇒ b ] => [: T | am_subst k s a ⇒ (List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) b) ]
+  | [: T | a ⇒ B ] => [: T | am_subst k s a ⇒ (postam_subst k s B)]
   end.
 
 Notation "'{' x ':=' s '}p'" := (pty_subst x s) (at level 20, format "{ x := s }p", x constr).
 Notation "'{' x ':=' s '}a'" := (am_subst x s) (at level 20, format "{ x := s }a", x constr).
+Notation "'{' x ':=' s '}pa'" := (postam_subst x s) (at level 20, format "{ x := s }pa", x constr).
 Notation "'{' x ':=' s '}h'" := (hty_subst x s) (at level 20, format "{ x := s }h", x constr).
 
 (** well formed, locally closed, closed with state *)

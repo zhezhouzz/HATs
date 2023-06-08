@@ -8,7 +8,7 @@ Equation.v
 OperationalSemantics.v
 BasicTyping.v
 BasicTypingProp.v
-Substitution.v
+# Substitution.v
 Qualifier.v
 ListCtx.v
 RefinementType.v

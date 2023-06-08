@@ -2,17 +2,11 @@ From stdpp Require Import mapset.
 From stdpp Require Import natmap.
 From stdpp Require Import fin vector.
 From CT Require Import CoreLangProp.
-From CT Require Import OperationalSemantics.
-From CT Require Import BasicTypingProp.
-From CT Require Import Substitution.
 
 Import Atom.
 Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
-Import OperationalSemantics.
-Import BasicTyping.
-Import Substitution.
 
 (** * We define the bound proposition in locally nameless style. *)
 
