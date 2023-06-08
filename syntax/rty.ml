@@ -27,7 +27,12 @@ module F (L : Lit.T) = struct
   and sevent =
     | GuardEvent of prop
     | RetEvent of pty
-    | EffEvent of { op : string; vs : string Nt.typed list; phi : prop }
+    | EffEvent of {
+        op : string;
+        vs : string Nt.typed list;
+        v : string Nt.typed;
+        phi : prop;
+      }
 
   and regex =
     | EmptyA
@@ -58,6 +63,7 @@ module F (L : Lit.T) = struct
 
   let ret_name = "Ret"
   let guard_name = "Guard"
+  let v_ret_name = "vret"
   let vs_names n = List.init n (fun i -> spf "%s%i" v_name i)
 
   let vs_names_from_types tps =
@@ -74,7 +80,7 @@ module F (L : Lit.T) = struct
   let se_force_op = function
     | RetEvent _ -> _failatwith __FILE__ __LINE__ "die"
     | GuardEvent _ -> _failatwith __FILE__ __LINE__ "die"
-    | EffEvent { op; vs; phi } -> (op, vs, phi)
+    | EffEvent { op; vs; v; phi } -> (op, vs, v, phi)
 
   let pty_destruct_arr = function
     | ArrPty { arr_kind = PiArr; rarg; retrty } -> (rarg, retrty)
@@ -117,10 +123,10 @@ module F (L : Lit.T) = struct
     match sevent with
     | GuardEvent phi -> GuardEvent (subst_prop (y, z) phi)
     | RetEvent pty -> RetEvent (subst_pty (y, z) pty)
-    | EffEvent { op; vs; phi } ->
-        if List.exists (fun x -> String.equal x.Nt.x y) vs then
-          EffEvent { op; vs; phi }
-        else EffEvent { op; vs; phi = subst_prop (y, z) phi }
+    | EffEvent { op; vs; v; phi } ->
+        if List.exists (fun x -> String.equal x.Nt.x y) (v :: vs) then
+          EffEvent { op; vs; v; phi }
+        else EffEvent { op; vs; v; phi = subst_prop (y, z) phi }
 
   and subst_regex (y, z) regex =
     let rec aux regex =
@@ -177,9 +183,9 @@ module F (L : Lit.T) = struct
     match sevent with
     | GuardEvent phi -> fv_prop phi
     | RetEvent pty -> fv_pty pty
-    | EffEvent { vs; phi; _ } ->
+    | EffEvent { vs; phi; v; _ } ->
         List.filter (fun y ->
-            not (List.exists (fun x -> String.equal x.Nt.x y) vs))
+            not (List.exists (fun x -> String.equal x.Nt.x y) (v :: vs)))
         @@ fv_prop phi
 
   and fv_regex regex =
@@ -230,6 +236,18 @@ module F (L : Lit.T) = struct
         postreg = EventA (RetEvent pty);
       }
 
+  let regex_to_pty regex =
+    match regex with
+    | EventA (RetEvent pty) -> pty
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  let pty_to_regex pty = EventA (RetEvent pty)
+
+  let pty_to_cty pty =
+    match pty with
+    | BasePty { cty } -> cty
+    | _ -> _failatwith __FILE__ __LINE__ "die"
+
   let rtyped_force_to_ptyped file line { rx; rty } =
     match rty with
     | Pty pty -> { px = rx; pty }
@@ -264,9 +282,9 @@ module F (L : Lit.T) = struct
         { global_lits = P.get_lits phi @ global_lits; global_pty; local_lits }
     | RetEvent pty ->
         { global_lits; global_pty = pty :: global_pty; local_lits }
-    | EffEvent { op; phi; vs } ->
+    | EffEvent { op; phi; vs; v } ->
         let lits = P.get_lits phi in
-        let vs' = List.map (fun x -> x.Nt.x) vs in
+        let vs' = List.map (fun x -> x.Nt.x) (v :: vs) in
         let is_contain_local_free lit =
           match List.interset ( == ) vs' @@ P.fv_lit lit with
           | [] -> false
@@ -277,8 +295,8 @@ module F (L : Lit.T) = struct
           StrMap.update op
             (fun l ->
               match l with
-              | None -> Some (vs, llits)
-              | Some (_, l) -> Some (vs, l @ llits))
+              | None -> Some (v :: vs, llits)
+              | Some (_, l) -> Some (v :: vs, l @ llits))
             local_lits
         in
         let global_lits = global_lits @ glits in
@@ -375,16 +393,22 @@ module F (L : Lit.T) = struct
   and normalize_name_sevent = function
     | GuardEvent phi -> GuardEvent phi
     | RetEvent pty -> RetEvent (normalize_name_pty pty)
-    | EffEvent { op; vs; phi } ->
+    | EffEvent { op; vs; v; phi } ->
         let vs' = vs_names (List.length vs) in
-        let tmp = _safe_combine __FILE__ __LINE__ vs vs' in
+        let tmp =
+          _safe_combine __FILE__ __LINE__ (v :: vs) (v_ret_name :: vs')
+        in
         let phi =
           List.fold_left
             (fun phi (x', x) -> P.subst_prop_id (x'.Nt.x, x) phi)
             phi tmp
         in
-        let vs = List.map (fun (v, x) -> Nt.{ x; ty = v.ty }) tmp in
-        EffEvent { op; vs; phi }
+        let vs, v =
+          match List.map (fun (v, x) -> Nt.{ x; ty = v.ty }) tmp with
+          | [] -> _failatwith __FILE__ __LINE__ "die"
+          | v :: vs -> (vs, v)
+        in
+        EffEvent { op; vs; v; phi }
 
   and noralize_name_regex regex =
     let rec aux regex =

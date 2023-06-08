@@ -73,9 +73,13 @@ and sevent_check opctx ctx retbty sevent =
             _check_equality __FILE__ __LINE__ Nt.eq retbty (erase_pty pty)
       in
       RetEvent pty
-  | EffEvent { op; vs; phi } ->
+  | EffEvent { op; vs; v; phi } ->
+      (* let () = Printf.printf "sevent: %s\n" (To_rty.layout_sevent sevent) in *)
+      (* let () = *)
+      (*   Printf.printf "vs: %s\n" (List.split_by_comma (fun x -> x.Nt.x) vs) *)
+      (* in *)
       let opty = Aux.infer_op opctx (Op.EffOp op) in
-      let argsty, _ = Nt.destruct_arr_tp opty in
+      let argsty, retnty = Nt.destruct_arr_tp opty in
       let vs =
         List.map
           Nt.(
@@ -87,9 +91,11 @@ and sevent_check opctx ctx retbty sevent =
               { x; ty })
           (_safe_combine __FILE__ __LINE__ vs argsty)
       in
-      let ctx' = Typectx.new_to_rights ctx vs in
+      let retnty = _check_equality __FILE__ __LINE__ Nt.eq v.Nt.ty retnty in
+      let v = Nt.{ x = v.x; ty = retnty } in
+      let ctx' = Typectx.new_to_rights ctx (v :: vs) in
       let phi = type_check_qualifier opctx ctx' phi in
-      EffEvent { op; vs; phi }
+      EffEvent { op; vs; v; phi }
 
 and regex_check opctx ctx retbty (regex : regex) : regex =
   match regex with

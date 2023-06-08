@@ -14,9 +14,11 @@ module type T = sig
   val mk_lit_true : lit
   val mk_lit_false : lit
   val subst_lit : string * lit -> lit -> lit
+  val subst_lit_id : string * string -> lit -> lit
   val fv_lit : lit -> string list
   val fv_typed_lit : lit typed -> string list
   val fv_typed_lits : lit typed list -> string list
+  val typed_fv_lit : lit typed -> string typed list
   val get_eqlit_by_name : lit -> string -> lit option
   val compare_lit : lit -> lit -> int
   val eq_lit : lit -> lit -> bool
@@ -106,6 +108,19 @@ struct
       | ATu ls -> ATu (List.map (fun x -> aux #-> x) ls)
       | AProj (l, idx) -> AProj (aux #-> l, idx)
       | AAppOp (op, ls) -> AAppOp (op, List.map (fun x -> aux #-> x) ls)
+    in
+    aux e
+
+  let subst_lit_id (y, id) e = subst_lit (y, AVar id) e
+
+  let rec typed_fv_lit (e : lit typed) =
+    let aux e =
+      match e.x with
+      | AC _ -> []
+      | AVar x -> [ x #: e.ty ]
+      | ATu ls -> List.concat @@ List.map typed_fv_lit ls
+      | AProj (l, _) -> typed_fv_lit l
+      | AAppOp (_, ls) -> List.concat @@ List.map typed_fv_lit ls
     in
     aux e
 

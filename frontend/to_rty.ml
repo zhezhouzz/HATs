@@ -58,11 +58,11 @@ and pprint_sevent = function
   | GuardEvent phi ->
       tpEvent @@ spf "%s %s" guard_name (To_qualifier.layout phi)
   | RetEvent pty -> tpEvent @@ spf "%s %s" ret_name (pprint_pty pty)
-  | EffEvent { op; vs; phi } ->
+  | EffEvent { op; vs; v; phi } ->
       tpEvent
-      @@ spf "%s(%s) | %s" op
+      @@ spf "%s(%s)(%s) | %s" op
            (List.split_by_comma pprint_id_name vs)
-           (To_qualifier.layout phi)
+           v.x (To_qualifier.layout phi)
 
 and pprint_regex = function
   | EmptyA -> "∅"
@@ -157,7 +157,19 @@ and sevent_of_ocamlexpr_aux expr =
       else if String.equal op ret_name then RetEvent (pty_of_ocamlexpr_aux e)
       else
         let vs, phi = vars_phi_of_ocamlexpr e in
-        EffEvent { op; vs; phi }
+        let vs, v =
+          match List.last_destruct_opt vs with
+          | None -> _failatwith __FILE__ __LINE__ "die"
+          | Some (vs, v) -> (vs, v)
+        in
+        (* let () = *)
+        (*   Printf.printf "[to_rty] vs: %s\n [to_rty] v: %s\n" *)
+        (*     (List.split_by_comma (fun x -> x.Nt.x) vs) *)
+        (*     v.Nt.x *)
+        (* in *)
+        let se = EffEvent { op; vs; v; phi } in
+        (* let () = Printf.printf "se: %s\n" (pprint_sevent se) in *)
+        se
   | _ -> _failatwith __FILE__ __LINE__ "die"
 
 and regex_of_ocamlexpr_aux expr =
@@ -213,7 +225,9 @@ and rty_of_ocamlexpr_aux expr =
 
 let rty_of_ocamlexpr expr =
   let rty = rty_of_ocamlexpr_aux expr in
-  normalize_name_rty rty
+  let rty = normalize_name_rty rty in
+  (* let () = Printf.printf "ZZ: %s\n" (pprint_rty rty) in *)
+  rty
 
 let layout = pprint_rty
 let layout_cty = pprint_cty

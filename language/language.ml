@@ -100,7 +100,12 @@ module Rty = struct
     | Nt.Ty_int -> find_intlit_assignment_from_prop prop x.Nt.x
     | _ -> _failatwith __FILE__ __LINE__ "die"
 
-  let mk_effevent_from_application (op, args) =
+  (* here we need to garantee that the free variable in xphi is indeed v *)
+  let mk_effevent_from_application (op, args) (cty : cty) =
+    let () =
+      _assert __FILE__ __LINE__ "the cty should be normalized with fv v"
+        (String.equal v_name cty.v.x)
+    in
     let vs = vs_names (List.length args) in
     let vs, props =
       List.split
@@ -109,7 +114,9 @@ module Rty = struct
              (v, mk_prop_var_eq_lit v lit.x))
       @@ _safe_combine __FILE__ __LINE__ vs args
     in
-    EffEvent { op; vs; phi = And props }
+    let phix = subst_prop_id (cty.v.x, v_ret_name) cty.phi in
+    let v = Nt.{ x = v_ret_name; ty = cty.v.ty } in
+    EffEvent { op; vs; v; phi = smart_and (phix :: props) }
 end
 
 module Structure = struct

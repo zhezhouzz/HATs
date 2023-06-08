@@ -5,6 +5,8 @@ open Sugar
 
 (* let template_subst_lit (phi, prop) prop *)
 
+let xs_names n = List.init n (fun i -> spf "w%i" i)
+
 let find_lits_contain_prop_func prop_func_name lits =
   let vss =
     List.filter_map
@@ -64,33 +66,48 @@ let unify_prop_func_op_args prop_func_name m =
   in
   op_vs
 
-let gather_op_vs_related_lits m prop_func_name (op, vs) =
+let get_local_fv vs lit =
+  let fvs = typed_fv_lit lit #: Nt.Ty_bool in
+  List.filter (fun x -> List.exists (fun y -> String.equal x.x y.x) vs) fvs
+
+let gather_op_vs_related_lits m prop_func_name vs =
   let l =
     StrMap.filter_map
-      (fun opname (_, lits) ->
-        if String.equal opname op then
-          let lits =
-            List.filter_map
-              (fun lit ->
-                match lit with
-                | AAppOp (op, _) when Op.eq op.x (Op.BuiltinOp prop_func_name)
-                  ->
-                    None
-                | _ ->
-                    let fvs = fv_lit lit in
-                    if List.length (List.interset String.equal fvs vs) > 0 then
+      (fun _ (localvs, lits) ->
+        let lits =
+          List.filter_map
+            (fun lit ->
+              match lit with
+              | AAppOp (op, _) when Op.eq op.x (Op.BuiltinOp prop_func_name) ->
+                  None
+              | _ ->
+                  let fvs = get_local_fv localvs lit in
+                  if List.length fvs == List.length vs then
+                    (* HACK: only when it has one fv *)
+                    let () =
+                      _assert __FILE__ __LINE__ "only when it has one fv"
+                        (List.length fvs == 1)
+                    in
+                    if (List.nth fvs 0).ty == (List.nth vs 0).ty then
+                      let tmp = _safe_combine __FILE__ __LINE__ fvs vs in
+                      let lit =
+                        List.fold_left
+                          (fun lit (id1, id2) ->
+                            subst_lit_id (id1.x, id2.x) lit)
+                          lit tmp
+                      in
                       Some lit
-                    else None)
-              lits
-          in
-          match lits with [] -> None | _ -> Some lits
-        else None)
+                    else None
+                  else None)
+            lits
+        in
+        match lits with [] -> None | _ -> Some lits)
       m
   in
   let l = List.concat @@ StrMap.to_value_list l in
   l
 
-type infer_ctx = { ws : string list; ftab : prop list }
+type infer_ctx = { ws : string typed list; ftab : prop list }
 type solution = PropFunc of { candidate : int list }
 
 let candidate_to_prop ictx candidate =
@@ -109,7 +126,7 @@ let solution_instantiate ictx solution lits =
       (* let ws = List.map (fun x -> x.x) ictx.ws in *)
       let bindings = _safe_combine __FILE__ __LINE__ ictx.ws lits in
       List.fold_left
-        (fun prop (y, z) -> subst_prop_id (y, z) prop)
+        (fun prop (y, z) -> subst_prop_id (y.x, z) prop)
         prop bindings
 
 let mk_feature_tab lits =
@@ -145,9 +162,16 @@ let mk_candidates lits =
   let ns = List.init (List.length lits) (fun x -> x) in
   aux ns
 
-let mk_ictx prop_func_name m =
-  let op, ws = unify_prop_func_op_args prop_func_name m in
-  let lits = gather_op_vs_related_lits m prop_func_name (op, ws) in
+let mk_ictx prop_func m =
+  let argsty, _ = Nt.destruct_arr_tp prop_func.ty in
+  let ws_ = xs_names (List.length argsty) in
+  let ws =
+    List.map (fun (x, ty) -> Nt.{ x; ty })
+    @@ _safe_combine __FILE__ __LINE__ ws_ argsty
+  in
+  (* let op = prop_func.x in *)
+  (* let op, ws = unify_prop_func_op_args prop_func_name m in *)
+  let lits = gather_op_vs_related_lits m prop_func.x ws in
   let ftab = mk_feature_tab lits in
   let () = layout_ftab ftab in
   (* let () = failwith "end" in *)
@@ -186,8 +210,8 @@ let template_subst_sevent ictx (y, z) sevent =
       let phi = template_subst_prop ictx (y, z) phi in
       RetEvent (BasePty { cty = { v; phi } })
   | RetEvent _ -> _failatwith __FILE__ __LINE__ "die"
-  | EffEvent { op; vs; phi } ->
-      EffEvent { op; vs; phi = template_subst_prop ictx (y, z) phi }
+  | EffEvent { op; vs; v; phi } ->
+      EffEvent { op; vs; v; phi = template_subst_prop ictx (y, z) phi }
 
 let template_subst_regex ictx (y, z) regex =
   let rec aux regex =
@@ -208,20 +232,22 @@ let solution_size = function PropFunc { candidate } -> List.length candidate
 let solution_compare s1 s2 = compare (solution_size s1) (solution_size s2)
 
 let best_solution l =
-  match List.sort solution_compare l with [] -> None | x :: _ -> Some x
+  match List.destruct_opt @@ List.sort solution_compare l with
+  | None -> None
+  | Some (x, _) -> Some x
 
 let infer_prop_func gamma previousA (prop_func, templateA) postreg =
   let gathered =
     gathered_rm_dup @@ gather_from_regex (LorA (previousA, templateA))
   in
-  let ictx = mk_ictx prop_func.x gathered.local_lits in
+  let ictx = mk_ictx prop_func gathered.local_lits in
   let solutions = mk_solution_space ictx in
   let solutions =
     List.filter
       (fun solution ->
         let () =
           Env.show_debug_queries @@ fun _ ->
-          Pp.printf "@{<bold>Check Solution: @}%s\n"
+          Pp.printf "@{<bold>@{<orange>Check Solution: @}@}%s\n"
           @@ layout_solution ictx solution
         in
         let specA =
@@ -241,7 +267,8 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
   | Some solution ->
       let () =
         Env.show_debug_queries @@ fun _ ->
-        Pp.printf "@{<bold>Solution: @}%s\n" @@ layout_solution ictx solution
+        Pp.printf "@{<bold>@{<orange>Final Solution: @}@}%s\n"
+        @@ layout_solution ictx solution
       in
       let postreg = template_subst_regex ictx (prop_func.x, solution) postreg in
       Some postreg
