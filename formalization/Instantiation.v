@@ -36,6 +36,10 @@ with tm_msubst (env: env) (e : tm): tm :=
        | tmatchb v e1 e2 => tmatchb (value_msubst env v) (tm_msubst env e1) (tm_msubst env e2)
        end.
 
+Definition msubst {A} (subst : atom -> value -> A -> A)
+                  (env : env) (a : A) : A :=
+  map_fold subst a env.
+
 Definition instantiation (Γ: amap ty) (Γv: env) :=
   forall (x: atom),
     match Γ !! x with

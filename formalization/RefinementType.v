@@ -175,71 +175,61 @@ Notation "'{' x ':=' s '}h'" := (hty_subst x s) (at level 20, format "{ x := s }
 
 (** well formed, locally closed, closed with state *)
 
-Inductive valid_am: am -> Prop :=
-| valid_aemp : valid_am aemp
-| valid_aϵ : valid_am aϵ
-| valid_aevent: forall op ϕ, valid_qualifier ϕ -> valid_am (aevent op ϕ)
-| valid_aconcat : forall a b, valid_am a -> valid_am b -> valid_am (aconcat a b)
-| valid_aunion : forall a b, valid_am a -> valid_am b -> valid_am (aunion a b)
-| valid_astar: forall a, valid_am a -> valid_am (astar a)
-| valid_acomp : forall a, valid_am (acomp a)
-.
-
 Definition amlist_typed (B: list (am * pty)) (T: ty) :=
   (forall Bi ρi, In (Bi, ρi) B -> ⌊ ρi ⌋ = T).
 
 Inductive valid_pty: pty -> Prop :=
-| valid_pty_base: forall B ϕ, valid_qualifier ϕ -> valid_pty {v: B | ϕ }
+| valid_pty_base: forall B ϕ, valid_pty {v: B | ϕ }
 | valid_pty_arr: forall ρ T A B,
-    valid_pty ρ -> valid_am A ->
+    valid_pty ρ ->
     amlist_typed B T ->
-    (forall Bi ρi, In (Bi, ρi) B -> valid_am Bi /\ valid_pty ρi) ->
+    (forall Bi ρi, In (Bi, ρi) B -> valid_pty ρi) ->
     valid_pty (-: ρ ⤑[: T | A ⇒ B ]).
 
 Inductive valid_hty: hty -> Prop :=
 | valid_hty_: forall T A B,
-    valid_am A -> amlist_typed B T -> (forall Bi ρi, In (Bi, ρi) B -> valid_am Bi /\ valid_pty ρi) ->
+    amlist_typed B T -> (forall Bi ρi, In (Bi, ρi) B -> valid_pty ρi) ->
     valid_hty [: T | A ⇒ B ].
 
-Inductive lc_am_idx: nat -> am -> Prop :=
-| lc_aemp : forall n, lc_am_idx n aemp
-| lc_aϵ : forall n, lc_am_idx n aϵ
-| lc_aevent: forall n op ϕ, lc_qualifier_idx (S (S n)) ϕ -> lc_am_idx n (aevent op ϕ)
-| lc_aconcat : forall n a b, lc_am_idx n a -> lc_am_idx n b -> lc_am_idx n (aconcat a b)
-| lc_aunion : forall n a b, lc_am_idx n a -> lc_am_idx n b -> lc_am_idx n (aunion a b)
-| lc_astar: forall n a, lc_am_idx n a -> lc_am_idx n (astar a)
-| lc_acomp : forall n a, lc_am_idx n (acomp a)
+Inductive lc_am : am -> Prop :=
+| lc_aemp : lc_am aemp
+| lc_aϵ : lc_am aϵ
+| lc_aevent: forall op ϕ (L : aset),
+    (* This is quite annoying. *)
+    (forall (x y : atom), x ∉ L -> y ∉ L -> lc_qualifier (ϕ ^q^ x ^q^ y)) ->
+    lc_am (aevent op ϕ)
+| lc_aconcat : forall a b, lc_am a -> lc_am b -> lc_am (aconcat a b)
+| lc_aunion : forall a b, lc_am a -> lc_am b -> lc_am (aunion a b)
+| lc_astar: forall a, lc_am a -> lc_am (astar a)
+| lc_acomp : forall a, lc_am a -> lc_am (acomp a)
 .
 
-Inductive lc_pty_idx: nat -> pty -> Prop :=
-| lc_pty_idx_base: forall B n ϕ, lc_qualifier_idx (S n) ϕ -> lc_pty_idx n {v: B | ϕ }
-| lc_pty_idx_arr: forall n ρ T A B,
-    lc_pty_idx n ρ ->
-    lc_am_idx (S n) A ->
-    (forall Bi ρi, In (Bi, ρi) B -> lc_am_idx (S n) Bi /\ lc_pty_idx (S n) ρi) ->
-    lc_pty_idx n (-: ρ ⤑[: T | A ⇒ B ]).
+Inductive lc_pty : pty -> Prop :=
+| lc_pty_base: forall B ϕ (L : aset),
+    (forall x : atom, x ∉ L -> lc_qualifier (ϕ ^q^ x)) ->
+    lc_pty {v: B | ϕ }
+| lc_pty_arr: forall ρ T A B (L : aset),
+    lc_pty ρ ->
+    (forall x : atom, x ∉ L -> lc_am (A ^a^ x)) ->
+    (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> lc_am (Bi ^a^ x)) ->
+    (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> lc_pty (ρi ^p^ x)) ->
+    lc_pty (-: ρ ⤑[: T | A ⇒ B ]).
 
-Inductive lc_hty_idx: nat -> hty -> Prop :=
-| lc_hty_idx_: forall n T A B,
-    lc_am_idx n A ->
-    (forall Bi ρi, In (Bi, ρi) B -> lc_am_idx n Bi /\ lc_pty_idx n ρi) ->
-    lc_hty_idx n [: T | A ⇒ B ].
+Inductive lc_hty : hty -> Prop :=
+| lc_hty_ : forall T A B,
+    lc_am A ->
+    (forall Bi ρi, In (Bi, ρi) B -> lc_am Bi) ->
+    (forall Bi ρi, In (Bi, ρi) B -> lc_pty ρi) ->
+    lc_hty [: T | A ⇒ B ].
 
-Definition lc_pty ρ := lc_pty_idx 0 ρ.
-Definition lc_am ρ := lc_am_idx 0 ρ.
-Definition lc_hty ρ := lc_hty_idx 0 ρ.
-Definition pty_body ρ := lc_pty_idx 1 ρ.
-Definition am_body ρ := lc_am_idx 1 ρ.
-Definition hty_body ρ := lc_hty_idx 1 ρ.
+Inductive closed_pty (d : aset) (ρ: pty): Prop :=
+| closed_pty_: valid_pty ρ -> lc_pty ρ -> pty_fv ρ ⊆ d -> closed_pty d ρ.
 
-Inductive closed_pty (b: nat) (d: aset) (ρ: pty): Prop :=
-| closed_pty_: valid_pty ρ -> lc_pty_idx b ρ -> (pty_fv ρ) ⊆ d -> closed_pty b d ρ.
+Inductive closed_am (d: aset) (a: am): Prop :=
+| closed_am_: lc_am a -> am_fv a ⊆ d -> closed_am d a.
 
-Inductive closed_am (b: nat) (d: aset) (a: am): Prop :=
-| closed_am_: valid_am a -> lc_am_idx b a -> (am_fv a) ⊆ d -> closed_am b d a.
-
-Inductive closed_hty (b: nat) (d: aset) (ρ: hty): Prop :=
-| closed_hty_: valid_hty ρ -> lc_hty_idx b ρ -> (hty_fv ρ) ⊆ d -> closed_hty b d ρ.
+Inductive closed_hty (d: aset) (ρ: hty): Prop :=
+| closed_hty_: valid_hty ρ -> lc_hty ρ -> hty_fv ρ ⊆ d -> closed_hty d ρ.
 
 (* Type context *)
 
@@ -257,12 +247,12 @@ Inductive ok_ctx: listctx pty -> Prop :=
 | ok_ctx_nil: ok_ctx []
 | ok_ctx_cons: forall (Γ: listctx pty)(x: atom) (ρ: pty),
     ok_ctx Γ ->
-    closed_pty 0 (ctxdom ⦑ Γ ⦒) ρ ->
+    closed_pty (ctxdom ⦑ Γ ⦒) ρ ->
     x ∉ ctxdom Γ ->
     ok_ctx (Γ ++ [(x, ρ)]).
 
 Definition ctx_closed_pty (Γ: listctx pty) :=
-  forall Γ1 (x: atom) (ρ: pty) Γ2, Γ = Γ1 ++ [(x, ρ)] ++ Γ2 -> closed_pty 0 (ctxdom ⦑ Γ1 ⦒) ρ.
+  forall Γ1 (x: atom) (ρ: pty) Γ2, Γ = Γ1 ++ [(x, ρ)] ++ Γ2 -> closed_pty (ctxdom ⦑ Γ1 ⦒) ρ.
 
 Lemma ok_ctx_regular: forall Γ, ok_ctx Γ -> ok Γ /\ ctx_closed_pty Γ.
 Admitted.

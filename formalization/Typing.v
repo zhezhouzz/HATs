@@ -20,26 +20,27 @@ Import Denotation.
 Import Instantiation.
 Import Substitution.
 
+(* TODO: wf_am? *)
+
 (** Well-formedness *)
 Inductive wf_pty: listctx pty -> pty -> Prop :=
 | wf_pty_base: forall Γ b ϕ,
-    valid_pty {v: b | ϕ } -> closed_pty 0 (ctxdom ⦑ Γ ⦒) {v: b | ϕ } ->  wf_pty Γ {v: b | ϕ }
+    closed_pty (ctxdom ⦑ Γ ⦒) {v: b | ϕ } ->  wf_pty Γ {v: b | ϕ }
 | wf_pty_arr: forall Γ ρ T A B (L: aset),
-    valid_am A ->
+    (* NOTE: ρ? *)
     amlist_typed B T ->
     (forall x, x ∉ L ->
           (forall Bi ρi, In (Bi, ρi) B ->
-                    valid_am Bi /\ wf_pty (Γ ++ [(x, ρ)]) ρi
+                    wf_pty (Γ ++ [(x, ρ)]) ρi
           )
     ) ->
     wf_pty Γ (-: ρ ⤑[: T | A ⇒ B ]).
 
 Inductive wf_hty: listctx pty -> hty -> Prop :=
 | wf_hty_: forall Γ T A B,
-    valid_am A ->
     amlist_typed B T ->
     (forall Bi ρi, In (Bi, ρi) B ->
-              valid_am Bi /\ wf_pty Γ ρi
+              wf_pty Γ ρi
     ) ->
     wf_hty Γ [: T | A ⇒ B ].
 
@@ -47,7 +48,11 @@ Notation " Γ '⊢WF' τ " := (wf_hty Γ τ) (at level 20, τ constr, Γ constr)
 Notation " Γ '⊢WFp' τ " := (wf_pty Γ τ) (at level 20, τ constr, Γ constr).
 
 Definition subtyping (Γ: listctx pty) (τ1 τ2: hty) : Prop :=
-  forall env st, ctxRst Γ env -> st ⫕ env -> forall e, { st }⟦ τ1 ⟧ (tm_msubst env e) -> { st }⟦ τ2 ⟧ (tm_msubst env e).
+  (* Assume [τ1] and [τ2] are valid [hty]s. *)
+  forall env, ctxRst Γ env ->
+  (* NOTE: why not use value? *)
+         forall e, ⟦ msubst hty_subst env τ1 ⟧ (tm_msubst env e) ->
+              ⟦ msubst hty_subst env τ2 ⟧ (tm_msubst env e).
 
 Notation " Γ '⊢' τ1 '⪡' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
 
@@ -140,10 +145,10 @@ Admitted.
 
 Lemma well_formed_builtin_typing: forall op ρx A B ρ,
     builtin_typing_relation op (-: ρx ⤑[: ret_ty_of_op op | A ⇒ [(B, ρ)] ]) ->
-    forall (v_x: constant), { ∅ }p⟦ ρx ⟧ v_x ->
-                       forall α, { ∅ }a⟦ A ^a^ v_x ⟧ α ->
-                            (exists (c: constant), { ∅ }p⟦ ρ ^p^ v_x ⟧ c) /\
-                              (forall (c: constant), app{op, v_x}⇓{ α } c -> { ∅ }p⟦ ρ ^p^ v_x ⟧ c).
+    forall (v_x: constant), p⟦ ρx ⟧ v_x ->
+                       forall α, a⟦ A ^a^ v_x ⟧ α ->
+                            (exists (c: constant), p⟦ ρ ^p^ v_x ⟧ c) /\
+                              (forall (c: constant), app{op, v_x}⇓{ α } c -> p⟦ ρ ^p^ v_x ⟧ c).
 Admitted.
 
 Lemma reduction_tlete:  forall e_x e α β v,
@@ -158,19 +163,26 @@ Lemma msubst_open: forall (env: env) e (v_x: value) (x: atom),
     tm_msubst env e ^t^ v_x = tm_msubst (<[x := v_x]> env) (e ^t^ x).
 Admitted.
 
-Lemma am_concat: forall n bst st A B α β,
-  ({n;bst;st}a⟦A⟧) α ->
-  ({n;bst;st}a⟦B⟧) β ->
-  ({n;bst;st}a⟦ aconcat A B ⟧) (α +;+ β).
+Lemma am_concat: forall A B α β,
+  (a⟦A⟧) α ->
+  (a⟦B⟧) β ->
+  (a⟦ aconcat A B ⟧) (α +;+ β).
 Admitted.
 
 Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ ->
-    forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ τ ⟧ (tm_msubst env e).
+    (* NOTE: [τ] being valid should be a regularity lemma. *)
+    forall env, ctxRst Γ env -> ⟦ msubst hty_subst env τ ⟧ (tm_msubst env e).
 Proof.
   apply (term_type_check_rec
-           (fun Γ (v: value) ρ _ => forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ pty_to_rty ρ ⟧ (value_msubst env v))
-           (fun Γ e (τ: hty) _ => forall env st, ctxRst Γ env -> st ⫕ env -> {st}⟦ τ ⟧ (tm_msubst env e))
+           (* NOTE: should this be the denotation of [pty]? *)
+           (fun Γ (v: value) ρ _ =>
+              forall env,
+                ctxRst Γ env ->
+                ⟦ msubst hty_subst env (pty_to_rty ρ) ⟧ (value_msubst env v))
+           (fun Γ e (τ: hty) _ =>
+              forall env,
+                ctxRst Γ env -> ⟦ msubst hty_subst env τ ⟧ (tm_msubst env e))
         ); intros.
   - admit.
   - admit.
@@ -179,31 +191,31 @@ Proof.
   - admit.
   - admit.
   - auto_pose_fv x. repeat specialize_with x.
-    clear t t0.
-    assert ((tm_msubst env (tlete e_x e)) = (tlete (tm_msubst env e_x) (tm_msubst env e))) as Hrewrite; auto.
-    rewrite Hrewrite. clear Hrewrite.
-    simpl.
-    intros.
-    rewrite reduction_tlete in H6. mydestr; subst. rewrite msubst_open with (x:=x) in H8. 2: { admit. }
-    specialize (H env st H1 H2). simpl in H.
-    assert (amlist_typed Bx_ρx Tx) as HH1. admit.
-    rename x0 into βx. rename x2 into v_x. rename x1 into βe.
-    specialize (H HH1 α βx v_x H5 H7). destruct H as (Bxi & ρxi & HinBx_ρx & Hβx & Hv_x).
-    apply a in HinBx_ρx. destruct HinBx_ρx as (Bi & ρi & Hin).
-    specialize (H0 _ _ _ _ Hin (<[ x := v_x]> env) st). (* Here st should be 1: st when v_x is a function 2: <[ x := v_x]> st when v_x is a constant *)
-    assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> env)) as HH2. admit.
-    assert (st⫕<[x:=v_x]> env) as HH3. admit.
-    specialize (H0 HH2 HH3). simpl in H0.
-    assert (amlist_typed [(Bi, ρi)] T) as HH4. admit.
-    specialize (H0 HH4 (α +;+ βx) βe v).
-    assert (closed_am 0 (dom st) (aconcat A Bxi)) as HH5. admit.
-    assert (
-        (closed_am 0 (dom st) (aconcat A Bxi)) /\
-        (∃ α1 α2 : trace, α +;+ βx = α1 +;+ α2 ∧ ({0;b∅;st}a⟦A⟧) α1 ∧ ({0;b∅;st}a⟦Bxi⟧) α2)) as Hconcat.
-    { split; eauto. }
-    specialize (H0 Hconcat H8). clear Hconcat.
-    destruct H0 as (Bi' & ρi' & Heq & Hβe & Hv). destruct Heq. 2: { inversion H. } inversion H; subst.
-    rename Bi' into Bi. rename ρi' into ρi.
-    exists (aconcat Bxi Bi), ρi.
-    split. apply a0; eauto. split; auto. apply am_concat; auto.
+    (* clear t t0. *)
+    (* assert ((tm_msubst env (tlete e_x e)) = (tlete (tm_msubst env e_x) (tm_msubst env e))) as Hrewrite; auto. *)
+    (* rewrite Hrewrite. clear Hrewrite. *)
+    (* simpl. *)
+    (* intros. *)
+    (* rewrite reduction_tlete in H6. mydestr; subst. rewrite msubst_open with (x:=x) in H8. 2: { admit. } *)
+    (* specialize (H env st H1 H2). simpl in H. *)
+    (* assert (amlist_typed Bx_ρx Tx) as HH1. admit. *)
+    (* rename x0 into βx. rename x2 into v_x. rename x1 into βe. *)
+    (* specialize (H HH1 α βx v_x H5 H7). destruct H as (Bxi & ρxi & HinBx_ρx & Hβx & Hv_x). *)
+    (* apply a in HinBx_ρx. destruct HinBx_ρx as (Bi & ρi & Hin). *)
+    (* specialize (H0 _ _ _ _ Hin (<[ x := v_x]> env) st). (* Here st should be 1: st when v_x is a function 2: <[ x := v_x]> st when v_x is a constant *) *)
+    (* assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> env)) as HH2. admit. *)
+    (* assert (st⫕<[x:=v_x]> env) as HH3. admit. *)
+    (* specialize (H0 HH2 HH3). simpl in H0. *)
+    (* assert (amlist_typed [(Bi, ρi)] T) as HH4. admit. *)
+    (* specialize (H0 HH4 (α +;+ βx) βe v). *)
+    (* assert (closed_am 0 (dom st) (aconcat A Bxi)) as HH5. admit. *)
+    (* assert ( *)
+    (*     (closed_am 0 (dom st) (aconcat A Bxi)) /\ *)
+    (*     (∃ α1 α2 : trace, α +;+ βx = α1 +;+ α2 ∧ ({0;b∅;st}a⟦A⟧) α1 ∧ ({0;b∅;st}a⟦Bxi⟧) α2)) as Hconcat. *)
+    (* { split; eauto. } *)
+    (* specialize (H0 Hconcat H8). clear Hconcat. *)
+    (* destruct H0 as (Bi' & ρi' & Heq & Hβe & Hv). destruct Heq. 2: { inversion H. } inversion H; subst. *)
+    (* rename Bi' into Bi. rename ρi' into ρi. *)
+    (* exists (aconcat Bxi Bi), ρi. *)
+    (* split. apply a0; eauto. split; auto. apply am_concat; auto. *)
 Admitted.

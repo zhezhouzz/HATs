@@ -5,6 +5,7 @@ From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
 From CT Require Import BasicTypingProp.
 From CT Require Import RefinementType.
+From CT Require Import Instantiation.
 
 Import Atom.
 Import CoreLang.
@@ -25,33 +26,30 @@ Inductive repeat_tr: (trace -> Prop) -> trace -> Prop :=
 
 (** Regular language *)
 
-Definition bpropR (bst: bsubstitution) (st: substitution) (ϕ: qualifier) (c: constant) : Prop :=
-  match ϕ with
-  | (bp[ _ | _ | p ]) => p (<b[↦ c ]> bst) st
-  end.
+Definition bpropR (ϕ: qualifier) (c: constant) : Prop :=
+  denote_qualifier (ϕ ^q^ c).
 
-Definition bpropR2 (bst: bsubstitution) (st: substitution) (ϕ: qualifier) (c1: constant) (c2: constant) : Prop :=
-  match ϕ with
-  | (bp[ _ | _ | p ]) => p (<b[↦ c2 ]> (<b[↦ c1 ]> bst)) st
-  end.
+Definition bpropR2 (ϕ: qualifier) (c1: constant) (c2: constant) : Prop :=
+  denote_qualifier (ϕ ^q^ c1 ^q^ c2).
 
-Fixpoint langA (n: nat) (bst: bsubstitution) (st: substitution) (a: am) (α: trace) {struct a} : Prop :=
-  closed_am n (dom st) a /\
+Fixpoint langA (a: am) (α: trace) {struct a} : Prop :=
+  closed_am ∅ a /\
     match a with
     | aemp => False
     | aϵ => α = ϵ
     | aevent op ϕ =>
-        ∃ (c1 c: constant),
-  α = tr{op, c1, c} /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\ bpropR2 bst st ϕ c1 c
-| aconcat a1 a2 => exists α1 α2, α = α1 +;+ α2 ∧ langA n bst st a1 α1 /\ langA n bst st a2 α2
-| aunion a1 a2 => langA n bst st a1 α ∨ langA n bst st a2 α
-| astar a => repeat_tr (langA n bst st a) α
-| acomp a => ~ langA n bst st a α /\ ~ with_retv α
-end.
+        exists (c1 c: constant),
+          α = tr{op, c1, c} /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\
+          bpropR2 ϕ c1 c
+    | aconcat a1 a2 =>
+        exists α1 α2, α = α1 +;+ α2 ∧ langA a1 α1 /\ langA a2 α2
+    | aunion a1 a2 => langA a1 α ∨ langA a2 α
+    | astar a => repeat_tr (langA a) α
+    | acomp a => ~ langA a α /\ ~ with_retv α
+    end.
 
-Notation " '{' n ';' bst ';' st '}a⟦' ρ '⟧' " :=
-  (langA n bst st ρ) (at level 20, format "{ n ; bst ; st }a⟦ ρ ⟧", bst constr, st constr, ρ constr).
-Notation " '{' st '}a⟦' ρ '⟧' " := (fun e => langA 0 b∅ st ρ e) (at level 20, format "{ st }a⟦ ρ ⟧", st constr, ρ constr).
+Notation "'a⟦' a '⟧' " :=
+  (langA a) (at level 20, format "a⟦ a ⟧", a constr).
 
 (** Type Denotation: *)
 
@@ -61,67 +59,73 @@ Notation " '{' st '}a⟦' ρ '⟧' " := (fun e => langA 0 b∅ st ρ e) (at leve
 (*   | _ => 0 *)
 (*   end. *)
 
-Fixpoint ptyR (n: nat) (bst: bsubstitution) (st: substitution) (t: ty) (ρ: pty) (e: tm) : Prop :=
-  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty n (dom st) ρ /\
+Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
+  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
     match ρ with
-    | {v: b | ϕ } => forall (c: constant), e ↪* c -> ∅ ⊢t c ⋮v b /\ bpropR bst st ϕ c
+    | {v: b | ϕ } =>
+        (* NOTE: why we type [c] here? *)
+        forall (c: constant), e ↪* c -> ∅ ⊢t c ⋮v b /\ bpropR ϕ c
     | -: {v:b | ϕ} ⤑[: T | A ⇒ B ] =>
         match t with
         | TBase _ => False
         | TArrow t1 t2 =>
             amlist_typed B T ->
-            forall (v_x: constant), ptyR n bst st t1 {v:b | ϕ} v_x ->
-                               forall (α β: trace) (v: value),
-                                 { n ; <b[↦ v_x ]> bst ; st }a⟦ A ⟧ α ->
-                                 α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
-                                 exists Bi ρi, In (Bi, ρi) B /\
-                                            { n ; <b[↦ v_x ]> bst ; st }a⟦ Bi ⟧ β /\
-                                            ptyR n (<b[↦ v_x ]> bst) st t2 ρi v
+            forall (v_x: constant),
+              ptyR t1 {v:b | ϕ} v_x ->
+              forall (α β: trace) (v: value),
+                a⟦ A ^a^ v_x ⟧ α ->
+                α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
+                exists Bi ρi, In (Bi, ρi) B /\
+                           a⟦ Bi ^a^ v_x ⟧ β /\
+                           ptyR t2 (ρi ^p^ v_x) v
         end
     | -: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ] =>
-         match t with
-         | TBase _ => False
-         | TArrow t1 t2 =>
-             amlist_typed B T ->
-             forall (v_x: value), ptyR n bst st t1 (-: ρ ⤑[: Tx | ax ⇒ bx ]) v_x ->
-                             forall (α β: trace) (v: value),
-                               { n ; bst ; st }a⟦ A ⟧ α ->
-                               α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
-                               exists Bi ρi, In (Bi, ρi) B /\
-                                          { n ; bst ; st }a⟦ Bi ⟧ β /\
-                                          ptyR n bst st t2 ρi v end
+        match t with
+        | TBase _ => False
+        | TArrow t1 t2 =>
+            amlist_typed B T ->
+            forall (v_x: value),
+              ptyR t1 (-: ρ ⤑[: Tx | ax ⇒ bx ]) v_x ->
+              forall (α β: trace) (v: value),
+                a⟦ A ⟧ α ->
+                α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
+                exists Bi ρi, In (Bi, ρi) B /\
+                           a⟦ Bi ⟧ β /\
+                           ptyR t2 ρi v
+        end
     end.
 
-Notation " '{' n ';' bst ';' st '}p⟦' ρ '⟧' " :=
-  (ptyR n bst st ⌊ ρ ⌋  ρ) (at level 20, format "{ n ; bst ; st }p⟦ ρ ⟧", bst constr, st constr, ρ constr).
-Notation " '{' st '}p⟦' ρ '⟧' " := (fun e => ptyR 0 b∅ st ⌊ ρ ⌋ ρ e) (at level 20, format "{ st }p⟦ ρ ⟧", st constr, ρ constr).
+Notation "'p⟦' ρ '⟧' " :=
+  (ptyR ⌊ ρ ⌋  ρ) (at level 20, format "p⟦ ρ ⟧", ρ constr).
 
-Definition htyR (n: nat) (bst: bsubstitution) (st: substitution) τ (e: tm) : Prop :=
+Definition htyR τ (e: tm) : Prop :=
   match τ with
   | [: T | A ⇒ B ] =>
       amlist_typed B T ->
       forall (α β: trace) (v: value),
-        { n ; bst ; st }a⟦ A ⟧ α ->
+        a⟦ A ⟧ α ->
         α ⊧ e ↪*{ β } v ->
         exists Bi ρi, In (Bi, ρi) B /\
-                   { n ; bst ; st }a⟦ Bi ⟧ β /\
-                   { n ; bst ; st }p⟦ ρi ⟧ v
+                   a⟦ Bi ⟧ β /\
+                   p⟦ ρi ⟧ v
   end.
 
-Notation " '{' n ';' bst ';' st '}⟦' ρ '⟧' " :=
-  (htyR n bst st ρ) (at level 20, format "{ n ; bst ; st }⟦ ρ ⟧", bst constr, st constr, ρ constr).
-Notation " '{' st '}⟦' ρ '⟧' " := (fun e => htyR 0 b∅ st ρ e) (at level 20, format "{ st }⟦ ρ ⟧", st constr, ρ constr).
+Notation "'⟦' τ '⟧' " :=
+  (htyR τ) (at level 20, format "⟦ τ ⟧", τ constr).
 
-Definition substitution_included_by_env (st: amap constant) (env: amap value) : Prop :=
+(* TODO: make this a computation? *)
+Definition substitution_included_by_env (st: amap constant) (env: env) : Prop :=
   forall (x: atom), st !! x = None <-> env !! x = None /\ (forall (c: constant), st !! x = Some c <-> env !! x = Some (vconst c)).
 
 Notation " st '⫕' env " :=
   (substitution_included_by_env st env) (at level 20, format "st ⫕ env").
 
-Inductive ctxRst: listctx pty -> amap value -> Prop :=
+Inductive ctxRst: listctx pty -> env -> Prop :=
 | ctxRst0: ctxRst [] ∅
-| ctxRst1: forall Γ (st: substitution) env (x: atom) ρ (v: value),
+| ctxRst1: forall Γ env (x: atom) ρ (v: value),
     ctxRst Γ env ->
+    (* [ok_ctx] implies [ρ] is closed and valid, meaning that it does not use
+    any function variables. *)
     ok_ctx (Γ ++ [(x, ρ)]) ->
-    (forall st, st ⫕ env -> { st }p⟦ ρ ⟧ v) ->
+    p⟦ msubst pty_subst env ρ ⟧ v ->
     ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> env).
