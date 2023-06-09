@@ -164,7 +164,14 @@ Admitted.
 Lemma msubst_hty: forall (Γv: env) T A B, m{Γv}h [:T|A⇒B] = [:T|m{Γv}a A ⇒ m{Γv}pa B].
 Admitted.
 
+Lemma msubst_lete: forall (Γv: env) e_x e, (m{Γv}t (tlete e_x e) = tlete ((m{Γv}t) e_x) ((m{Γv}t) e)).
+Admitted.
+
 Lemma msubst_concat: forall (Γv: env) A1 A2, m{Γv}a (aconcat A1 A2) = (aconcat (m{Γv}a A1) (m{Γv}a A2)).
+Admitted.
+
+Lemma msubst_amlist_typed: forall (Γv: env) B T,
+    amlist_typed ((m{Γv}pa) B) T <-> amlist_typed B T.
 Admitted.
 
 Lemma in_msubst: forall (Γv: env) (A: am) (ρ: pty) (B: list (am * pty)),
@@ -190,6 +197,13 @@ Lemma am_denotation_fv: forall Γv x v_x A,
     x ∉ stale A -> forall α, a⟦(m{<[x:=v_x]> Γv}a) A⟧ α <-> a⟦(m{Γv}a) A⟧ α.
 Admitted.
 
+Lemma msubst_fv {T: Type} `{@Stale aset T} : forall (Γv: env) (x: atom) (v_x: value)
+                             (f_subst: atom -> value -> T -> T)
+                             (e: T),
+    x # stale e ->
+    msubst f_subst (<[x:=v_x]> Γv) e = msubst f_subst Γv e.
+Admitted.
+
 Lemma in_singleton {T1 T2: Type}: forall (a1 a1': T1) (a2 a2': T2), In (a1, a2) [(a1', a2')] -> a1 = a1' /\ a2 = a2'.
 Proof.
   intros. inversion H. inversion H0; subst; auto. inversion H0.
@@ -213,23 +227,21 @@ Proof.
   - admit.
   - admit.
   - admit.
-  - intros Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ L HWFe_x _ HDe_x Hin1 Hin2 _ He Γv HΓv.
-    auto_pose_fv x. repeat specialize_with x.
-    assert (m{Γv}t (tlete e_x e) = tlete ((m{Γv}t) e_x) ((m{Γv}t) e)) as Hrewrite.
-    { admit. } rewrite Hrewrite. clear Hrewrite.
+  - intros Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ L HWFBρ HTe_x HDe_x Hin1 Hin2 _ He Γv HΓv.
+    auto_pose_fv x. repeat specialize_with x. rewrite msubst_lete.
     rewrite msubst_hty.
     simpl. intros HBtyped α β v HDα Hstepv.
     rewrite reduction_tlete in Hstepv. destruct Hstepv as (βx & βe & v_x & Htmp & Hstepv_x & Hstepv). subst.
     rewrite msubst_open with (x:=x) in Hstepv. 2: { admit. }
     specialize (HDe_x _ HΓv). rewrite msubst_hty in HDe_x.
-    assert (amlist_typed ((m{Γv}pa) Bx_ρx) Tx) as HH1. admit.
+    assert (amlist_typed ((m{Γv}pa) Bx_ρx) Tx) as HH1. { rewrite msubst_amlist_typed. admit. }
     specialize (HDe_x HH1 _ _ _ HDα Hstepv_x).
     destruct HDe_x as (Bxi' & ρxi' & HinBx_ρx & Hβx & Hv_x).
     apply in_msubst in HinBx_ρx. destruct HinBx_ρx as (Bxi & ρxi & Htmp0 & Htmp1 & HinBx_ρx); subst.
     apply Hin1 in HinBx_ρx. destruct HinBx_ρx as (Bi & ρi & Hin). clear Hin1.
-    assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> Γv)) as HH2. constructor; auto. admit.
+    assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> Γv)) as HH2. { constructor; auto. admit. }
     specialize (He _ _ _ _ Hin (<[ x := v_x]> Γv) HH2). rewrite msubst_hty in He.
-    assert (amlist_typed ((m{<[x:=v_x]> Γv}pa) [(Bi, ρi)]) T) as HH3. admit.
+    assert (amlist_typed ((m{<[x:=v_x]> Γv}pa) [(Bi, ρi)]) T) as HH3. { rewrite msubst_amlist_typed. admit. }
     specialize (He HH3 (α +;+ βx) βe v).
     assert (x ∉ stale Bxi). admit.
     assert ((a⟦(m{<[x:=v_x]> Γv}a) (aconcat A Bxi)⟧) (α +;+ βx)) as Hconcat.
@@ -240,6 +252,9 @@ Proof.
     apply in_singleton in Hini. mydestr; subst.
     assert (In ((aconcat Bxi Bi), ρi) BxB_ρ) as Hinii. { apply Hin2. eauto. }
     exists (m{<[x:=v_x]> Γv}a (aconcat Bxi Bi)), (m{<[x:=v_x]> Γv}p ρi).
-    split. rewrite in_msubst. exists (aconcat Bxi Bi), ρxi. admit.
-    split; auto. rewrite msubst_concat. apply am_concat; auto. rewrite am_denotation_fv; auto.
+    repeat split.
+    + rewrite in_msubst. exists (aconcat Bxi Bi), ρi. repeat split; auto.
+      * rewrite msubst_fv; auto. admit.
+      * rewrite msubst_fv; auto. admit.
+    + rewrite msubst_concat. apply am_concat; auto. rewrite am_denotation_fv; auto.
 Admitted.
