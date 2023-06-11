@@ -17,44 +17,37 @@ Import BasicTyping.
 Import RefinementType.
 (* Import Substitution. *)
 Import Qualifier.
-Import Equation.
+Import Trace.
 Import mapset.
 
-Inductive repeat_tr: (trace -> Prop) -> trace -> Prop :=
-| repeat_tr0: forall p, repeat_tr p ϵ
-| repeat_tr1: forall (p: trace -> Prop) α β, p α -> repeat_tr p β -> repeat_tr p (α +;+ β).
+Inductive repeat_tr: (list evop -> Prop) -> list evop -> Prop :=
+| repeat_tr0: forall p, repeat_tr p []
+| repeat_tr1: forall (p: list evop -> Prop) α β, p α -> repeat_tr p β -> repeat_tr p (α ++ β).
 
 (** Regular language *)
 
 Definition bpropR (ϕ: qualifier) (c: constant) : Prop :=
   denote_qualifier (ϕ ^q^ c).
 
-Fixpoint langA (a: am) (α: trace) {struct a} : Prop :=
+Fixpoint langA (a: am) (α: list evop) {struct a} : Prop :=
   closed_am ∅ a /\
     match a with
     | aemp => False
-    | aϵ => α = ϵ
+    | aϵ => α = []
     | aevent op ϕ =>
         exists (c1 c: constant),
-          α = tr{op, c1, c} /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\
+          α = [ev{op ~ c1 := c}] /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\
           denote_qualifier (ϕ ^q^ c1 ^q^ c)
     | aconcat a1 a2 =>
-        exists α1 α2, α = α1 +;+ α2 ∧ langA a1 α1 /\ langA a2 α2
+        exists α1 α2, α = α1 ++ α2 ∧ langA a1 α1 /\ langA a2 α2
     | aunion a1 a2 => langA a1 α ∨ langA a2 α
     | astar a => repeat_tr (langA a) α
-    | acomp a => ~ langA a α /\ ~ with_retv α
+    | acomp a => ~ langA a α
     end.
 
-Notation "'a⟦' a '⟧' " :=
-  (langA a) (at level 20, format "a⟦ a ⟧", a constr).
+Notation "'a⟦' a '⟧' " := (langA a) (at level 20, format "a⟦ a ⟧", a constr).
 
 (** Type Denotation: *)
-
-(* Fixpoint ty_size (t: ty) := *)
-(*   match t with *)
-(*   | t1 ⤍ t2 => S (ty_size t1 + ty_size t2) *)
-(*   | _ => 0 *)
-(*   end. *)
 
 Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
   ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
@@ -67,7 +60,7 @@ Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
             amlist_typed B T ->
             forall (v_x: constant),
               ptyR t1 {v:b | ϕ} v_x ->
-              forall (α β: trace) (v: value),
+              forall (α β: list evop) (v: value),
                 a⟦ A ^a^ v_x ⟧ α ->
                 α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
                 exists Bi ρi, In (Bi, ρi) B /\
@@ -81,7 +74,7 @@ Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
             amlist_typed B T ->
             forall (v_x: value),
               ptyR t1 (-: ρ ⤑[: Tx | ax ⇒ bx ]) v_x ->
-              forall (α β: trace) (v: value),
+              forall (α β: list evop) (v: value),
                 a⟦ A ⟧ α ->
                 α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
                 exists Bi ρi, In (Bi, ρi) B /\
@@ -97,7 +90,7 @@ Definition htyR τ (e: tm) : Prop :=
   match τ with
   | [: T | A ⇒ B ] =>
       amlist_typed B T ->
-      forall (α β: trace) (v: value),
+      forall (α β: list evop) (v: value),
         a⟦ A ⟧ α ->
         α ⊧ e ↪*{ β } v ->
         exists Bi ρi, In (Bi, ρi) B /\

@@ -12,14 +12,13 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 Import ListCtx.
-Import Equation.
+Import Trace.
 Import OperationalSemantics.
 Import BasicTyping.
 Import RefinementType.
 Import Denotation.
 Import Instantiation.
-
-(* TODO: wf_am? *)
+Import Qualifier.
 
 (** Well-formedness *)
 Definition wf_am (Γ: listctx pty) (A: am): Prop := closed_am (ctxdom ⦑ Γ ⦒) A.
@@ -92,14 +91,15 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
             In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
             (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]]) ->
     Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ BxB_ρ ]
-| TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ϕx T opevent Bi ρi (L: aset),
-    is_op_am op v2 ϕx opevent ->
-    Γ ⊢WF [: T | A ⇒ [(aconcat opevent Bi, ρi)] ] ->
+| TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ϕx T Aop' Bi ρi (L: aset),
+    is_op_am op v2 ({1 ~q> v2 } ϕx) Aop' ->
+    Γ ⊢WF [: T | A ⇒ [(aconcat Aop' Bi, ρi)] ] ->
     builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(Bx, {v: ret_ty_of_op op | ϕx})] ]) ->
     Γ ⊢ v2 ⋮v ρ ->
     (forall x, x ∉ L ->
-          (Γ ++ [(x, ({v: ret_ty_of_op op | ϕx}) ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A opevent ⇒ [(Bi, ρi)]]) ->
-    Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ⇒ [(aconcat opevent Bi, ρi)] ]
+          forall Aop, is_op_am op v2 (mk_q_eq_var x) Aop ->
+          (Γ ++ [(x, {v: ret_ty_of_op op | {1 ~q> v2 } ϕx})]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A Aop ⇒ [(Bi, ρi)]]) ->
+    Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ⇒ [(aconcat Aop' Bi, ρi)] ]
 | TMatchb_true: forall Γ (v: value) e1 e2 τ,
     Γ ⊢WF τ ->
     Γ ⊢ v ⋮v (mk_eq_constant true) ->
@@ -146,13 +146,13 @@ Lemma well_formed_builtin_typing: forall op ρx A B ρ,
     forall (v_x: constant), p⟦ ρx ⟧ v_x ->
                        forall α, a⟦ A ^a^ v_x ⟧ α ->
                             (exists (c: constant), p⟦ ρ ^p^ v_x ⟧ c) /\
-                              (forall (c: constant), app{op, v_x}⇓{ α } c -> p⟦ ρ ^p^ v_x ⟧ c).
+                              (forall (c: constant), α ⊧{op ~ v_x}⇓{ c } -> p⟦ ρ ^p^ v_x ⟧ c).
 Admitted.
 
 Lemma reduction_tlete:  forall e_x e α β v,
     α ⊧ tlete e_x e ↪*{ β } v <->
     (exists (βx βe: trace) (v_x: value),
-      β = βx +;+ βe /\ α ⊧ e_x ↪*{ βx } v_x /\ α +;+ βx ⊧ (e ^t^ v_x) ↪*{ βe } v).
+      β = βx ++ βe /\ α ⊧ e_x ↪*{ βx } v_x /\ (α ++ βx) ⊧ (e ^t^ v_x) ↪*{ βe } v).
 Admitted.
 
 (* I have proved this lemma in Poirot. *)
@@ -190,7 +190,7 @@ Lemma in_msubst4: forall (Γv: env) (A1: am) (ρ1: pty) (A2: am) (ρ2: pty) (B4:
 Admitted.
 
 Lemma am_concat: forall A B α β,
-  (a⟦A⟧) α -> (a⟦B⟧) β -> (a⟦ aconcat A B ⟧) (α +;+ β).
+  (a⟦A⟧) α -> (a⟦B⟧) β -> (a⟦ aconcat A B ⟧) (α ++ β).
 Admitted.
 
 Lemma am_denotation_fv: forall Γv x v_x A,
@@ -242,9 +242,9 @@ Proof.
     assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> Γv)) as HH2. { constructor; auto. admit. }
     specialize (He _ _ _ _ Hin (<[ x := v_x]> Γv) HH2). rewrite msubst_hty in He.
     assert (amlist_typed ((m{<[x:=v_x]> Γv}pa) [(Bi, ρi)]) T) as HH3. { rewrite msubst_amlist_typed. admit. }
-    specialize (He HH3 (α +;+ βx) βe v).
+    specialize (He HH3 (α ++ βx) βe v).
     assert (x ∉ stale Bxi). admit.
-    assert ((a⟦(m{<[x:=v_x]> Γv}a) (aconcat A Bxi)⟧) (α +;+ βx)) as Hconcat.
+    assert ((a⟦(m{<[x:=v_x]> Γv}a) (aconcat A Bxi)⟧) (α ++ βx)) as Hconcat.
     { rewrite am_denotation_fv; try fast_set_solver. rewrite msubst_concat.
       apply am_concat; auto. }
     specialize (He Hconcat Hstepv). destruct He as (Bi'' & ρi'' & Hini & Hβe & Hv).

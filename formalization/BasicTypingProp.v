@@ -8,7 +8,7 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 Import BasicTyping.
-Import Equation.
+Import Trace.
 Import OperationalSemantics.
 
 Lemma basic_typing_weaken_value: forall Γ Γ' (v: value) T,
@@ -26,7 +26,7 @@ Lemma basic_typing_subst_tm: forall Γ z u U (v: tm) T, Γ ⊢t u ⋮v U -> <[z 
 Admitted.
 
 Lemma eval_op_type_safe: forall α op (v1 v: constant) (T1 T: base_ty),
-    app{ op, v1 }⇓{α} v ->
+    α ⊧{ op ~ v1 }⇓{ v } ->
     ty_of_op op = T1 ⤍ T ->
     ∅ ⊢t v1 ⋮v T1 /\ ∅ ⊢t v ⋮v T.
 Admitted.

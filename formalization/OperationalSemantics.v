@@ -3,7 +3,7 @@ From stdpp Require Import mapset.
 (* From Coq Require Import Classical. *)
 From CT Require Import CoreLang.
 From CT Require Import CoreLangProp.
-From CT Require Import Equation.
+From CT Require Import Trace.
 
 Import Atom.
 Import CoreLang.
@@ -13,31 +13,31 @@ Import NamelessTactics.
 Reserved Notation "α '⊧' t1 '↪{' β '}' t2" (at level 60, t1 constr, β constr).
 
 (** the small step operational semantics *)
-Inductive step : trace -> tm -> trace -> tm -> Prop :=
-| ST_LetEffOp: forall (α β: trace) op (c1 c: constant) e,
+Inductive step : list evop -> tm -> list evop -> tm -> Prop :=
+| ST_LetEffOp: forall (α β: list evop) op (c1 c: constant) e,
     body e -> lc c1 -> lc c ->
-    app{ op, c1 }⇓{ α } c ->
-    α ⊧ (tleteffop op c1 e) ↪{ tr{ op, c1, c} } (e ^t^ c)
+    α ⊧{ op ~ c1 }⇓{ c } ->
+    α ⊧ (tleteffop op c1 e) ↪{ [ev{ op ~ c1 := c}] } (e ^t^ c)
 | ST_Lete1: forall α β e1 e1' e,
     body e ->
     α ⊧ e1 ↪{β} e1' ->
     α ⊧ (tlete e1 e) ↪{β} (tlete e1' e)
 | ST_Lete2: forall α (v1: value) e,
     lc v1 -> body e ->
-    α ⊧ (tlete (treturn v1) e) ↪{ϵ} (e ^t^ v1)
+    α ⊧ (tlete (treturn v1) e) ↪{ [] } (e ^t^ v1)
 | ST_LetAppLam: forall α T (v_x: value) e1 e,
     body e1 -> body e -> lc v_x ->
-    α ⊧ (tletapp (vlam T e1) v_x e) ↪{ϵ} tlete (e1 ^t^ v_x) e
+    α ⊧ (tletapp (vlam T e1) v_x e) ↪{ [] } tlete (e1 ^t^ v_x) e
 | ST_LetAppFix: forall α T_f (v_x: value) Tx (e1: tm) e,
     body (vlam T_f e1) -> lc v_x -> body e ->
-    α ⊧ tletapp (vfix T_f (vlam Tx e1)) v_x e ↪{ϵ}
+    α ⊧ tletapp (vfix T_f (vlam Tx e1)) v_x e ↪{ [] }
             tletapp ((vlam T_f e1) ^v^ v_x) (vfix T_f (vlam Tx e1)) e
 | ST_Matchb_true: forall α e1 e2,
     lc e1 -> lc e2 ->
-    α ⊧ (tmatchb true e1 e2) ↪{ϵ} e1
+    α ⊧ (tmatchb true e1 e2) ↪{ [] } e1
 | ST_Matchb_false: forall α e1 e2,
     lc e1 -> lc e2 ->
-    α ⊧ (tmatchb false e1 e2) ↪{ϵ} e2
+    α ⊧ (tmatchb false e1 e2) ↪{ [] } e2
 where "α '⊧' t1 '↪{' β '}' t2" := (step α t1 β t2).
 
 Lemma step_regular: forall α β e1 e2, α ⊧ e1 ↪{ β } e2 -> lc e1 /\ lc e2.
@@ -74,21 +74,21 @@ Global Hint Resolve step_regular2: core.
 
 (* Reserved Notation "α '⊧' t1 '↪*{' β '}' t2" (at level 60, t1 constr, β constr). *)
 
-Inductive multistep : trace -> tm -> trace -> tm -> Prop :=
+Inductive multistep : list evop -> tm -> list evop -> tm -> Prop :=
 | multistep_refl : forall α (e : tm),
-    lc e -> multistep α e ϵ e
+    lc e -> multistep α e [] e
 (* | multistep_step : forall  α β β' (x y z: tm), *)
 (*     multistep α x β y -> *)
 (*     (α +;+ β) ⊧ y ↪{ β' } z -> *)
 (*     multistep α x (β +;+ β') z. *)
 | multistep_step : forall  α β β' (x y z: tm),
     α ⊧ x ↪{ β } y ->
-    multistep (α +;+ β) y β' z ->
-    multistep α x (β +;+ β') z.
+    multistep (α ++ β) y β' z ->
+    multistep α x (β ++ β') z.
 
 Notation "α '⊧' t1 '↪*{' β '}' t2" := (multistep α t1 β t2) (at level 60, t1 constr, β constr).
 
-Definition pure_multistep (t1 t2: tm) := forall α, α ⊧ t1 ↪*{ ϵ } t2.
+Definition pure_multistep (t1 t2: tm) := forall α, α ⊧ t1 ↪*{ [] } t2.
 
 Notation "t1 '↪*' t2" := (pure_multistep t1 t2) (at level 60, t1 constr, t2 constr).
 
@@ -97,21 +97,21 @@ Global Hint Constructors multistep : core.
 Theorem multistep_trans :
   forall α βx βy (x y z : tm),
    α ⊧ x ↪*{ βx } y ->
-   α +;+ βx ⊧ y ↪*{ βy } z ->
-   α ⊧ x ↪*{ βx +;+ βy } z.
+   (α ++ βx) ⊧ y ↪*{ βy } z ->
+   α ⊧ x ↪*{ βx ++ βy } z.
 Proof.
   intros. generalize dependent z.
   induction H; intros.
-  - simpl. rewrite <- tr_app_ϵ_end in H0; eauto.
-  - rewrite tr_app_ass.
+  - simpl. rewrite <- app_nil_end in H0; eauto.
+  - rewrite app_ass.
     apply multistep_step with y; auto. apply IHmultistep.
-    rewrite tr_app_ass; auto.
+    rewrite app_ass; auto.
 Qed.
 
 Theorem multistep_R : forall α β (x y : tm),
     α ⊧ x ↪{ β } y -> α ⊧ x ↪*{ β } y.
 Proof. intros.
-  setoid_rewrite tr_app_ϵ_end at 2. eauto.
+  setoid_rewrite app_nil_end at 2. eauto.
 Qed.
 
 (* Definition normal_form (t : tm) : Prop := ~ exists t', t ↪ t'. *)
