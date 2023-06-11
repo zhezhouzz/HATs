@@ -108,6 +108,7 @@ Notation "'⟦' τ '⟧p' " := (ptyR τ) (at level 20, format "⟦ τ ⟧p", τ 
 (* Notation " st '⫕' env " := *)
 (*   (substitution_included_by_env st env) (at level 20, format "st ⫕ env"). *)
 
+Notation "'m{' x '}q'" := (msubst qualifier_subst x) (at level 20, format "m{ x }q", x constr).
 Notation "'m{' x '}p'" := (msubst pty_subst x) (at level 20, format "m{ x }p", x constr).
 Notation "'m{' x '}a'" := (msubst am_subst x) (at level 20, format "m{ x }a", x constr).
 Notation "'m{' x '}pa'" := (msubst postam_subst x) (at level 20, format "m{ x }pa", x constr).

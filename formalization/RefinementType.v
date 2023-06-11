@@ -47,6 +47,8 @@ Inductive pty : Type :=
 | basepty (B: base_ty) (ϕ: qualifier)
 | arrpty (ρ: pty) (T: ty) (pre: am) (post: list (am * pty)).
 
+Definition postam: Type := list (am * pty).
+
 (* Print pty_ind. *)
 
 Inductive hty : Type :=
@@ -145,16 +147,21 @@ Fixpoint pty_open (k: nat) (s: value) (ρ: pty) : pty :=
       -: pty_open k s ρ ⤑[: T | am_open (S k) s a ⇒ (List.map (fun e => (am_open (S k) s e.1, pty_open (S k) s e.2)) b) ]
   end.
 
+Definition pam_open (k: nat) (s: value) (l: list (am * pty)) : list (am * pty) :=
+  (List.map (fun e => (am_open (S k) s e.1, pty_open (S k) s e.2)) l).
+
 Definition hty_open (k: nat) (s: value) (a : hty): hty :=
   match a with
-  | [: T | a ⇒ b ] => [: T | am_open k s a ⇒ (List.map (fun e => (am_open k s e.1, pty_open k s e.2)) b) ]
+  | [: T | a ⇒ b ] => [: T | am_open k s a ⇒ pam_open k s b ]
   end.
 
 Notation "'{' k '~p>' s '}' e" := (pty_open k s e) (at level 20, k constr).
 Notation "'{' k '~a>' s '}' e" := (am_open k s e) (at level 20, k constr).
+Notation "'{' k '~pa>' s '}' e" := (pam_open k s e) (at level 20, k constr).
 Notation "'{' k '~h>' s '}' e" := (hty_open k s e) (at level 20, k constr).
 Notation "e '^p^' s" := (pty_open 0 s e) (at level 20).
 Notation "e '^a^' s" := (am_open 0 s e) (at level 20).
+Notation "e '^pa^' s" := (pam_open 0 s e) (at level 20).
 Notation "e '^h^' s" := (hty_open 0 s e) (at level 20).
 
 (* Notation " '{' x '↦' v '}' " := (state_insert_value x v) (at level 20, format "{ x ↦ v }", x constr, v constr). *)
