@@ -100,12 +100,7 @@ module Rty = struct
     | Nt.Ty_int -> find_intlit_assignment_from_prop prop x.Nt.x
     | _ -> _failatwith __FILE__ __LINE__ "die"
 
-  (* here we need to garantee that the free variable in xphi is indeed v *)
-  let mk_effevent_from_application (op, args) (cty : cty) =
-    let () =
-      _assert __FILE__ __LINE__ "the cty should be normalized with fv v"
-        (String.equal v_name cty.v.x)
-    in
+  let mk_effevent_eq_args args =
     let vs = vs_names (List.length args) in
     let vs, props =
       List.split
@@ -114,8 +109,25 @@ module Rty = struct
              (v, mk_prop_var_eq_lit v lit.x))
       @@ _safe_combine __FILE__ __LINE__ vs args
     in
+    (vs, props)
+
+  (* here we need to garantee that the free variable in xphi is indeed v *)
+  let mk_effevent_from_application_with_cty (op, args) (cty : cty) =
+    let () =
+      _assert __FILE__ __LINE__ "the cty should be normalized with fv v"
+        (String.equal v_name cty.v.x)
+    in
+    let vs, props = mk_effevent_eq_args args in
     let phix = subst_prop_id (cty.v.x, v_ret_name) cty.phi in
     let v = Nt.{ x = v_ret_name; ty = cty.v.ty } in
+    EffEvent { op; vs; v; phi = smart_and (phix :: props) }
+
+  let mk_effevent_from_application_with_var (op, args) (x : string Nt.typed) =
+    let vs, props = mk_effevent_eq_args args in
+    let v = Nt.{ x = v_ret_name; ty = x.ty } in
+    let phix =
+      if Nt.(eq unit_ty v.ty) then mk_true else mk_prop_var_eq_lit v (AVar x.x)
+    in
     EffEvent { op; vs; v; phi = smart_and (phix :: props) }
 end
 

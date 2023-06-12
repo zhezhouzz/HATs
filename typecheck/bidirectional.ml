@@ -296,11 +296,12 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
             else None
         | _ -> _failatwith __FILE__ __LINE__ "die"
       in
-      let rhs_cty = pty_to_cty @@ regex_to_pty rhs_reg in
+      (* let rhs_cty = pty_to_cty @@ regex_to_pty rhs_reg in *)
       let lits = List.map (_value_to_lit __FILE__ __LINE__) appopargs in
       let rhs_reg =
         SeqA
-          (EventA (mk_effevent_from_application (opname, lits) rhs_cty), rhs_reg)
+          ( EventA (mk_effevent_from_application_with_var (opname, lits) lhs),
+            rhs_reg )
       in
       let mctxs = split_mctx mctx lhs.x rhs_reg in
       let mctx' =
