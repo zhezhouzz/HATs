@@ -24,6 +24,8 @@ Inductive repeat_tr: (list evop -> Prop) -> list evop -> Prop :=
 | repeat_tr0: forall p, repeat_tr p []
 | repeat_tr1: forall (p: list evop -> Prop) α β, p α -> repeat_tr p β -> repeat_tr p (α ++ β).
 
+Global Hint Constructors effop: repeat_tr.
+
 (** Regular language *)
 
 Definition bpropR (ϕ: qualifier) (c: constant) : Prop :=
@@ -87,6 +89,7 @@ Notation "'p⟦' ρ '⟧' " :=
   (ptyR ⌊ ρ ⌋  ρ) (at level 20, format "p⟦ ρ ⟧", ρ constr).
 
 Definition htyR τ (e: tm) : Prop :=
+  ∅ ⊢t e ⋮t ⌊ τ ⌋  /\ closed_hty ∅ τ /\
   match τ with
   | [: T | A ⇒ B ] =>
       amlist_typed B T ->
@@ -100,6 +103,21 @@ Definition htyR τ (e: tm) : Prop :=
 
 Notation "'⟦' τ '⟧' " := (htyR τ) (at level 20, format "⟦ τ ⟧", τ constr).
 Notation "'⟦' τ '⟧p' " := (ptyR τ) (at level 20, format "⟦ τ ⟧p", τ constr).
+
+(** Connect the inductive constructor of pty with hty *)
+Lemma ptyR_constr_base_arr: forall (b: base_ty) ϕ T A B e,
+    ∅ ⊢t e ⋮t ⌊ -: {v:b | ϕ} ⤑[: T | A ⇒ B ] ⌋ /\
+      closed_pty ∅ (-: {v:b | ϕ} ⤑[: T | A ⇒ B ]) /\
+      (forall (v_x: constant), p⟦ {v:b | ϕ}  ⟧ v_x -> ⟦ [: T | A ⇒ B ] ^h^ v_x ⟧ (e ^t^ v_x)) ->
+      p⟦ -: {v:b | ϕ} ⤑[: T | A ⇒ B ] ⟧ e.
+Admitted.
+
+Lemma ptyR_constr_arr_arr: forall ρ Tx ax bx T A B e,
+    ∅ ⊢t e ⋮t ⌊ -: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ] ⌋ /\
+      closed_pty ∅ (-: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ]) /\
+      (forall (v_x: value), p⟦ (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⟧ v_x -> ⟦ [: T | A ⇒ B ] ⟧ (e ^t^ v_x)) ->
+      p⟦ -: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ] ⟧ e.
+Admitted.
 
 (* (* TODO: make this a computation? *) *)
 (* Definition substitution_included_by_env (st: amap constant) (env: env) : Prop := *)

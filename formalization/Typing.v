@@ -48,7 +48,7 @@ Notation " Γ '⊢WFp' τ " := (wf_pty Γ τ) (at level 20, τ constr, Γ constr
 
 Definition subtyping (Γ: listctx pty) (τ1 τ2: hty) : Prop :=
   (* Assume [τ1] and [τ2] are valid [hty]s. *)
-  forall Γv, ctxRst Γ Γv -> forall v,⟦(m{ Γv }h) τ1⟧ ((m{ Γv }v) v) → ⟦(m{ Γv }h) τ2⟧ ((m{ Γv }v) v).
+  forall Γv, ctxRst Γ Γv -> forall e, ⟦(m{ Γv }h) τ1⟧ (m{ Γv }t e) → ⟦(m{ Γv }h) τ2⟧ (m{ Γv }t e).
 
 Notation " Γ '⊢' τ1 '⪡' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
 
@@ -91,15 +91,15 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
             In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
             (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]]) ->
     Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ BxB_ρ ]
-| TEffOp: forall Γ (op: effop) (v2: value) e ρ A Bx ϕx T Aop' Bi ρi (L: aset),
-    is_op_am op v2 ({1 ~q> v2 } ϕx) Aop' ->
-    Γ ⊢WF [: T | A ⇒ [(aconcat Aop' Bi, ρi)] ] ->
-    builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(Bx, {v: ret_ty_of_op op | ϕx})] ]) ->
+| TEffOp: forall Γ (op: effop) (v2: value) e ρ A ϕx T Aop' Bi ρi (L: aset),
+    is_Aop' op v2 ({1 ~q> v2 } ϕx) Aop' ->
+    Γ ⊢WF [: T | A ^a^ v2 ⇒ [(aconcat Aop' Bi, ρi)] ] ->
+    builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(aϵ, {v: ret_ty_of_op op | ϕx})] ]) ->
     Γ ⊢ v2 ⋮v ρ ->
     (forall x, x ∉ L ->
-          forall Aop, is_op_am op v2 (mk_q_eq_var x) Aop ->
-          (Γ ++ [(x, {v: ret_ty_of_op op | {1 ~q> v2 } ϕx})]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A Aop ⇒ [(Bi, ρi)]]) ->
-    Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ⇒ [(aconcat Aop' Bi, ρi)] ]
+          forall Aop, is_Aop op v2 x Aop ->
+          (Γ ++ [(x, {v: ret_ty_of_op op | {1 ~q> v2 } ϕx})]) ⊢ (e ^t^ x) ⋮t ([: T | aconcat A Aop ⇒ [(Bi, ρi)]] ^h^ x)) ->
+    Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ^a^ v2 ⇒ [(aconcat Aop' Bi, ρi)] ]
 | TMatchb_true: forall Γ (v: value) e1 e2 τ,
     Γ ⊢WF τ ->
     Γ ⊢ v ⋮v (mk_eq_constant true) ->
@@ -119,14 +119,14 @@ with value_type_check : listctx pty -> value -> pty -> Prop :=
 | TVar: forall Γ (x: atom) ρ,
     ctxfind Γ x = Some ρ ->
     Γ ⊢ x ⋮v ρ
-| TLam: forall Γ b ρ e T A B (L: aset),
+| TLam: forall Γ Tx ρ e T A B (L: aset),
     Γ ⊢WFp (-: ρ ⤑[: T | A ⇒ B ] ) ->
     (forall x, x ∉ L -> (Γ ++ [(x, ρ)]) ⊢ (e ^t^ x) ⋮t ([: T | A ⇒ B ] ^h^ x)) ->
-    Γ ⊢ (vlam b e) ⋮v (-: ρ ⤑[: T | A ⇒ B ])
-| TLamFix: forall Γ b ρ e T A B (L: aset),
+    Γ ⊢ (vlam Tx e) ⋮v (-: ρ ⤑[: T | A ⇒ B ])
+| TLamFix: forall Γ Tx ρ e T A B (L: aset),
     Γ ⊢WFp (-: ρ ⤑[: T | A ⇒ B ]) ->
-    (forall f, f ∉ L -> (Γ ++ [(f, (-: ρ ⤑[: T | A ⇒ B ]))]) ⊢ ((vlam b e) ^v^ f) ⋮v (-: ρ ⤑[: T | A ⇒ B ])) ->
-    Γ ⊢ (vfix (⌊ -: ρ ⤑[: T | A ⇒ B ] ⌋) (vlam b e)) ⋮v (-: ρ ⤑[: T | A ⇒ B ])
+    (forall f, f ∉ L -> (Γ ++ [(f, (-: ρ ⤑[: T | A ⇒ B ]))]) ⊢ ((vlam Tx e) ^v^ f) ⋮v (-: ρ ⤑[: T | A ⇒ B ])) ->
+    Γ ⊢ (vfix (⌊ -: ρ ⤑[: T | A ⇒ B ] ⌋) (vlam Tx e)) ⋮v (-: ρ ⤑[: T | A ⇒ B ])
 where
 "Γ '⊢' e '⋮t' τ" := (term_type_check Γ e τ) and "Γ '⊢' e '⋮v' τ" := (value_type_check Γ e τ).
 
@@ -225,11 +225,30 @@ Admitted.
 Lemma msubst_bty: forall Γv b ϕ, (m{Γv}p) {v:b|ϕ} = {v:b| (m{Γv}q) ϕ}.
 Admitted.
 
-Lemma msubst_lam: forall Γv b e, ((m{Γv}v) (vlam b e)) = (vlam b ((m{Γv}t) e)).
+Lemma msubst_lam: forall Γv T e, ((m{Γv}v) (vlam T e)) = (vlam T ((m{Γv}t) e)).
+Admitted.
+
+Lemma msubst_fix: forall Γv T e, ((m{Γv}v) (vfix T e)) = (vfix T ((m{Γv}t) e)).
+Admitted.
+
+Lemma msubst_value: forall Γv (v:value), (m{Γv}t) (treturn v) = (m{Γv}v) v.
+Admitted.
+
+Lemma msubst_match: forall Γv (v: value) e1 e2, ((m{Γv}t) (tmatchb v e1 e2)) = tmatchb (m{Γv}v v) (m{Γv}t e1) (m{Γv}t e2).
+Admitted.
+
+Lemma msubst_tleteffop: forall Γv op (v2: value) e,
+    (m{Γv}t) (tleteffop op v2 e) = (tleteffop op (m{Γv}v v2) (m{Γv}t e)).
+Admitted.
+
+Lemma msubst_pty_to_rty: forall Γv ρ,
+  (m{Γv}h) (pty_to_rty ρ) = pty_to_rty (m{Γv}p ρ).
 Admitted.
 
 Ltac msubst_simp :=
   match goal with
+  | H: context [ m{ _ }h (pty_to_rty _) ] |- _ => rewrite msubst_pty_to_rty in H
+  | |- context [ m{ _ }h (pty_to_rty _) ] => rewrite msubst_pty_to_rty
   | H: context [ m{ _ }h _ ] |- _ => rewrite msubst_hty in H
   | |- context [ m{ _ }h _ ] => rewrite msubst_hty
   | H: context [ m{ _ }p {v: _ | _ } ] |- _ => rewrite msubst_bty in H
@@ -240,8 +259,16 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }a (aconcat _ _) ] => rewrite msubst_concat
   | H: context [ m{ _ }t (tlete _ _) ] |- _ => rewrite msubst_lete in H
   | |- context [ m{ _ }t (tlete _ _) ] => rewrite msubst_lete
+  | H: context [ m{ _ }t (tleteffop _ _ _) ] |- _ => rewrite msubst_tleteffop in H
+  | |- context [ m{ _ }t (tleteffop _ _ _) ] => rewrite msubst_tleteffop
+  | H: context [ m{ _ }v (vfix _ _) ] |- _ => rewrite msubst_fix in H
+  | |- context [ m{ _ }v (vfix _ _) ] => rewrite msubst_fix
+  | H: context [ m{ _ }t (treturn _) ] |- _ => rewrite msubst_value in H
+  | |- context [ m{ _ }t (treturn _) ] => rewrite msubst_value
   | H: context [ m{ _ }v (vlam _ _) ] |- _ => rewrite msubst_lam in H
   | |- context [ m{ _ }v (vlam _ _) ] => rewrite msubst_lam
+  | H: context [ m{ _ }t (tmatchb _ _ _) ] |- _ => rewrite msubst_match in H
+  | |- context [ m{ _ }t (tmatchb _ _ _) ] => rewrite msubst_match
   | H: context [ m{ _ }v (vconst _) ] |- _ => rewrite msubst_constant in H
   | |- context [ m{ _ }v (vconst _) ] => rewrite msubst_constant
   end.
@@ -270,6 +297,66 @@ Lemma denotation_application_arr_arg:
     p⟦ -: -: ρx ⤑[:Tx|Ax⇒Bx] ⤑[:T|A⇒B] ⟧ (vlam Te e).
 Admitted.
 
+Lemma reduction_tletapp:  forall v1 v2 e α β v,
+    α ⊧ tletapp v1 v2 e ↪*{ β} v <->
+      lc v1 /\ lc v2 /\ body e /\
+        ((exists Tx e1,
+             v1 = vlam Tx e1 /\ α ⊧ tlete (e1 ^t^ v2) e ↪*{ β} v) \/
+           (exists T Tx (e1: tm),
+               v1 = vfix T (vlam Tx e1) /\ α ⊧ tletapp ((vlam T e1) ^v^ v2) (vfix T (vlam Tx e1)) e ↪*{ β} v)).
+Admitted.
+
+Lemma reduction_tleteffop:  forall op v2 e α β v,
+    α ⊧ (tleteffop op v2 e) ↪*{ β} v <->
+      body e /\ (exists (c2 c_x: constant) β',
+                   v2 = c2 /\ β = ev{ op ~ c2 := c_x } :: β' /\
+                     α ⊧{op ~ c2}⇓{ c_x } /\ (α ++ [ev{op ~ c2 := c_x}]) ⊧ (e ^t^ c_x) ↪*{ β'} v ).
+Admitted.
+
+Lemma reduction_matchb_true:  forall e1 e2 α β v,
+    α ⊧ tmatchb true e1 e2 ↪*{ β} v <-> lc e2 /\ α ⊧ e1 ↪*{ β} v.
+Admitted.
+
+Lemma reduction_matchb_false:  forall e1 e2 α β v,
+    α ⊧ tmatchb false e1 e2 ↪*{ β} v <-> lc e1 /\ α ⊧ e2 ↪*{ β} v.
+Admitted.
+
+Lemma lc_am_dot: lc_am ∘.
+Admitted.
+
+Lemma am_fv_dot_empty: am_fv ∘ = ∅.
+Admitted.
+
+Lemma denotation_value_pure: forall (ρ: pty) (v: value), p⟦ ρ ⟧ v <-> ⟦pty_to_rty ρ ⟧ v.
+Proof.
+  unfold pty_to_rty; split; intros.
+  - split. admit. split. admit.
+    intros Hamlist α β v' Hα Hstepv. reduction_simp.
+    exists aϵ, ρ. split. unfold In. left; auto. split; auto. repeat constructor; auto.
+  - destruct H as (Ht & Hclose & H).
+    assert (amlist_typed [(aϵ, ρ)] ⌊ρ⌋) as Hamlist. { admit. }
+    specialize (H Hamlist [] [] v).
+    assert (closed_am ∅ (astar ∘) ∧ repeat_tr (a⟦∘⟧) []) as H1.
+    { split; auto. repeat constructor; simpl; auto. apply lc_am_dot. rewrite am_fv_dot_empty; auto. constructor. }
+    assert ([] ⊧ v ↪*{ [] } v) as Hstepv. constructor. admit.
+    specialize (H H1 Hstepv). mydestr. apply in_singleton in H. mydestr; subst; auto.
+Admitted.
+
+Lemma closed_bool_typed_value: forall v, ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
+Proof.
+  intros. inversion H.
+  - destruct c. destruct b; subst; auto. inversion H3.
+  - subst. inversion H0.
+Qed.
+
+Lemma am_concat_opev_head: forall op ϕ A α,
+    a⟦ ⟨op|ϕ⟩ ;+ A ⟧ α <-> (exists c2 c_x α', α = ev{op~c2:=c_x} :: α' /\ a⟦ ⟨op|ϕ⟩ ⟧ [ev{op~c2:=c_x}] /\ a⟦ A ⟧ α').
+Admitted.
+
+Lemma am_concat_opev_tail: forall op ϕ A α,
+    a⟦ A ;+ ⟨op|ϕ⟩ ⟧ α <-> (exists α' c2 c_x , α = α' ++ [ev{op~c2:=c_x}] /\ a⟦ ⟨op|ϕ⟩ ⟧ [ev{op~c2:=c_x}] /\ a⟦ A ⟧ α').
+Admitted.
+
 Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ ->
     (* NOTE: [τ] being valid should be a regularity lemma. *)
@@ -282,19 +369,12 @@ Proof.
            (fun Γ e (τ: hty) _ =>
               forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h τ ⟧ (m{Γv}t e))
         ).
-  - intros Γ c HWF Γv HΓv. unfold pty_to_rty. repeat msubst_simp.
-    intros Hamlist α β v Hα Hstepv. reduction_simp.
-    exists aϵ, (mk_eq_constant c).
-    split. admit. split. admit. admit.
-  - intros Γ x ρ Hfind Γv HΓv. unfold pty_to_rty. repeat msubst_simp.
-    intros Hamlist α β v Hα Hstepv. reduction_simp.
-    exists aϵ, (m{Γv}p ρ).
-    split. admit. split. admit. admit.
-  - intros Γ b ρ e T A B L HWF _ HDe Γv HΓv.
-    auto_pose_fv x. repeat specialize_with x. unfold pty_to_rty. repeat msubst_simp.
-    intros Hamlist α β v Hα Hstepv. reduction_simp.
-    exists aϵ, (m{Γv}p (-:ρ⤑[:T|A⇒B])).
-    split. admit. split. admit. repeat msubst_simp.
+  - intros Γ c HWF Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
+    assert ((m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c)) as Htmp. admit. rewrite Htmp; clear Htmp.
+    admit.
+  - intros Γ x ρ Hfind Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure. admit.
+  - intros Γ Tx ρ e T A B L HWF _ HDe Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
+    auto_pose_fv x. repeat specialize_with x.
     destruct ρ.
     + repeat msubst_simp. apply denotation_application_base_arg. admit.
       intros v_x Hv_x. assert (ctxRst (Γ ++ [(x, {v:B0|ϕ})]) (<[x := v_x]> Γv)) as HΓv'. admit.
@@ -308,15 +388,18 @@ Proof.
       2: { admit. }
       assert ((m{<[x:=v_x]> Γv}h) ([:T|A⇒B] ^h^ x) = m{Γv}h [:T|A⇒B]) as Htmp3. admit. rewrite Htmp3 in HDe.
       repeat msubst_simp. auto.
-  - admit.
-  - admit.
-  - admit.
+  - intros Γ Tx ρ e T A B L HWF _ HDe Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
+    auto_pose_fv f. repeat specialize_with f. admit.
+  - intros Γ v ρ _ HDv Γv HΓv. specialize (HDv _ HΓv). repeat msubst_simp. auto.
+  - intros Γ e τ1 τ2 HWFτ2 _ HDτ1 Hsub Γv HΓv. specialize (HDτ1 _ HΓv). apply Hsub in HDτ1; auto.
   - intros Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ L HWFBρ HTe_x HDe_x Hin1 Hin2 _ He Γv HΓv.
     auto_pose_fv x. repeat specialize_with x. repeat msubst_simp.
-    simpl. intros HBtyped α β v HDα Hstepv.
+    split. admit. split. admit.
+    intros HBtyped α β v HDα Hstepv.
     rewrite reduction_tlete in Hstepv. destruct Hstepv as (βx & βe & v_x & Htmp & Hstepv_x & Hstepv). subst.
     rewrite msubst_open with (x:=x) in Hstepv. 2: { admit. }
     specialize (HDe_x _ HΓv). repeat msubst_simp.
+    destruct HDe_x as (Hte_x & Hclosede_x & HDe_x).
     assert (amlist_typed ((m{Γv}pa) Bx_ρx) Tx) as HH1. { rewrite msubst_amlist_typed. admit. }
     specialize (HDe_x HH1 _ _ _ HDα Hstepv_x).
     destruct HDe_x as (Bxi' & ρxi' & HinBx_ρx & Hβx & Hv_x).
@@ -324,6 +407,7 @@ Proof.
     apply Hin1 in HinBx_ρx. destruct HinBx_ρx as (Bi & ρi & Hin). clear Hin1.
     assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> Γv)) as HH2. { constructor; auto. admit. }
     specialize (He _ _ _ _ Hin (<[ x := v_x]> Γv) HH2). repeat msubst_simp.
+    destruct He as (Hte & Hclosede & He).
     assert (amlist_typed ((m{<[x:=v_x]> Γv}pa) [(Bi, ρi)]) T) as HH3. { rewrite msubst_amlist_typed. admit. }
     specialize (He HH3 (α ++ βx) βe v).
     assert (x ∉ stale Bxi). admit.
@@ -335,9 +419,50 @@ Proof.
     apply in_singleton in Hini. mydestr; subst.
     assert (In ((aconcat Bxi Bi), ρi) BxB_ρ) as Hinii. { apply Hin2. eauto. }
     exists (m{<[x:=v_x]> Γv}a (aconcat Bxi Bi)), (m{<[x:=v_x]> Γv}p ρi).
-    repeat split.
+    repeat split; auto.
     + rewrite in_msubst. exists (aconcat Bxi Bi), ρi. repeat split; auto.
       * rewrite msubst_fv; auto. admit.
       * rewrite msubst_fv; auto. admit.
     + repeat msubst_simp. apply am_concat; auto. rewrite am_denotation_fv; auto.
+  - intros Γ v1 v2 e ρ Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ L HWF _ HDv2 _ HDv1 Hin1 Hin2 _ He Γv HΓv.
+    auto_pose_fv x. repeat specialize_with x. repeat msubst_simp.
+    specialize (HDv1 _ HΓv). specialize (HDv2 _ HΓv). repeat msubst_simp.
+    rewrite <- denotation_value_pure in HDv1. rewrite <- denotation_value_pure in HDv2. admit.
+  - intros Γ op v2 e ρ A ϕx T Aop' Bi ρi L HAop' HWF Hbuiltin _ HDv2 _ He Γv HΓv.
+    auto_pose_fv x. repeat specialize_with x. specialize (HDv2 _ HΓv).
+    split. admit. split. admit. repeat msubst_simp.
+    intros HBtyped α β v HDα Hstepv. repeat msubst_simp.
+    rewrite reduction_tleteffop in Hstepv. destruct Hstepv as (Hbe & (c2 & c_x & β' & Hc2 & Hβ' & Hc_x & Hstepv)); subst.
+    assert ((exists (c: constant), v2 = c) \/ exists (x2: atom), v2 = x2) as Htmp. admit.
+    destruct Htmp as [(c & Hc) | (x2 & Hx2)]; mydestr; subst.
+    + invclear HAop'.
+      assert ((p⟦ρ⟧) c) as HDc. admit.
+      specialize (well_formed_builtin_typing _ _ _ _ _ Hbuiltin _ HDc) as HstepOP.
+      assert ((m{Γv}a) (A ^a^ c) = (A ^a^ c)) as HAclosed. admit. rewrite HAclosed in HDα.
+      specialize (HstepOP _ HDα). destruct HstepOP as (_ & HDD). repeat msubst_simp. invclear Hc2.
+      specialize (HDD _ Hc_x).
+      exists ((m{Γv}a) (⟨op|b1:c= c2 ∧∧({1 ~q> c2 } ϕx)⟩ ;+ Bi)), (m{Γv}p ρi). split. admit. repeat msubst_simp.
+      assert (is_Aop op c2 x ⟨op|b1:c= c2 ∧∧ b0:x= x ⟩) as HAop. { constructor. }
+      assert (ctxRst (Γ ++ [(x, {v:ret_ty_of_op op|{1 ~q> c2} ϕx})]) (<[ x:= vconst c_x ]> Γv)) as HΓv'. admit.
+      specialize (He _ HAop _ HΓv').
+      destruct He as (_ & _ & He). rewrite <- msubst_open_hty in He. 2: { admit. }
+      repeat msubst_simp.
+      assert (amlist_typed ((m{Γv}pa) [(Bi, ρi)] ^pa^ c_x) T) as Hamlist'. admit.
+      specialize (He Hamlist' (α ++ [ev{op~c2:=c_x}]) β' v).
+      assert ((a⟦((m{Γv}a) A);+((m{Γv}a) ⟨op|b1:c=c2∧∧b0:x=x⟩) ^a^ c_x⟧) (α ++ [ev{op~c2:=c_x}])) as H1. admit.
+      assert ((α ++ [ev{op~c2:= c_x}]) ⊧ (m{<[x:= vconst c_x]> Γv}t) (e ^t^ x) ↪*{ β'} v) as H2. admit.
+      specialize (He H1 H2).
+      destruct He as (y1 & y2 & Hy1y2 & Hy1 & Hy2).
+      assert (y1 = m{Γv}a Bi /\ y2 = m{Γv}p ρi) as Htmp4. admit. mydestr; subst.
+      split; auto. repeat msubst_simp. admit.
+    + admit.
+  - intros Γ v e1 e2 τ HWFτ _ HDv _ HDe1 Hte2 Γv HΓv.
+    specialize (HDv _ HΓv). specialize (HDe1 _ HΓv). repeat msubst_simp. rewrite <- denotation_value_pure in HDv.
+    assert (((m{Γv}v) v) = true) as Htmp. admit. rewrite Htmp in HDv. rewrite Htmp. clear Htmp.
+    destruct τ. repeat msubst_simp.
+    destruct HDe1 as (Hte1 & Hclosede1 & HDe1).
+    split. admit. split. admit.
+    intros HBtyped α β v' HDα Hstepv. eapply HDe1; eauto.
+    rewrite reduction_matchb_true in Hstepv; mydestr; auto.
+  - (* same as matchb true *) admit.
 Admitted.

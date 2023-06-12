@@ -22,12 +22,15 @@ Import List.
 Inductive am : Type :=
 | aemp
 | aϵ
-| aevent (op: effop) (ϕ: qualifier)
+| aevent (op: effop) (ϕ: qualifier) (** bvar 1 is argument, bvar 0 is result value *)
 | aconcat (a: am) (b: am)
 | aunion (a: am) (b: am)
 | acomp (a: am)
 | astar (a: am)
 .
+
+Notation "'⟨' op '|' ϕ '⟩'" := (aevent op ϕ) (at level 5, format "⟨ op | ϕ ⟩", op constr, ϕ constr).
+Notation " a ';+' b " := (aconcat a b) (at level 5, format "a ;+ b", b constr, a constr, right associativity).
 
 Definition aany: am.
 Admitted.
@@ -290,17 +293,19 @@ Definition ctx_erase (Γ: listctx pty) :=
 Notation " '⌊' Γ '⌋*' " := (ctx_erase Γ) (at level 5, format "⌊ Γ ⌋*", Γ constr).
 
 (** Ty Function *)
-Definition mk_eq_constant c := {v: ty_of_const c | mk_q_eq_constant c }.
+Definition mk_eq_constant c := {v: ty_of_const c | b0:c= c }.
 Definition mk_bot ty := {v: ty | mk_q_under_bot }.
 Definition mk_top ty := {v: ty | mk_q_under_top }.
-Definition mk_eq_var ty (x: atom) := {v: ty | mk_q_eq_var x }.
-(* Definition mk_op_c_am op (c: constant) := aevent op (mk_q_eq_constant c). *)
-(* Definition mk_op_var_am op (x: atom) := aevent op (mk_q_eq_var x). *)
+Definition mk_eq_var ty (x: atom) := {v: ty | b0:x= x }.
 
-(* dummy implementation, see paper *)
-Inductive is_op_am: effop -> value -> qualifier -> am -> Prop :=
-| mk_op_c_am: forall op (c: constant) ϕ, is_op_am op c ϕ (aevent op (mk_q_eq_constant c))
-| mk_op_var_am: forall op (x: atom) ϕ, is_op_am op x ϕ (aevent op (mk_q_eq_var x)).
+(* It is a partial function *)
+Inductive is_Aop': effop -> value -> qualifier -> am -> Prop :=
+| mk_op_c_am': forall op (c: constant) ϕ, is_Aop' op c ϕ ⟨ op | b1:c= c ∧∧ ϕ ⟩
+| mk_op_var_am': forall op (x: atom) ϕ, is_Aop' op x ϕ ⟨ op | b1:x= x ∧∧ ϕ ⟩.
+
+Inductive is_Aop: effop -> value -> atom -> am -> Prop :=
+| mk_op_c_am: forall op (c: constant) (z: atom), is_Aop op c z ⟨ op | b1:c= c ∧∧ b0:x= z ⟩
+| mk_op_var_am: forall op (x: atom) (z: atom), is_Aop op x z ⟨ op | b1:x= x ∧∧ b0:x= z ⟩.
 
 (* Dummy implementation  *)
 Inductive builtin_typing_relation: effop -> pty -> Prop :=

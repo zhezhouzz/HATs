@@ -82,8 +82,24 @@ Inductive lc_qualifier : qualifier -> Prop :=
   lc_qualifier (@qual n vals prop)
 .
 
-Definition mk_q_eq_constant c := qual [# vbvar 0] (fun v => v !!! 0 = c)%fin.
+Definition mk_q_0_eq_constant c := qual [# vbvar 0] (fun v => v !!! 0 = c)%fin.
+Definition mk_q_1_eq_constant_0_eq_var c (x: atom) :=
+  qual [# vbvar 0; vbvar 1; vfvar x] (fun v => v !!! 1 = c /\ v !!! 0 = v !!! 2)%fin.
+Definition mk_q_1_eq_constant_0_ϕ (c: constant) (ϕ: qualifier): qualifier.
+Admitted. (* ϕ(b0) /\ b1 = c *)
 Definition mk_q_under_bot := qual [#] (fun _ => False).
 Definition mk_q_under_top := qual [#] (fun _ => True).
-Definition mk_q_eq_var (x: atom) :=
+Definition mk_q_0_eq_var (x: atom) :=
   qual [# vbvar 0; vfvar x] (fun v => v !!! 0 = v !!! 1)%fin.
+Definition mk_q_1_eq_var_0_eq_var (x: atom) (y: atom) :=
+  qual [# vbvar 0; vbvar 1; vfvar y; vfvar x] (fun v => v !!! 1 = v !!! 3 /\ v !!! 0 = v !!! 2 )%fin.
+Definition mk_q_1_eq_var_0_ϕ (x: atom) (ϕ: qualifier): qualifier.
+Admitted. (* ϕ(b0) /\ b1 = x *)
+
+Notation " 'b0:c=' c " := (mk_q_0_eq_constant c) (at level 5, format "b0:c= c", c constr).
+Notation " 'b1:c=' c '∧∧' 'b0:x=' x " := (mk_q_1_eq_constant_0_eq_var c x) (at level 5, format "b1:c= c ∧∧ b0:x= x", c constr).
+Notation " 'b1:c=' c '∧∧' ϕ " := (mk_q_1_eq_constant_0_ϕ c ϕ) (at level 5, format "b1:c= c ∧∧ ϕ", c constr).
+Notation " 'b0:x=' y " := (mk_q_0_eq_var y) (at level 5, format "b0:x= y", y constr).
+Notation " 'b1:x=' y '∧∧' 'b0:x=' x " := (mk_q_1_eq_var_0_eq_var y x) (at level 5, format "b1:x= y ∧∧ b0:x= x", y constr).
+Notation " 'b1:x=' y '∧∧' ϕ " := (mk_q_1_eq_var_0_ϕ y ϕ) (at level 5, format "b1:x= y ∧∧ ϕ", y constr).
+
