@@ -298,15 +298,6 @@ Definition mk_bot ty := {v: ty | mk_q_under_bot }.
 Definition mk_top ty := {v: ty | mk_q_under_top }.
 Definition mk_eq_var ty (x: atom) := {v: ty | b0:x= x }.
 
-(* It is a partial function *)
-Inductive is_Aop': effop -> value -> qualifier -> am -> Prop :=
-| mk_op_c_am': forall op (c: constant) ϕ, is_Aop' op c ϕ ⟨ op | b1:c= c ∧∧ ϕ ⟩
-| mk_op_var_am': forall op (x: atom) ϕ, is_Aop' op x ϕ ⟨ op | b1:x= x ∧∧ ϕ ⟩.
-
-Inductive is_Aop: effop -> value -> atom -> am -> Prop :=
-| mk_op_c_am: forall op (c: constant) (z: atom), is_Aop op c z ⟨ op | b1:c= c ∧∧ b0:x= z ⟩
-| mk_op_var_am: forall op (x: atom) (z: atom), is_Aop op x z ⟨ op | b1:x= x ∧∧ b0:x= z ⟩.
-
 (* Dummy implementation  *)
 Inductive builtin_typing_relation: effop -> pty -> Prop :=
 | builtin_typing_relation_: forall op ρx A B ρ,

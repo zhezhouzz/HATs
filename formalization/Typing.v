@@ -56,12 +56,6 @@ Reserved Notation "Γ '⊢' e '⋮t' τ" (at level 20).
 Reserved Notation "Γ '⊢' e '⋮v' τ"  (at level 20).
 
 
-Definition A_ρa_B_ρb_list_A_ρa (l: list (am * pty) ) (tril: list (am * pty * am * pty)) :=
-  forall A ρa, In (A, ρa) l <-> (exists B ρb, In (A, ρa, B, ρb) tril).
-
-Definition A_ρa_B_ρb_list_AB_ρb (l: list (am * pty) ) (tril: list (am * pty * am * pty)) :=
-  forall A B ρb, In (aconcat A B, ρb) l <-> (exists ρa, In (A, ρa, B, ρb) tril).
-
 (** Typing *)
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TValue: forall Γ v ρ,
@@ -69,12 +63,14 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     Γ ⊢ v ⋮t (pty_to_rty ρ)
 | TSub: forall Γ e (τ1 τ2: hty),
     Γ ⊢WF τ2 ->
-    Γ ⊢ e ⋮t τ1 -> Γ ⊢ τ1 ⪡ τ2 -> (Γ ⊢ e ⋮t τ2)
+    Γ ⊢ e ⋮t τ1 ->
+    Γ ⊢ τ1 ⪡ τ2 ->
+    Γ ⊢ e ⋮t τ2
 | TLetE: forall Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
     Γ ⊢WF [: T | A ⇒ BxB_ρ ] ->
     Γ ⊢ e_x ⋮t [: Tx | A ⇒ Bx_ρx ] ->
-    A_ρa_B_ρb_list_A_ρa Bx_ρx Bx_ρx_B_ρ ->
-    A_ρa_B_ρb_list_AB_ρb BxB_ρ Bx_ρx_B_ρ ->
+    Bx_ρx = map (fun '(Bx, ρx, _, _) => (Bx, ρx)) Bx_ρx_B_ρ ->
+    BxB_ρ = map (fun '(Bx, _, B, ρ) => (aconcat Bx B, ρ)) Bx_ρx_B_ρ ->
     (forall x, x ∉ L ->
           forall Bxi ρxi Bi ρi,
             In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
@@ -83,21 +79,23 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TApp: forall Γ (v1 v2: value) e ρ Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
     Γ ⊢WF [: T | A ⇒ BxB_ρ ] ->
     Γ ⊢ v2 ⋮v ρ ->
-    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | astar ∘ ⇒ Bx_ρx ]) ->
-    A_ρa_B_ρb_list_A_ρa Bx_ρx Bx_ρx_B_ρ ->
-    A_ρa_B_ρb_list_AB_ρb BxB_ρ Bx_ρx_B_ρ ->
+    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | A ⇒ Bx_ρx ]) ->
+    Bx_ρx = map (fun '(Bx, ρx, _, _) => (Bx, ρx)) Bx_ρx_B_ρ ->
+    BxB_ρ = map (fun '(Bx, _, B, ρ) => (aconcat Bx B, ρ)) Bx_ρx_B_ρ ->
     (forall x, x ∉ L ->
           forall Bxi ρxi Bi ρi,
             In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
             (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A (Bxi ^a^ v2) ⇒ [(Bi, ρi)]]) ->
     Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ⇒ BxB_ρ ]
 | TEffOp: forall Γ (op: effop) (v2: value) e ρ A ϕx T Aop' Bi ρi (L: aset),
-    is_Aop' op v2 ({1 ~q> v2 } ϕx) Aop' ->
+    (* NOTE: it does not seem like we need to substitute [ϕx] here, i.e. [{1 ~q>
+    v2}ϕx], because bound variable [1] is already restricted to [v2]. *)
+    Aop' = ⟨ op | b1:v= v2 & ϕx ⟩ ->
     Γ ⊢WF [: T | A ^a^ v2 ⇒ [(aconcat Aop' Bi, ρi)] ] ->
     builtin_typing_relation op (-: ρ ⤑[: ret_ty_of_op op | A ⇒ [(aϵ, {v: ret_ty_of_op op | ϕx})] ]) ->
     Γ ⊢ v2 ⋮v ρ ->
     (forall x, x ∉ L ->
-          forall Aop, is_Aop op v2 x Aop ->
+          forall Aop, Aop = ⟨ op | b1:v= v2 & b0:x= x ⟩ ->
           (Γ ++ [(x, {v: ret_ty_of_op op | {1 ~q> v2 } ϕx})]) ⊢ (e ^t^ x) ⋮t ([: T | aconcat A Aop ⇒ [(Bi, ρi)]] ^h^ x)) ->
     Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ^a^ v2 ⇒ [(aconcat Aop' Bi, ρi)] ]
 | TMatchb_true: forall Γ (v: value) e1 e2 τ,
@@ -129,6 +127,7 @@ with value_type_check : listctx pty -> value -> pty -> Prop :=
     Γ ⊢ (vfix (⌊ -: ρ ⤑[: T | A ⇒ B ] ⌋) (vlam Tx e)) ⋮v (-: ρ ⤑[: T | A ⇒ B ])
 where
 "Γ '⊢' e '⋮t' τ" := (term_type_check Γ e τ) and "Γ '⊢' e '⋮v' τ" := (value_type_check Γ e τ).
+
 
 Scheme value_type_check_rec := Induction for value_type_check Sort Prop
     with term_type_check_rec := Induction for term_type_check Sort Prop.
@@ -370,7 +369,9 @@ Proof.
               forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h τ ⟧ (m{Γv}t e))
         ).
   - intros Γ c HWF Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
-    assert ((m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c)) as Htmp. admit. rewrite Htmp; clear Htmp.
+    assert ((m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c)) as Htmp.
+    admit.
+    rewrite Htmp; clear Htmp.
     admit.
   - intros Γ x ρ Hfind Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure. admit.
   - intros Γ Tx ρ e T A B L HWF _ HDe Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
