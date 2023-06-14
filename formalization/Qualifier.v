@@ -82,19 +82,32 @@ Inductive lc_qualifier : qualifier -> Prop :=
   lc_qualifier (@qual n vals prop)
 .
 
+Definition qualifier_and (q1 q2 : qualifier) : qualifier :=
+  match q1, q2 with
+  | qual vals1 prop1, qual vals2 prop2 =>
+      qual (vals1 +++ vals2)
+        (fun v =>
+           let (v1, v2) := Vector.splitat _ v
+           in prop1 v1 /\ prop2 v2)
+  end.
+
 Definition mk_q_0_eq_constant c := qual [# vbvar 0] (fun v => v !!! 0 = c)%fin.
 Definition mk_q_1_eq_constant_0_eq_var c (x: atom) :=
   qual [# vbvar 0; vbvar 1; vfvar x] (fun v => v !!! 1 = c /\ v !!! 0 = v !!! 2)%fin.
-Definition mk_q_1_eq_constant_0_ϕ (c: constant) (ϕ: qualifier): qualifier.
-Admitted. (* ϕ(b0) /\ b1 = c *)
+Definition mk_q_1_eq_constant_0_ϕ (c: constant) (ϕ: qualifier): qualifier :=
+  qualifier_and
+    (qual [# vbvar 1] (fun v => v !!! 0 = c))%fin
+    ϕ.
 Definition mk_q_under_bot := qual [#] (fun _ => False).
 Definition mk_q_under_top := qual [#] (fun _ => True).
 Definition mk_q_0_eq_var (x: atom) :=
   qual [# vbvar 0; vfvar x] (fun v => v !!! 0 = v !!! 1)%fin.
 Definition mk_q_1_eq_var_0_eq_var (x: atom) (y: atom) :=
   qual [# vbvar 0; vbvar 1; vfvar y; vfvar x] (fun v => v !!! 1 = v !!! 3 /\ v !!! 0 = v !!! 2 )%fin.
-Definition mk_q_1_eq_var_0_ϕ (x: atom) (ϕ: qualifier): qualifier.
-Admitted. (* ϕ(b0) /\ b1 = x *)
+Definition mk_q_1_eq_var_0_ϕ (x: atom) (ϕ: qualifier): qualifier :=
+  qualifier_and
+    (qual [# vbvar 1; vfvar x] (fun v => v !!! 0 = v !!! 1))%fin
+    ϕ.
 
 Notation " 'b0:c=' c " := (mk_q_0_eq_constant c) (at level 5, format "b0:c= c", c constr).
 Notation " 'b1:c=' c '∧∧' 'b0:x=' x " := (mk_q_1_eq_constant_0_eq_var c x) (at level 5, format "b1:c= c ∧∧ b0:x= x", c constr).
