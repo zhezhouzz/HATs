@@ -12,6 +12,9 @@ let parse_reg encoding reg =
     match reg with
     | Epsilon | Any | Empt -> ()
     | Minterm mt -> RegZ3.insert_mt encoding mt
+    | Diff (r1, r2) ->
+        aux r1;
+        aux r2
     | Union rs -> List.iter aux rs
     | Intersect rs -> List.iter aux rs
     | Concat rs -> List.iter aux rs
@@ -26,6 +29,7 @@ let get_size encoding reg =
     match reg with
     | Any -> RegZ3.get_cardinal encoding
     | Empt | Epsilon | Minterm _ -> 1
+    | Diff (r1, r2) -> 1 + aux r1 + aux r2
     (* NOTE: z3 will raise exception when the length of the list < 2 *)
     | Union rs ->
         let bs = List.map aux rs in
@@ -47,6 +51,7 @@ let merge_concat reg =
   let rec aux reg =
     match reg with
     | Any | Empt | Epsilon | Minterm _ -> reg
+    | Diff (r1, r2) -> Diff (aux r1, aux r2)
     | Union rs -> Union (List.map aux rs)
     | Intersect rs -> Intersect (List.map aux rs)
     | Star r -> Star (aux r)
@@ -75,6 +80,8 @@ let rec to_z3 ctx encoding reg =
       | Empt -> mk_empty ctx
       | Epsilon -> mk_epsilon ctx
       | Minterm mt -> RegZ3.mt_to_z3 ctx encoding mt
+      | Diff (r1, r2) ->
+          Seq.mk_re_intersect ctx [ aux r1; Seq.mk_re_complement ctx @@ aux r2 ]
       (* NOTE: z3 will raise exception when the length of the list < 2 *)
       | Union [] -> mk_empty ctx
       | Union [ r ] -> aux r
@@ -150,5 +157,7 @@ let to_z3_two_reg ctx (r1, r2) =
 let to_z3_one_reg ctx r =
   let encoding = RegZ3.init () in
   let () = parse_reg encoding r in
+  (* let () = Printf.printf "RegZ3 len: %i\n" !(encoding.next) in *)
   let r = merge_concat r in
+  (* let () = RegZ3.print_encoding encoding in *)
   (encoding, to_z3 ctx encoding r)

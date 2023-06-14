@@ -158,7 +158,7 @@ let mk_q_version2 ctx r1 r2 =
   (*     (Expr.to_string @@ Regencoding.to_z3 ctx encoding r2) *)
   (* in *)
   let () =
-    Env.show_debug_queries @@ fun _ ->
+    Env.show_debug_info @@ fun _ ->
     Printf.printf "Query:\n%s\n" (Expr.to_string q)
   in
   (encoding, encoded_size, [ q ])
@@ -201,7 +201,7 @@ let inclusion_query ctx r1 r2 =
       (*   if 1 == !debug_counter then failwith "end" *)
       (*   else debug_counter := !debug_counter + 1 *)
       (* in *)
-      ( Env.show_debug_queries @@ fun _ ->
+      ( Env.show_debug_info @@ fun _ ->
         Printf.printf "model:\n%s\n" (Z3.Model.to_string model) );
       let str =
         match Z3aux.get_string_by_name model sequence_name with

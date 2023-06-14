@@ -1,3 +1,7 @@
+let[@librty] ( && ) ?l:(a = (true : [%v: bool]) [@over])
+    ?l:(b = (true : [%v: bool]) [@over]) : [%v: bool] =
+  iff v (a && b)
+
 let[@librty] ( == ) ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (true : [%v: int]) [@over]) : [%v: bool] =
   iff v (a == b)

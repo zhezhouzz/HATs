@@ -119,7 +119,7 @@ let load_meta meta_fname =
             (* we don't need this field *)
             show_solving = false;
             show_stat = get_bool "show_stat";
-            show_info = get_bool "show_others";
+            show_info = get_bool "show_info";
             show_debug = (try get_bool "show_debug" with _ -> false);
           }
     | "release" -> Release

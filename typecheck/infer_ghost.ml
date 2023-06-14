@@ -119,6 +119,9 @@ let layout_solution ictx = function
       let prop = candidate_to_prop ictx candidate in
       layout_prop prop
 
+let layout_solution_raw _ = function
+  | PropFunc { candidate } -> IntList.to_string candidate
+
 let solution_instantiate ictx solution lits =
   match solution with
   | PropFunc { candidate } ->
@@ -144,7 +147,7 @@ let mk_feature_tab lits =
   List.map (fun conjs -> And conjs) dnf
 
 let layout_ftab ftab =
-  Env.show_debug_queries @@ fun _ ->
+  Env.show_debug_info @@ fun _ ->
   Pp.printf "ftab\n";
   List.iteri (fun idx prop -> Pp.printf "%i: %s\n" idx @@ layout_prop prop) ftab
 
@@ -162,7 +165,18 @@ let mk_candidates lits =
   let ns = List.init (List.length lits) (fun x -> x) in
   aux ns
 
-let mk_ictx prop_func m =
+open Stat
+
+let stat_record : elrond_stat list ref = ref []
+let stat = ref { num_lit = 0; num_fv = 0; num_pos = 0; num_neg = 0 }
+
+let init_stat num_lit num_fv =
+  stat := { num_lit; num_fv; num_pos = 0; num_neg = 0 }
+
+let pop_stat () = stat_record := !stat_record @ [ !stat ]
+let get_stat () = !stat_record
+
+let mk_ictx gamma prop_func m =
   let argsty, _ = Nt.destruct_arr_tp prop_func.ty in
   let ws_ = xs_names (List.length argsty) in
   let ws =
@@ -171,11 +185,79 @@ let mk_ictx prop_func m =
   in
   (* let op = prop_func.x in *)
   (* let op, ws = unify_prop_func_op_args prop_func_name m in *)
-  let lits = gather_op_vs_related_lits m prop_func.x ws in
+  let lits =
+    List.slow_rm_dup eq_lit @@ gather_op_vs_related_lits m prop_func.x ws
+  in
+  let () =
+    Pp.printf "@{<bold>@{<orange>lits: %s@}@}\n"
+      (List.split_by_comma layout_lit lits)
+  in
   let ftab = mk_feature_tab lits in
+  let ftab =
+    List.filter
+      (fun prop ->
+        let ws = List.map (fun x -> x.x #:: (mk_top_pty x.ty)) ws in
+        let gamma' = PTypectx.new_to_rights gamma ws in
+        let b = Subtyping.is_bot_cty gamma' (mk_unit_cty_from_prop prop) in
+        not b)
+      ftab
+  in
+  (* let ftab = if List.length ftab == 0 then [ mk_true ] else ftab in *)
   let () = layout_ftab ftab in
-  (* let () = failwith "end" in *)
+  let () = init_stat (List.length lits) (List.length ftab) in
+  (* let () = if 1 < List.length ftab then failwith "end" else () in *)
   { ftab; ws }
+
+type lab = Pos | Neg | NotNeg
+
+let is_not_neg = function Neg -> false | _ -> true
+
+let stat_update_pn tab =
+  let num_pos =
+    Hashtbl.fold (fun _ lab n -> match lab with Pos -> n + 1 | _ -> n) tab 0
+  in
+  let num_neg =
+    Hashtbl.fold (fun _ lab n -> match lab with Neg -> n + 1 | _ -> n) tab 0
+  in
+  stat := { !stat with num_neg; num_pos }
+
+let elrond n verifier =
+  let pn_tab = Hashtbl.create n in
+  let _ = List.init n (fun idx -> Hashtbl.add pn_tab idx NotNeg) in
+  let get_current_prop f =
+    let fvs =
+      Hashtbl.fold (fun fv b l -> if f b then fv :: l else l) pn_tab []
+    in
+    fvs
+  in
+  let pick_maybepos () =
+    Hashtbl.fold
+      (fun fv b res ->
+        match res with
+        | Some _ -> res
+        | None -> ( match b with NotNeg -> Some fv | _ -> None))
+      pn_tab None
+  in
+  let rec loop () =
+    match pick_maybepos () with
+    | Some fv ->
+        let () = Pp.printf "@{<bold>@{<orange> pick_maybepos: %i@}@}\n" fv in
+        let () = Hashtbl.replace pn_tab fv Neg in
+        let fvs = get_current_prop is_not_neg in
+        if verifier fvs then
+          let () = Pp.printf "@{<bold>@{<orange> label %i as - @}@}\n" fv in
+          loop ()
+        else
+          let () = Pp.printf "@{<bold>@{<orange> label %i as + @}@}\n" fv in
+          Hashtbl.replace pn_tab fv Pos;
+          loop ()
+    | None ->
+        let solution = get_current_prop is_not_neg in
+        if verifier solution then Some solution else None
+  in
+  let res = loop () in
+  let () = stat_update_pn pn_tab in
+  res
 
 let mk_solution_space ictx =
   let candidates = mk_candidates ictx.ftab in
@@ -221,6 +303,7 @@ let template_subst_regex ictx (y, z) regex =
     | EpsilonA -> EpsilonA
     | EventA se -> EventA (template_subst_sevent ictx (y, z) se)
     | LorA (t1, t2) -> LorA (aux t1, aux t2)
+    | SetMinusA (t1, t2) -> SetMinusA (aux t1, aux t2)
     | LandA (t1, t2) -> LandA (aux t1, aux t2)
     | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
     | StarA t -> StarA (aux t)
@@ -240,35 +323,79 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
   let gathered =
     gathered_rm_dup @@ gather_from_regex (LorA (previousA, templateA))
   in
-  let ictx = mk_ictx prop_func gathered.local_lits in
-  let solutions = mk_solution_space ictx in
-  let solutions =
-    List.filter
-      (fun solution ->
-        let () =
-          Env.show_debug_queries @@ fun _ ->
-          Pp.printf "@{<bold>@{<orange>Check Solution: @}@}%s\n"
-          @@ layout_solution ictx solution
-        in
-        let specA =
-          template_subst_regex ictx (prop_func.x, solution) templateA
-        in
-        let () =
-          Env.show_debug_queries @@ fun _ ->
-          Pp.printf "%s @{<bold><:@} %s\n" (layout_regex previousA)
-            (layout_regex specA)
-        in
-        let res = Subtyping.sub_pre_regex_bool gamma (previousA, specA) in
-        res)
-      solutions
+  let ictx = mk_ictx gamma prop_func gathered.local_lits in
+  let verifier fvs =
+    let solution = PropFunc { candidate = fvs } in
+    let () =
+      Env.show_debug_info @@ fun _ ->
+      Pp.printf "@{<bold>@{<orange>Check Solution: @}@}%s\n"
+      @@ layout_solution_raw ictx solution
+    in
+    let specA = template_subst_regex ictx (prop_func.x, solution) templateA in
+    let () =
+      Env.show_debug_info @@ fun _ ->
+      Pp.printf "%s @{<bold><:@} %s\n" (layout_regex previousA)
+        (layout_regex specA)
+    in
+    let res = Subtyping.sub_pre_regex_bool gamma (previousA, specA) in
+    res
   in
-  match best_solution solutions with
-  | None -> None
-  | Some solution ->
-      let () =
-        Env.show_debug_queries @@ fun _ ->
-        Pp.printf "@{<bold>@{<orange>Final Solution: @}@}%s\n"
-        @@ layout_solution ictx solution
-      in
-      let postreg = template_subst_regex ictx (prop_func.x, solution) postreg in
-      Some postreg
+  let candidate = elrond (List.length ictx.ftab) verifier in
+  let () = pop_stat () in
+  (* let () = failwith "end" in *)
+  let res =
+    match candidate with
+    | None -> None
+    | Some candidate ->
+        let solution = PropFunc { candidate } in
+        let () =
+          Env.show_debug_info @@ fun _ ->
+          Pp.printf "@{<bold>@{<orange>Final Solution: @}@}%s\n"
+          @@ layout_solution_raw ictx solution
+        in
+        let postreg =
+          template_subst_regex ictx (prop_func.x, solution) postreg
+        in
+        Some postreg
+  in
+  res
+
+(* let infer_prop_func_old gamma previousA (prop_func, templateA) postreg = *)
+(*   let gathered = *)
+(*     gathered_rm_dup @@ gather_from_regex (LorA (previousA, templateA)) *)
+(*   in *)
+(*   let ictx = mk_ictx prop_func gathered.local_lits in *)
+(*   let () = *)
+(*     Pp.printf "@{<bold>@{<orange>Solution Len: %i@}@}\n" (List.length solutions) *)
+(*   in *)
+(*   let () = if 5 < List.length solutions then failwith "end" else () in *)
+(*   let solutions = *)
+(*     List.filter *)
+(*       (fun solution -> *)
+(*         let () = *)
+(*           Env.show_debug_queries @@ fun _ -> *)
+(*           Pp.printf "@{<bold>@{<orange>Check Solution: @}@}%s\n" *)
+(*           @@ layout_solution ictx solution *)
+(*         in *)
+(*         let specA = *)
+(*           template_subst_regex ictx (prop_func.x, solution) templateA *)
+(*         in *)
+(*         let () = *)
+(*           Env.show_debug_queries @@ fun _ -> *)
+(*           Pp.printf "%s @{<bold><:@} %s\n" (layout_regex previousA) *)
+(*             (layout_regex specA) *)
+(*         in *)
+(*         let res = Subtyping.sub_pre_regex_bool gamma (previousA, specA) in *)
+(*         res) *)
+(*       solutions *)
+(*   in *)
+(*   match best_solution solutions with *)
+(*   | None -> None *)
+(*   | Some solution -> *)
+(*       let () = *)
+(*         Env.show_debug_queries @@ fun _ -> *)
+(*         Pp.printf "@{<bold>@{<orange>Final Solution: @}@}%s\n" *)
+(*         @@ layout_solution ictx solution *)
+(*       in *)
+(*       let postreg = template_subst_regex ictx (prop_func.x, solution) postreg in *)
+(*       Some postreg *)

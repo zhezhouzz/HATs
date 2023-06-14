@@ -14,6 +14,7 @@ let close_ptypeds_to_prop l prop = List.fold_right close_ptyped_to_prop l prop
 let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   let open P in
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Printf.printf "uqvs: %s\n"
     @@ List.split_by_comma
          (fun { cx; cty } -> spf "%s:%s" cx @@ layout_cty cty)
@@ -25,7 +26,10 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   let query =
     match v1.ty with Nt.Ty_unit -> query | _ -> Forall (v1, query)
   in
-  let () = Printf.printf "query: %s\n" (layout_prop query) in
+  let () =
+    Env.show_debug_queries @@ fun _ ->
+    Printf.printf "query: %s\n" (layout_prop query)
+  in
   let fvs = fv_prop query in
   let () =
     _assert __FILE__ __LINE__

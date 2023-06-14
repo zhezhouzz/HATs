@@ -4,9 +4,9 @@
     "debug_info": {
         "show_preprocess": false,
         "show_typing": true,
-        "show_queries": true,
+        "show_queries": false,
         "show_stat": false,
-        "show_others": false,
+        "show_info": false,
         "show_debug": false
     },
     "logfile": ".log",

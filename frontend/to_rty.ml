@@ -69,10 +69,13 @@ and pprint_regex = function
   | EpsilonA -> "ϵ"
   | EventA se -> pprint_sevent se
   | LorA (a1, a2) -> spf "(%s ‖ %s)" (pprint_regex a1) (pprint_regex a2)
+  | SetMinusA (a1, a2) -> spf "(%s \\ %s)" (pprint_regex a1) (pprint_regex a2)
   | LandA (a1, a2) -> spf "(%s && %s)" (pprint_regex a1) (pprint_regex a2)
   | SeqA (a1, a2) -> spf "%s%s" (pprint_regex a1) (pprint_regex a2)
+  | StarA AnyA -> ".*"
   | StarA a -> spf "(%s)*" (pprint_regex a)
   | AnyA -> "."
+  | ComplementA (EventA se) -> spf "%sᶜ" (pprint_regex (EventA se))
   | ComplementA a -> spf "(%s)ᶜ" (pprint_regex a)
 
 let get_denoteopt_from_attr a =
@@ -192,7 +195,8 @@ and regex_of_ocamlexpr_aux expr =
         | "mu", _ ->
             _failatwith __FILE__ __LINE__
               "the recursive automata are disallowed"
-        | "lorA", [ a; b ] -> LorA (aux a, aux b)
+        | "||", [ a; b ] -> LorA (aux a, aux b)
+        | "-", [ a; b ] -> SetMinusA (aux a, aux b)
         | "landA", [ a; b ] -> LandA (aux a, aux b)
         | _, _ -> _failatwith __FILE__ __LINE__ @@ spf "unknown regular op %s" f
         )

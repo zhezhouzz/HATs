@@ -44,6 +44,7 @@ module F (L : Lit.T) = struct
     | SeqA of regex * regex
     | StarA of regex
     | ComplementA of regex
+    | SetMinusA of regex * regex
   [@@deriving sexp]
 
   and 'a ptyped = { px : 'a; pty : pty } [@@deriving sexp]
@@ -137,6 +138,7 @@ module F (L : Lit.T) = struct
       | EventA se -> EventA (subst_sevent (y, z) se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
+      | SetMinusA (t1, t2) -> SetMinusA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
       | ComplementA t -> ComplementA (aux t)
@@ -196,6 +198,7 @@ module F (L : Lit.T) = struct
       | EpsilonA -> []
       | EventA se -> fv_sevent se
       | LorA (t1, t2) -> aux t1 @ aux t2
+      | SetMinusA (t1, t2) -> aux t1 @ aux t2
       | LandA (t1, t2) -> aux t1 @ aux t2
       | SeqA (t1, t2) -> aux t1 @ aux t2
       | StarA t -> aux t
@@ -310,6 +313,7 @@ module F (L : Lit.T) = struct
       | EpsilonA -> m
       | EventA se -> gather_from_sevent m se
       | LorA (t1, t2) -> aux t1 @@ aux t2 m
+      | SetMinusA (t1, t2) -> aux t1 @@ aux t2 m
       | LandA (t1, t2) -> aux t1 @@ aux t2 m
       | SeqA (t1, t2) -> aux t1 @@ aux t2 m
       | StarA t -> aux t m
@@ -416,6 +420,7 @@ module F (L : Lit.T) = struct
       | AnyA | EmptyA | EpsilonA -> regex
       | EventA se -> EventA (normalize_name_sevent se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
+      | SetMinusA (t1, t2) -> SetMinusA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
       | StarA t -> StarA (aux t)
@@ -485,6 +490,7 @@ module F (L : Lit.T) = struct
       match regex with
       | AnyA | EmptyA | EpsilonA | EventA _ -> regex
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
+      | SetMinusA (t1, t2) -> SetMinusA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)
       | SeqA (t1, t2) -> SeqA (aux t2, aux t1)
       | StarA t -> StarA (aux t)

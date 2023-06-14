@@ -1,3 +1,5 @@
+type elrond_stat = { num_lit : int; num_fv : int; num_pos : int; num_neg : int }
+
 type stat = {
   is_rec : bool;
   code_size : int;
@@ -5,6 +7,7 @@ type stat = {
   code_effects : int;
   code_lits : int;
   smt_query_time_record : float list;
+  elrond_stat_recod : elrond_stat list;
   inclusion_query_time_record : float list;
   max_inclusion_alphabet : int;
   max_inclusion_automaton_size : int;
@@ -18,6 +21,7 @@ let init (is_rec, code_size, code_branchs, code_effects) =
     code_effects;
     code_lits = 0;
     smt_query_time_record = [];
+    elrond_stat_recod = [];
     inclusion_query_time_record = [];
     max_inclusion_alphabet = 0;
     max_inclusion_automaton_size = 0;
@@ -37,6 +41,17 @@ let update_dynamic_stat stat
     max_inclusion_automaton_size;
   }
 
+let update_elrond stat elrond_stat_recod = { stat with elrond_stat_recod }
+
+let dump_elrond stat =
+  `Assoc
+    [
+      ("num_lit", `Int stat.num_lit);
+      ("num_fv", `Int stat.num_fv);
+      ("num_pos", `Int stat.num_pos);
+      ("num_neg", `Int stat.num_neg);
+    ]
+
 let dump_one stat =
   `Assoc
     [
@@ -47,6 +62,7 @@ let dump_one stat =
       ("code_lits", `Int stat.code_lits);
       ( "smt_query_time_record",
         `List (List.map (fun x -> `Float x) stat.smt_query_time_record) );
+      ("elrond_stat_recod", `List (List.map dump_elrond stat.elrond_stat_recod));
       ( "inclusion_query_time_record",
         `List (List.map (fun x -> `Float x) stat.inclusion_query_time_record) );
       ("max_inclusion_alphabet", `Int stat.max_inclusion_alphabet);

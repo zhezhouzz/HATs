@@ -195,6 +195,7 @@ let desymbolic ctx mts regex =
     | EpsilonA -> Epsilon
     | EventA se -> desymbolic_sevent ctx mts se
     | LorA (t1, t2) -> Union [ aux t1; aux t2 ]
+    | SetMinusA (t1, t2) -> Diff (aux t1, aux t2)
     | LandA (t1, t2) -> Intersect [ aux t1; aux t2 ]
     | SeqA (t1, t2) -> Concat [ aux t1; aux t2 ]
     | StarA t -> Star (aux t)

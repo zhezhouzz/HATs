@@ -103,6 +103,9 @@ and regex_check opctx ctx retbty (regex : regex) : regex =
   | EventA se -> EventA (sevent_check opctx ctx retbty se)
   | LorA (t1, t2) ->
       LorA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
+  | SetMinusA (t1, t2) ->
+      SetMinusA
+        (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | LandA (t1, t2) ->
       LandA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | SeqA (t1, t2) ->

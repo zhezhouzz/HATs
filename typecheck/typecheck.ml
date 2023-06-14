@@ -66,6 +66,12 @@ let check opctx' structure normalized_structure =
                 Env.show_debug_typing @@ fun _ ->
                 Pp.printf "@{<bold>@{<red>Task %i, type check failed@}@}\n" id
             in
+            let elrond_stat_record = Infer_ghost.get_stat () in
+            (* let () = *)
+            (*   Printf.printf "len: %i\n" (List.length elrond_stat_record); *)
+            (*   failwith "end" *)
+            (* in *)
+            let stat = Stat.update_elrond stat elrond_stat_record in
             (id, res, stat))
       tasks
   in

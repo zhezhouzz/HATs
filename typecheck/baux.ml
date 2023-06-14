@@ -80,9 +80,7 @@ let subtyping_regex_bool file line typectx (t1, t2) =
 let subtyping_pre_regex_bool file line typectx (t1, t2) =
   let () =
     Env.show_debug_typing (fun () ->
-        print_subtyping_str typectx
-          ( layout_regex (SeqA (mk_regex_all, t1)),
-            layout_regex (SeqA (mk_regex_all, t2)) ))
+        print_subtyping_str typectx (layout_regex t1, layout_regex t2))
   in
   if Subtyping.sub_pre_regex_bool typectx.rctx (t1, t2) then true
   else (

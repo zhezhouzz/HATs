@@ -83,7 +83,7 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TApp: forall Γ (v1 v2: value) e ρ Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
     Γ ⊢WF [: T | A ⇒ BxB_ρ ] ->
     Γ ⊢ v2 ⋮v ρ ->
-    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | astar ∘ ⇒ Bx_ρx ]) ->
+    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | A ⇒ Bx_ρx ]) ->
     A_ρa_B_ρb_list_A_ρa Bx_ρx Bx_ρx_B_ρ ->
     A_ρa_B_ρb_list_AB_ρb BxB_ρ Bx_ρx_B_ρ ->
     (forall x, x ∉ L ->

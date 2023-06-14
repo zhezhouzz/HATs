@@ -42,7 +42,7 @@ let check_inclusion_bool (r1, r2) =
   | Some mt_list ->
       (* ( Env.show_debug_queries @@ fun _ -> *)
       (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
-      ( Env.show_debug_queries @@ fun _ ->
+      ( Env.show_debug_info @@ fun _ ->
         Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
           (Check.layout_counterexample mt_list) );
       false
@@ -51,7 +51,7 @@ let check_inclusion_counterexample (r1, r2) =
   match check_inclusion (r1, r2) with
   | None -> None
   | Some mt_list ->
-      ( Env.show_debug_queries @@ fun _ ->
+      ( Env.show_debug_info @@ fun _ ->
         Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
           (Check.layout_counterexample mt_list) );
       Some mt_list

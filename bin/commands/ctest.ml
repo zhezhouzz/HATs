@@ -62,7 +62,7 @@ let print_typed_normalized_source_code_ meta_config_file source_file =
     Env.show_debug_typing @@ fun _ ->
     List.iter
       ~f:(fun (name, e) ->
-        Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp e))
+        Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp_omit_type e))
       normalized
   in
   (oprctx, code, normalized)

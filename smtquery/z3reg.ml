@@ -29,16 +29,17 @@ let int_to_char i =
       else _failatwith __FILE__ __LINE__ "die"
 
 let char_to_int c =
-  (* let () = Printf.printf "c:%c\n" c in *)
   let i = Char.code c in
-  let i' = i - int_range_start in
-  if i' < int_range_len then i'
-  else
-    let i' = i - upper_range_start in
-    if i' < upper_range_len then i'
-    else
-      let i' = i - lower_range_start in
-      if i' < lower_range_len then i' else _failatwith __FILE__ __LINE__ "die"
+  let res =
+    if i < int_range_start + int_range_len then i - int_range_start
+    else if i < upper_range_start + upper_range_len then
+      i - upper_range_start + int_range_len
+    else if i < lower_range_start + lower_range_len then
+      i - lower_range_start + int_range_len + upper_range_len
+    else _failatwith __FILE__ __LINE__ "die"
+  in
+  (* let () = Printf.printf "c:%c ==> %i ==> %i\n" c i res in *)
+  res
 
 module RegZ3BackendV0 = struct
   type encoding = { tab : (string, int) Hashtbl.t; next : int ref }
@@ -50,6 +51,11 @@ module RegZ3BackendV0 = struct
     let n' = n + 1 in
     if n' > range_len then _failatwith __FILE__ __LINE__ "RegZ3BackendV0"
     else n'
+
+  let print_encoding { tab; _ } =
+    Hashtbl.iter
+      (fun mt id -> Printf.printf "%s => %i => %c\n" mt id (int_to_char id))
+      tab
 
   let insert_mt { tab; next } mt =
     (* let () = Pp.printf "@{<orange>next:@} %s\n" (il_to_chars !next) in *)

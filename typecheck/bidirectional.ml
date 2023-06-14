@@ -67,8 +67,14 @@ let rec value_type_infer typectx (value : value typed) : pty option =
         end_info __LINE__ "Const" (Some rty)
     | VVar x ->
         let () = before_info __LINE__ "Var" in
-        let* rty = PCtx.get_ty_opt typectx.rctx x in
-        end_info __LINE__ "Var" (Some rty)
+        let* pty = PCtx.get_ty_opt typectx.rctx x in
+        let res =
+          match pty with
+          | ArrPty _ -> pty
+          | BasePty _ -> mk_pty_var_eq_var Nt.(x #: (erase_pty pty))
+          | TuplePty _ -> _failatwith __FILE__ __LINE__ "unimp"
+        in
+        end_info __LINE__ "Var" (Some res)
     | VTu _ -> _failatwith __FILE__ __LINE__ "unimp"
     | VLam _ | VFix _ ->
         _failatwith __FILE__ __LINE__
@@ -367,7 +373,12 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
     let phi = P.subst_prop (v.x, matched_lit.x) phi in
     let a = (Rename.unique "a") #:: (mk_unit_pty_from_prop phi) in
     let mctx' = mctx_new_to_rights mctx (xs @ [ a ]) in
-    comp_reg_check mctx' exp rty
+    let b = comp_reg_check mctx' exp rty in
+    let () =
+      Env.show_debug_typing @@ fun _ ->
+      Pp.printf "@{<bold>@{<orange>matched case (%s): %b@}@}\n" constructor.x b
+    in
+    b
   in
   match comp.x with
   | CVal v ->
@@ -379,6 +390,17 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
         rhs_regexs
   | CLetE { lhs; rhs; letbody } -> (
       match rhs.x with
+      | CVal v ->
+          let () = before_info __LINE__ "LetValue" in
+          let pty = value_type_infer mctx.typectx v #: comp.ty in
+          let b =
+            match pty with
+            | None -> false
+            | Some rhs_pty ->
+                let mctx' = mctx_new_to_right mctx lhs.x #:: rhs_pty in
+                comp_reg_check mctx' letbody rty
+          in
+          end_info __LINE__ "LetValue" b
       | CApp { appf; apparg } ->
           comp_reg_check_letapp mctx (lhs, appf, apparg, letbody) rty
       | CAppOp { op; appopargs } -> (
@@ -390,7 +412,9 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
               comp_reg_check_letperform mctx
                 (lhs, opname, appopargs, letbody)
                 rty)
-      | _ -> _failatwith __FILE__ __LINE__ "die")
+      | _ ->
+          let () = Printf.printf "ERR:\n%s\n" (layout_comp rhs) in
+          _failatwith __FILE__ __LINE__ "die")
   | CMatch { matched; match_cases } ->
       let () = before_info __LINE__ "Match" in
       let b =

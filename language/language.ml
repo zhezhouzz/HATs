@@ -44,6 +44,7 @@ module StructureRaw = struct
   include StructureRaw
 
   let layout_term = To_expr.layout
+  let layout_term_omit_type = To_expr.layout_omit_type
   let layout_rty = To_rty.layout
   let layout_cty = To_rty.layout_cty
   let layout_pty = To_rty.layout_pty
@@ -137,6 +138,10 @@ module Structure = struct
   module R = Rty
 
   let layout_term x = StructureRaw.layout_term @@ besome_typed_term x
+
+  let layout_term_omit_type x =
+    StructureRaw.layout_term_omit_type @@ besome_typed_term x
+
   let layout_entry x = StructureRaw.layout_entry @@ besome_entry x
   let layout_structure x = StructureRaw.layout_structure @@ besome_structure x
 end
