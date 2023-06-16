@@ -123,3 +123,31 @@ by combining [qualifier_and] and the existing notations. *)
 (*     (fun v => v !!! 1 = v !!! 3 /\ v !!! 0 = v !!! 2 )%fin. *)
 (* Notation " 'b1:x=' y '∧∧' 'b0:x=' x " := (mk_q_1_eq_var_0_eq_var y x) (at level 5, format "b1:x= y ∧∧ b0:x= x", y constr). *)
 (* Notation " 'b1:c=' c '∧∧' 'b0:x=' x " := (mk_q_1_eq_constant_0_eq_var c x) (at level 5, format "b1:c= c ∧∧ b0:x= x", c constr). *)
+
+
+Lemma subst_commute_qualifier : forall x u_x y u_y ϕ,
+    x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
+    {x := u_x }q ({y := u_y }q ϕ) = {y := u_y }q ({x := u_x }q ϕ).
+Proof.
+  intros.
+  destruct ϕ.
+  simpl.
+  f_equal.
+  rewrite !Vector.map_map.
+  apply Vector.map_ext.
+  eauto using subst_commute_value.
+Qed.
+
+Lemma subst_fresh_qualifier: forall (ϕ: qualifier) (x:atom) (u: value),
+    x ∉ (qualifier_fv ϕ) -> {x := u}q ϕ = ϕ.
+Proof.
+  intros.
+  destruct ϕ.
+  simpl in *.
+  f_equal.
+  clear prop.
+  induction vals; simpl in *; eauto.
+  f_equal.
+  apply subst_fresh_value. my_set_solver.
+  auto_apply. my_set_solver.
+Qed.

@@ -38,17 +38,29 @@ Admitted.
 Notation "∘" := aany (at level 5).
 Notation "a∅" := aemp (at level 80, right associativity).
 
-(* Inductive pty : Type := *)
-(* | basepty (b: base_ty) (ϕ: qualifier) *)
-(* | arrpty (ρ: pty) (T: ty) (pre: am) (B: postam) *)
-(* with postam: Type := *)
-(* | post_nil *)
-(* | post_cons (A: am) (ρ: pty) (B: postam) *)
-(* . *)
-
 Inductive pty : Type :=
 | basepty (B: base_ty) (ϕ: qualifier)
 | arrpty (ρ: pty) (T: ty) (pre: am) (post: list (am * pty)).
+
+Lemma pty_ind'
+  (P : pty → Prop)
+  (f0 : ∀ (B : base_ty) (ϕ : qualifier), P (basepty B ϕ))
+  (f1 : ∀ ρ : pty,
+      P ρ →
+      ∀ (T : ty) (pre : am) (post : list (am * pty)),
+        Forall (fun '(_, ρ') => P ρ') post ->
+        P (arrpty ρ T pre post))
+  : forall (p : pty), P p.
+Proof.
+  fix F 1. intros.
+  refine (
+    match p return (P p) with
+    | basepty B ϕ => f0 B ϕ
+    | arrpty ρ T pre post => _
+    end).
+  apply f1; eauto.
+  induction post; intuition.
+Defined.
 
 Definition postam: Type := list (am * pty).
 
@@ -284,6 +296,11 @@ Inductive ok_ctx: listctx pty -> Prop :=
 Definition ctx_closed_pty (Γ: listctx pty) :=
   forall Γ1 (x: atom) (ρ: pty) Γ2, Γ = Γ1 ++ [(x, ρ)] ++ Γ2 -> closed_pty (ctxdom ⦑ Γ1 ⦒) ρ.
 
+Lemma ok_ctx_ok: forall Γ, ok_ctx Γ -> ok Γ.
+Proof.
+  induction 1; eauto.
+Qed.
+
 Lemma ok_ctx_regular: forall Γ, ok_ctx Γ -> ok Γ /\ ctx_closed_pty Γ.
 Admitted.
 
@@ -302,3 +319,64 @@ Definition mk_eq_var ty (x: atom) := {v: ty | b0:x= x }.
 Inductive builtin_typing_relation: effop -> pty -> Prop :=
 | builtin_typing_relation_: forall op ρx A B ρ,
     builtin_typing_relation op (-: ρx ⤑[: ret_ty_of_op op | A ⇒ [(B, ρ)] ]).
+
+Lemma subst_fresh_am: forall (a: am) (x:atom) (u: value),
+    x ∉ (am_fv a) -> {x := u}a a = a.
+Proof.
+  intros. induction a; simpl in *; eauto; repeat f_equal;
+    eauto using subst_fresh_qualifier;
+    auto_apply; try my_set_solver.
+Qed.
+
+Lemma subst_fresh_pty: forall (ρ: pty) (x:atom) (u: value),
+    x ∉ (pty_fv ρ) -> {x := u}p ρ = ρ.
+Proof.
+  intros.
+  induction ρ using pty_ind';
+    simpl in *; f_equal; eauto using subst_fresh_qualifier.
+  auto_apply. my_set_solver.
+  apply subst_fresh_am. my_set_solver.
+  rewrite <- map_id.
+  apply map_ext_Forall.
+
+  (* A better proof is probably first show [x ∉ ⋃ map ... post] is equivalent to
+  [Forall (fun ... => x ∉ ...) post], and then go from ther. But don't bother. *)
+  induction post; eauto.
+  simp_hyps. simpl in *.
+  decompose_Forall_hyps.
+  econstructor. simpl.
+  f_equal.
+  apply subst_fresh_am. my_set_solver.
+  auto_apply. my_set_solver.
+  auto_apply. set_solver. eauto.
+Qed.
+
+Lemma subst_commute_am : forall x u_x y u_y a,
+    x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
+    {x := u_x }a ({y := u_y }a a) = {y := u_y }a ({x := u_x }a a).
+Proof.
+  intros.
+  induction a; simpl; eauto; f_equal; eauto using subst_commute_qualifier.
+Qed.
+
+Lemma subst_commute_pty : forall x u_x y u_y ρ,
+    x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
+    {x := u_x }p ({y := u_y }p ρ) = {y := u_y }p ({x := u_x }p ρ).
+Proof.
+  intros.
+  induction ρ using pty_ind'; simpl; f_equal;
+    eauto using subst_commute_qualifier, subst_commute_am.
+  rewrite !map_map. simpl.
+  apply map_ext_Forall.
+  eapply Forall_impl; eauto. intros [] **. simpl.
+  f_equal; eauto using subst_commute_am.
+Qed.
+
+Lemma subst_commute_postam : forall x u_x y u_y pa,
+    x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
+    {x := u_x }pa ({y := u_y }pa pa) = {y := u_y }pa ({x := u_x }pa pa).
+Proof.
+  intros.
+  induction pa; simpl; f_equal; eauto.
+  f_equal; eauto using subst_commute_pty, subst_commute_am.
+Qed.

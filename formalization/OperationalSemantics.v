@@ -145,3 +145,12 @@ Lemma tlete_value_exists: forall α β e (v_x v: value),
       lc v_x /\ body e /\ α ⊧ e ^t^ v_x ↪*{β} v.
 Proof.
 Admitted.
+
+Lemma multi_step_value: forall α β (v: value) e,
+    α ⊧ v ↪*{β} e ->
+    e = treturn v.
+Proof.
+  intros * H.
+  invclear H; eauto.
+  easy.
+Qed.

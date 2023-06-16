@@ -111,7 +111,7 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     ⌊ Γ ⌋* ⊢t e1 ⋮t ⌊ τ ⌋ ->
     Γ ⊢ (tmatchb v e1 e2) ⋮t τ
 with value_type_check : listctx pty -> value -> pty -> Prop :=
-| TContant: forall Γ (c: constant),
+| TConstant: forall Γ (c: constant),
     Γ ⊢WFp (mk_eq_constant c) ->
     Γ ⊢ c ⋮v (mk_eq_constant c)
 | TVar: forall Γ (x: atom) ρ,
@@ -203,45 +203,224 @@ Lemma am_denotation_fv: forall Γv x v_x A,
     x ∉ stale A -> forall α, a⟦(m{<[x:=v_x]> Γv}a) A⟧ α <-> a⟦(m{Γv}a) A⟧ α.
 Admitted.
 
-Lemma msubst_fv {T: Type} `{@Stale aset T} : forall (Γv: env) (x: atom) (v_x: value)
-                             (f_subst: atom -> value -> T -> T)
-                             (e: T),
-    x # stale e ->
-    msubst f_subst (<[x:=v_x]> Γv) e = msubst f_subst Γv e.
-Admitted.
-
 Lemma in_singleton {T1 T2: Type}: forall (a1 a1': T1) (a2 a2': T2), In (a1, a2) [(a1', a2')] -> a1 = a1' /\ a2 = a2'.
 Proof.
   intros. inversion H. inversion H0; subst; auto. inversion H0.
 Qed.
 
+Lemma ptyR_typed_closed t ρ e :
+  ptyR t ρ e ->
+  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ.
+Proof.
+  destruct t; simpl; intuition.
+Qed.
+
+Lemma ctxRst_closed_env Γ Γv : ctxRst Γ Γv -> closed_env Γv.
+Proof.
+  unfold closed_env.
+  induction 1.
+  - apply map_Forall_empty.
+  - apply map_Forall_insert_2; eauto.
+    unfold closed_value.
+    change (fv_value v) with (fv_tm v).
+    apply equiv_empty.
+    erewrite <- dom_empty.
+    eapply basic_typing_contains_fv_tm.
+    eapply ptyR_typed_closed.
+    eauto.
+Qed.
+
+Ltac apply_msubst_ind :=
+  unfold msubst;
+  match goal with
+  | |- ?T =>
+      match T with
+      | context [map_fold ?a ?b ?m] =>
+          match eval pattern (map_fold a b m) in T with
+          | ?P _ =>
+              match eval pattern m in P with
+              | ?P _ =>
+                  let P := eval simpl in (fun r m => P m r) in
+                    apply (map_fold_ind P)
+              end
+          end
+      end
+  end.
+
+Ltac gen_closed_env :=
+  repeat
+    match goal with
+    | H : closed_env (<[?i:=_]> ?m), H' : ?m !! ?i = None |- _ =>
+        let H1 := fresh "H" in
+        let H2 := fresh "H" in
+        destruct (closed_env_insert _ _ _ H' H) as [H1 H2];
+        uniq_hyp H1; uniq_hyp H2
+    | H : closed_env ?m, H' : ?m !! _ = Some ?v |- _ =>
+        let T := fresh "H" in
+        assert (closed_value v) as T by eauto;
+        uniq_hyp T
+    (* | H : ctxRst _ ?env |- _ => *)
+    (*     let T := fresh "H" in *)
+    (*     assert (closed_env env) as T by eauto using ctxRst_closed_env; *)
+    (*     uniq_hyp T *)
+    end.
+
+Lemma msubst_insert {T: Type}
+  (f_subst: atom -> value -> T -> T)
+  (subst_commute: forall x u_x y u_y e,
+      x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
+      f_subst x u_x (f_subst y u_y e) =
+        f_subst y u_y (f_subst x u_x e))
+  :
+  forall (Γv: env) (x: atom) (v_x: value) (e: T),
+    closed_env Γv ->
+    closed_value v_x ->
+    Γv !! x = None ->
+    msubst f_subst (<[x:=v_x]> Γv) e = f_subst x v_x (msubst f_subst Γv e).
+Proof.
+  intros.
+  apply map_fold_insert_L; eauto.
+  intros.
+  assert (closed_env (<[x:=v_x]>Γv)). {
+    apply map_Forall_insert; eauto.
+  }
+  gen_closed_env.
+  apply subst_commute; eauto; my_set_solver.
+Qed.
+
+Ltac msubst_tac :=
+  intros *; apply_msubst_ind; intros; subst; simpl; eauto;
+  gen_closed_env; simp_hyps; subst.
+
+Ltac apply_msubst_insert :=
+  simpl; f_equal;
+  first [ symmetry; apply msubst_insert | apply msubst_insert ];
+  (* TODO: hintdb? *)
+  eauto using subst_commute_value, subst_commute_tm, subst_commute_qualifier,
+    subst_commute_pty, subst_commute_am, subst_commute_postam.
+
+Lemma msubst_fv {T: Type} `{@Stale aset T} : forall (Γv: env) (x: atom) (v_x: value)
+                             (f_subst: atom -> value -> T -> T)
+                             (e: T),
+    x # e ->
+    msubst f_subst (<[x:=v_x]> Γv) e = msubst f_subst Γv e.
+Proof.
+Admitted.
+
+Lemma msubst_bvar: forall Γv n, (m{Γv}v) (vbvar n) = vbvar n.
+Proof.
+  msubst_tac.
+Qed.
+
 Lemma msubst_constant: forall Γv (c: constant), (m{Γv}v) c = c.
-Admitted.
+Proof.
+  msubst_tac.
+Qed.
 
-Lemma msubst_arrty: forall Γv ρ T A B, (m{Γv}p) (-:ρ⤑[:T|A⇒B]) = (-:(m{Γv}p ρ)⤑[:T| (m{Γv}a A) ⇒ (m{Γv}pa B) ]).
-Admitted.
+Lemma msubst_fvar: forall Γv (x : atom),
+    closed_env Γv ->
+    (m{Γv}v) x = match Γv !! x with
+                 | Some v => v
+                 | None => x
+                 end.
+Proof.
+  msubst_tac.
+  destruct (decide (x = i)); subst; simplify_map_eq. reflexivity.
+  case_match.
+  apply subst_fresh_value.
+  gen_closed_env. my_set_solver.
+  simpl. rewrite decide_False; eauto.
+Qed.
 
-Lemma msubst_bty: forall Γv b ϕ, (m{Γv}p) {v:b|ϕ} = {v:b| (m{Γv}q) ϕ}.
-Admitted.
+Lemma msubst_arrty: forall Γv ρ T A B,
+    closed_env Γv ->
+    (m{Γv}p) (-:ρ⤑[:T|A⇒B]) = (-:(m{Γv}p ρ)⤑[:T| (m{Γv}a A) ⇒ (m{Γv}pa B) ]).
+Proof.
+  msubst_tac.
+  simpl. f_equal.
+  apply_msubst_insert.
+  apply_msubst_insert.
+  symmetry.
+  change
+    (map_fold postam_subst B (<[i:=x]> m) =
+       postam_subst i x (map_fold postam_subst B m)).
+  apply_msubst_insert.
+Qed.
 
-Lemma msubst_lam: forall Γv T e, ((m{Γv}v) (vlam T e)) = (vlam T ((m{Γv}t) e)).
-Admitted.
+Lemma msubst_bty: forall Γv b ϕ, closed_env Γv -> (m{Γv}p) {v:b|ϕ} = {v:b| (m{Γv}q) ϕ}.
+Proof.
+  msubst_tac. apply_msubst_insert.
+Qed.
 
-Lemma msubst_fix: forall Γv T e, ((m{Γv}v) (vfix T e)) = (vfix T ((m{Γv}t) e)).
-Admitted.
+Lemma msubst_qualifier: forall Γv ϕ,
+    closed_env Γv ->
+    (m{Γv}q) ϕ =
+      match ϕ with
+      | qual vals prop =>
+          qual (vmap (m{Γv}v) vals) prop
+      end.
+Proof.
+  msubst_tac.
+  - destruct ϕ.
+    f_equal.
+    erewrite Vector.map_ext.
+    by rewrite Vector.map_id.
+    intros. simpl.
+    by rewrite map_fold_empty.
+  - destruct ϕ. simpl. f_equal.
+    rewrite Vector.map_map.
+    apply Vector.map_ext.
+    apply_msubst_insert.
+Qed.
 
-Lemma msubst_value: forall Γv (v:value), (m{Γv}t) (treturn v) = (m{Γv}v) v.
-Admitted.
+Lemma msubst_lam: forall Γv T e,
+    closed_env Γv ->
+    ((m{Γv}v) (vlam T e)) = (vlam T ((m{Γv}t) e)).
+Proof.
+  msubst_tac. apply_msubst_insert.
+Qed.
 
-Lemma msubst_match: forall Γv (v: value) e1 e2, ((m{Γv}t) (tmatchb v e1 e2)) = tmatchb (m{Γv}v v) (m{Γv}t e1) (m{Γv}t e2).
-Admitted.
+Lemma msubst_fix: forall Γv T e,
+    closed_env Γv ->
+    ((m{Γv}v) (vfix T e)) = (vfix T ((m{Γv}t) e)).
+Proof.
+  msubst_tac. apply_msubst_insert.
+Qed.
+
+Lemma msubst_value: forall Γv (v:value),
+    closed_env Γv ->
+    (m{Γv}t) (treturn v) = (m{Γv}v) v.
+Proof.
+  msubst_tac. apply_msubst_insert.
+Qed.
+
+Lemma msubst_match: forall Γv (v: value) e1 e2,
+    closed_env Γv ->
+    ((m{Γv}t) (tmatchb v e1 e2)) = tmatchb (m{Γv}v v) (m{Γv}t e1) (m{Γv}t e2).
+Proof.
+  msubst_tac. apply_msubst_insert.
+Qed.
 
 Lemma msubst_tleteffop: forall Γv op (v2: value) e,
+    closed_env Γv ->
     (m{Γv}t) (tleteffop op v2 e) = (tleteffop op (m{Γv}v v2) (m{Γv}t e)).
-Admitted.
+Proof.
+  msubst_tac. apply_msubst_insert.
+Qed.
 
 Lemma msubst_pty_to_rty: forall Γv ρ,
-  (m{Γv}h) (pty_to_rty ρ) = pty_to_rty (m{Γv}p ρ).
+    closed_env Γv ->
+    (m{Γv}h) (pty_to_rty ρ) = pty_to_rty (m{Γv}p ρ).
+Proof.
+  msubst_tac.
+  unfold pty_to_rty.
+  simpl. f_equal.
+
+  admit.
+  admit.
+
+  repeat f_equal.
+  apply_msubst_insert.
 Admitted.
 
 Ltac msubst_simp :=
@@ -268,9 +447,75 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }v (vlam _ _) ] => rewrite msubst_lam
   | H: context [ m{ _ }t (tmatchb _ _ _) ] |- _ => rewrite msubst_match in H
   | |- context [ m{ _ }t (tmatchb _ _ _) ] => rewrite msubst_match
+  | H: context [ m{ _ }v (vbvar _) ] |- _ => rewrite msubst_bvar in H
+  | |- context [ m{ _ }v (vbvar _) ] => rewrite msubst_bvar
+  | H: context [ m{ _ }v (vfvar _) ] |- _ => rewrite msubst_fvar in H
+  | |- context [ m{ _ }v (vfvar _) ] => rewrite msubst_fvar
   | H: context [ m{ _ }v (vconst _) ] |- _ => rewrite msubst_constant in H
   | |- context [ m{ _ }v (vconst _) ] => rewrite msubst_constant
-  end.
+  | H: context [ m{ _ }q _ ] |- _ => rewrite msubst_qualifier in H
+  | |- context [ m{ _ }q _ ] => rewrite msubst_qualifier
+  end; eauto using ctxRst_closed_env.
+
+Lemma ptyR_msubst_insert_eq Γv ρ v x u :
+  closed_env Γv ->
+  closed_value u ->
+  Γv !! x = None ->
+  (p⟦(m{ Γv }p) ρ⟧) v ->
+  (p⟦(m{ <[x:=u]> Γv }p) ρ⟧) v.
+Proof.
+  intros. rewrite msubst_insert; eauto using subst_commute_pty.
+  rewrite subst_fresh_pty. auto.
+  select (p⟦_⟧ _) (fun H => apply ptyR_typed_closed in H).
+  simp_hyps. select (closed_pty _ _) (fun H => sinvert H). my_set_solver.
+Qed.
+
+Lemma ctxRst_dom Γ Γv x :
+  ctxRst Γ Γv ->
+  x ∉ ctxdom Γ <-> x ∉ dom Γv.
+Proof.
+  induction 1; simpl; eauto.
+  rewrite ctxdom_app_union.
+  rewrite dom_insert.
+  simpl. my_set_solver.
+Qed.
+
+Lemma ctxRst_ctxfind Γ Γv x ρ :
+  ctxRst Γ Γv ->
+  ctxfind Γ x = Some ρ ->
+  exists (v : value), Γv !! x = Some v /\ p⟦ m{ Γv }p ρ ⟧ v.
+Proof.
+  induction 1.
+  - easy.
+  - intros.
+    select (ctxfind (_ ++ _) _ = _)
+      (fun H => apply ctxfind_app in H; eauto using ok_ctx_ok).
+
+    assert (forall (v' : value), (p⟦(m{env}p) ρ⟧) v' ->
+                            (p⟦(m{<[x0:=v]> env}p) ρ⟧) v'). {
+      select (p⟦ _ ⟧ _) (fun H => apply ptyR_typed_closed in H). simp_hyps.
+      intros.
+      apply ptyR_msubst_insert_eq; eauto using ctxRst_closed_env.
+      select (_ ⊢t _ ⋮t _)
+        (fun H => apply basic_typing_contains_fv_tm in H; simpl in H).
+      my_set_solver.
+      select (ok_ctx _) (fun H => apply ok_ctx_ok in H; apply ok_post_destruct in H).
+      simp_hyps. apply not_elem_of_dom. eapply ctxRst_dom; eauto.
+    }
+
+    destruct_or!; simp_hyps.
+    + eexists. split; eauto.
+      assert (x <> x0). {
+        select (ok_ctx _) (fun H => sinvert H); listctx_set_simpl.
+        select (ctxfind _ _ = _) (fun H => apply ctxfind_some_implies_in_dom in H).
+        my_set_solver.
+      }
+      by simplify_map_eq.
+    + simpl in *.
+      case_decide; try easy. simplify_eq.
+      eexists. split; eauto. by simplify_map_eq.
+Qed.
+
 
 Lemma value_reduction_refl: forall α β (v1: value) v2, α ⊧ v1 ↪*{ β} v2 -> v2 = v1 /\ β = [].
 Admitted.
@@ -363,18 +608,34 @@ Theorem fundamental: forall (Γ: listctx pty) (e: tm) (τ: hty),
 Proof.
   apply (term_type_check_rec
            (* NOTE: should this be the denotation of [pty]? *)
+           (* (fun Γ (v: value) ρ _ => *)
+           (*    forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h (pty_to_rty ρ) ⟧ (m{Γv}v v)) *)
            (fun Γ (v: value) ρ _ =>
-              forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h (pty_to_rty ρ) ⟧ (m{Γv}v v))
+              forall Γv, ctxRst Γ Γv -> p⟦ m{Γv}p ρ ⟧ (m{Γv}v v))
            (fun Γ e (τ: hty) _ =>
               forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h τ ⟧ (m{Γv}t e))
         ).
-  - intros Γ c HWF Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
-    assert ((m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c)) as Htmp.
-    admit.
+  (* [TConstant] *)
+  - intros Γ c HWF Γv HΓv. repeat msubst_simp.
+    assert ((m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c)) as Htmp. {
+      unfold mk_eq_constant, mk_q_bvar_eq_val.
+      repeat (msubst_simp; simpl).
+    }
     rewrite Htmp; clear Htmp.
-    admit.
-  - intros Γ x ρ Hfind Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure. admit.
-  - intros Γ Tx ρ e T A B L HWF _ HDe Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
+    simpl.
+    repeat split; try solve [repeat econstructor].
+    simpl. set_solver.
+    intros. unfold bpropR. simpl.
+    specialize (H []). apply multi_step_value in H.
+    qauto.
+
+  (* [TVar] *)
+  - intros Γ x ρ Hfind Γv HΓv. repeat msubst_simp.
+    eapply ctxRst_ctxfind in HΓv; eauto.
+    qauto.
+
+  (* [TLam] *)
+  - intros Γ Tx ρ e T A B L HWF _ HDe Γv HΓv. repeat msubst_simp.
     auto_pose_fv x. repeat specialize_with x.
     destruct ρ.
     + repeat msubst_simp. apply denotation_application_base_arg. admit.
@@ -389,6 +650,7 @@ Proof.
       2: { admit. }
       assert ((m{<[x:=v_x]> Γv}h) ([:T|A⇒B] ^h^ x) = m{Γv}h [:T|A⇒B]) as Htmp3. admit. rewrite Htmp3 in HDe.
       repeat msubst_simp. auto.
+
   - intros Γ Tx ρ e T A B L HWF _ HDe Γv HΓv. repeat msubst_simp. rewrite <- denotation_value_pure.
     auto_pose_fv f. repeat specialize_with f. admit.
   - intros Γ v ρ _ HDv Γv HΓv. specialize (HDv _ HΓv). repeat msubst_simp. auto.

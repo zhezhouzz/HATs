@@ -90,6 +90,24 @@ Proof with eauto.
     my_set_solver.
 Qed.
 
+Lemma open_var_fv_value': forall (v: value) (x: atom) (k: nat), fv_value v ⊆ fv_value ({k ~v> x} v).
+Proof with eauto.
+  apply (value_mutual_rec
+           (fun (v: value) => forall (x: atom) (k: nat), fv_value v ⊆ fv_value ({k ~v> x} v))
+           (fun (e: tm) => forall (x: atom) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e))
+        ); simpl;
+    try my_set_solver.
+Qed.
+
+Lemma open_var_fv_tm': forall (e: tm) (x: atom) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e).
+Proof with eauto.
+  apply (tm_mutual_rec
+           (fun (v: value) => forall (x: atom) (k: nat), fv_value v ⊆ fv_value ({k ~v> x} v))
+           (fun (e: tm) => forall (x: atom) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e))
+        ); simpl;
+    try my_set_solver.
+Qed.
+
 Lemma close_var_fv_value:
   forall (v: value) (x: atom) (k: nat), fv_value ({k <v~ x} v) = (fv_value v) ∖ {[x]}.
 Proof.

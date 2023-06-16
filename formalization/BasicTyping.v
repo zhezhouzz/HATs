@@ -25,6 +25,9 @@ Definition ret_ty_of_op (op: effop): base_ty :=
 Definition ty_of_op (op: effop): ty := TNat ⤍ (ret_ty_of_op op).
 
 Definition context := amap ty.
+#[global]
+Instance context_stale : Stale context := dom.
+Arguments context_stale /.
 
 Reserved Notation "Γ '⊢t' t '⋮t' T" (at level 40).
 Reserved Notation "Γ '⊢t' t '⋮v' T" (at level 40).
@@ -59,7 +62,7 @@ with value_has_type : context -> value -> ty -> Prop :=
     (forall (x: atom), x ∉ L -> (<[x := Tx]> Γ) ⊢t e ^t^ x ⋮t T) ->
     Γ ⊢t vlam Tx e ⋮v Tx ⤍ T
 | T_Fix : forall Γ (Tx: base_ty) T e (L: aset),
-    (forall (f: atom), f ∉ L -> (<[f := TBase Tx]>) Γ ⊢t (vlam (Tx ⤍ T) e) ^v^ f ⋮v ((Tx ⤍ T) ⤍ T)) ->
+    (forall (f: atom), f ∉ L -> (<[f := (Tx ⤍ T)]>) Γ ⊢t (vlam Tx e) ^v^ f ⋮v Tx ⤍ T) ->
     Γ ⊢t vfix (Tx ⤍ T) (vlam Tx e) ⋮v Tx ⤍ T
 where "Γ '⊢t' t '⋮t' T" := (tm_has_type Γ t T) and "Γ '⊢t' t '⋮v' T" := (value_has_type Γ t T).
 
@@ -69,11 +72,26 @@ Scheme value_has_type_mutual_rec := Induction for value_has_type Sort Prop
 Global Hint Constructors tm_has_type: core.
 Global Hint Constructors value_has_type: core.
 
-Lemma basic_typing_contains_fv_tm: forall Γ e T, Γ ⊢t e ⋮t T -> fv_tm e ⊆ dom Γ.
-Admitted.
-
-Lemma basic_typing_contains_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> fv_value e ⊆ dom Γ.
-Admitted.
+Lemma basic_typing_contains_fv_tm: forall Γ e T, Γ ⊢t e ⋮t T -> fv_tm e ⊆ dom Γ
+with basic_typing_contains_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> fv_value e ⊆ dom Γ.
+Proof.
+  all:
+  destruct 1; simpl; eauto;
+  try select (forall x, _ ∉ _ -> _) (fun H => auto_pose_fv x; repeat specialize_with x);
+  repeat select (_ ⊢t _ ⋮v _) (fun H => apply basic_typing_contains_fv_value in H);
+  repeat select (_ ⊢t _ ⋮t _) (fun H => apply basic_typing_contains_fv_tm in H);
+  simpl in *;
+  repeat
+    match goal with
+    | H : fv_tm ({_ ~t> _} _) ⊆ _ |- _ =>
+        setoid_rewrite <- open_var_fv_tm' in H
+    | H : _ ⊆ dom (<[_:=_]>_) |- _ =>
+        setoid_rewrite dom_insert in H
+    | H : _ !! _ = _ |- _ =>
+        apply elem_of_dom_2 in H
+    end;
+  my_set_solver.
+Qed.
 
 Ltac instantiate_atom_listctx :=
   let acc := collect_stales tt in
