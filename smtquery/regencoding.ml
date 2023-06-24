@@ -5,7 +5,7 @@ open Language.NRegex
 open Sugar
 open Zzdatatype.Datatype
 open Z3reg
-module RegZ3 = RegZ3BackendV0
+module RegZ3 = RegZ3BackendV2
 
 let parse_reg encoding reg =
   let rec aux reg =
@@ -157,7 +157,9 @@ let to_z3_two_reg ctx (r1, r2) =
 let to_z3_one_reg ctx r =
   let encoding = RegZ3.init () in
   let () = parse_reg encoding r in
-  (* let () = Printf.printf "RegZ3 len: %i\n" !(encoding.next) in *)
+  (* let len = !(encoding.next) in *)
+  (* let () = Printf.printf "RegZ3 len: %i\n" len in *)
+  (* let () = if len > 200 then failwith "end" else () in *)
   let r = merge_concat r in
   (* let () = RegZ3.print_encoding encoding in *)
   (encoding, to_z3 ctx encoding r)

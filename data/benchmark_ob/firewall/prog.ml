@@ -69,7 +69,6 @@ let rec prog (lo : int) (hi : int) : unit =
   let (dummy10 : unit) =
     if lo > hi then ()
     else
-      let (dummy3 : unit) = prog (lo + 1) hi in
       let (central : int) = perform (FindCentral ()) in
       let (dummy1 : unit) =
         if lo <= central && central <= hi then
@@ -79,11 +78,15 @@ let rec prog (lo : int) (hi : int) : unit =
           ()
         else ()
       in
-      if perform (BoolGen ()) then
-        let (dummy4 : unit) = perform (AddDevice lo) in
-        let (dummy6 : bool) = perform (IsDevice lo) in
-        ()
-      else ()
+      let (dummy11 : unit) =
+        if perform (BoolGen ()) then
+          let (dummy4 : unit) = perform (AddDevice lo) in
+          let (dummy6 : bool) = perform (IsDevice lo) in
+          ()
+        else ()
+      in
+      let (dummy3 : unit) = prog (lo + 1) hi in
+      ()
   in
   let (dummy9 : int) = perform (FindCentral ()) in
   ()
@@ -96,10 +99,31 @@ let[@assert] prog ?l:(lo = (true : [%v: int]) [@over])
        MakeCentral ((true : [%v0: int]) : [%v: unit]);
        starA (anyA - MakeCentral ((true : [%v0: int]) : [%v: unit])));
     post =
-      ((starA (anyA - DeleteDevice ((true : [%v0: int]) : [%v: unit]));
-        (* FindCentral ((not (lo <= v && v <= hi) : [%v0: unit]) : [%v: int]); *)
-        starA
-          (IsDevice ((lo <= v0 && v0 <= hi + 1 && v : [%v0: int]) : [%v: bool]));
+      ((starA
+          (anyA
+          - DeleteDevice ((true : [%v0: int]) : [%v: unit])
+          - MakeCentral ((not (v0 == hi + 1) : [%v0: int]) : [%v: unit])
+          - IsDevice
+              (((not (lo <= v0 && v0 <= hi + 1)) && v : [%v0: int])
+                : [%v: bool]));
         FindCentral ((not (lo <= v && v <= hi) : [%v0: unit]) : [%v: int]);
         Ret (true : [%v0: unit])) : unit);
   }
+
+(* let[@assert] prog ?l:(lo = (true : [%v: int]) [@over]) *)
+(*     ?l:(hi = (true : [%v: int]) [@over]) = *)
+(*   { *)
+(*     pre = *)
+(*       (starA anyA; *)
+(*        MakeCentral ((true : [%v0: int]) : [%v: unit]); *)
+(*        starA (anyA - MakeCentral ((true : [%v0: int]) : [%v: unit]))); *)
+(*     post = *)
+(*       ((starA *)
+(*           (anyA *)
+(*           - DeleteDevice ((true : [%v0: int]) : [%v: unit]) *)
+(*           - MakeCentral ((not (v0 == hi + 1) : [%v0: int]) : [%v: unit])); *)
+(*         starA *)
+(*           (IsDevice ((lo <= v0 && v0 <= hi + 1 && v : [%v0: int]) : [%v: bool])); *)
+(*         FindCentral ((not (lo <= v && v <= hi) : [%v0: unit]) : [%v: int]); *)
+(*         Ret (true : [%v0: unit])) : unit); *)
+(*   } *)

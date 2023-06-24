@@ -42,7 +42,12 @@ let rec type_infer_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit : lit)
                (x, ty))
              args
       in
-      let f, fty = check_op opctx f in
+      let f, fty =
+        match (f.x, argsty) with
+        | Op.BuiltinOp "==", [ t1; t2 ] when Nt.eq t1 t2 ->
+            ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
+        | _ -> check_op opctx f
+      in
       let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
       let args =
         List.map (type_check_lit opctx ctx)
@@ -82,7 +87,16 @@ and type_check_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit, ty) :
       let args, argsty =
         List.split @@ List.map (fun x -> type_infer_lit opctx ctx x.x) args
       in
-      let f, fty = check_op opctx f in
+      (* let () = *)
+      (*   Printf.printf ">> %s(%s)\n" (Op.to_string f.x) *)
+      (*     (List.split_by_comma Nt.layout argsty) *)
+      (* in *)
+      let f, fty =
+        match (f.x, argsty) with
+        | Op.BuiltinOp "==", [ t1; t2 ] when Nt.eq t1 t2 ->
+            ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
+        | _ -> check_op opctx f
+      in
       (* let () = Printf.printf ">> %s:%s\n" (Op.to_string f.x) (Nt.layout fty) in *)
       let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
       let argsty, retty =

@@ -56,7 +56,7 @@ module F (I : CtxId) = struct
 
   let new_to_right ctx (x, ty) =
     if exists ctx x then
-      _failatwith __FILE__ __LINE__ (spf "Add %s" (I.layout x))
+      _failatwith __FILE__ __LINE__ (spf "Add repeat binding %s" (I.layout x))
     else ctx @ [ (x, ty) ]
 
   let new_to_rights ctx l = List.fold_left new_to_right ctx l

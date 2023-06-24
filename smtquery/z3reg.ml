@@ -130,6 +130,97 @@ module RegZ3BackendV0 = struct
     mt_list
 end
 
+module RegZ3BackendV2 = struct
+  open Z3hex
+
+  type encoding = { tab : (string, int) Hashtbl.t; next : int ref }
+
+  let get_cardinal { tab; _ } = Hashtbl.length tab
+  let init () = { tab = Hashtbl.create range_len; next = ref 0 }
+
+  let next_next n =
+    let n' = n + 1 in
+    if n' > hex_range then
+      _failatwith __FILE__ __LINE__
+      @@ spf "RegZ3BackendV2 (%i > %i)" n' hex_range
+    else n'
+
+  let print_encoding { tab; _ } =
+    Hashtbl.iter
+      (fun mt id -> Printf.printf "%s => %i => %s\n" mt id (int_to_hexstr id))
+      tab
+
+  let insert_mt { tab; next } mt =
+    (* let () = Pp.printf "@{<orange>next:@} %s\n" (il_to_chars !next) in *)
+    let str = mt_to_string mt in
+    match Hashtbl.find_opt tab str with
+    | None ->
+        Hashtbl.add tab str !next;
+        let next' = next_next !next in
+        (* let () = *)
+        (*   Printf.printf "next: %s\n" @@ List.split_by_comma string_of_int next' *)
+        (* in *)
+        next := next' (* { tab; next = next_next next } *)
+    | Some _ -> ()
+
+  let i_to_z3 ctx n =
+    Seq.mk_seq_to_re ctx @@ Seq.mk_string ctx (int_to_hexstr n)
+
+  let mt_to_z3 ctx { tab; _ } mt =
+    let n = Hashtbl.find tab (mt_to_string mt) in
+    i_to_z3 ctx n
+
+  let mt_to_string { tab; _ } mt =
+    let n = Hashtbl.find tab (mt_to_string mt) in
+    int_to_hexstr n
+
+  let get_any ctx { tab; _ } =
+    (* let l = List.of_seq (Hashtbl.to_seq_values tab) in *)
+    (* let () = *)
+    (*   Printf.printf "Z#:%s\n" *)
+    (*     (List.split_by_comma *)
+    (*        (fun x -> spf "%s" @@ Expr.to_string (il_to_z3 ctx x)) *)
+    (*        l) *)
+    (* in *)
+    let res =
+      List.map (i_to_z3 ctx) @@ List.of_seq (Hashtbl.to_seq_values tab)
+    in
+    let res =
+      match res with
+      | [] -> mk_empty ctx
+      | [ r ] -> r
+      | _ -> Seq.mk_re_union ctx res
+    in
+    (* let () = Printf.printf "Z#: %s\n" (Expr.to_string res) in *)
+    res
+
+  let rev_find_opt tab il =
+    Hashtbl.fold
+      (fun k v res ->
+        (* let () = Printf.printf "k: %s -> v: %s\n" k (IntList.to_string v) in *)
+        match res with
+        | Some res -> Some res
+        | None -> if il == v then Some k else None)
+      tab None
+
+  let code_trace { tab; _ } str =
+    let il_list = intlist_of_hexstrs str in
+    let mt_list =
+      List.map
+        (fun il ->
+          (* let () = *)
+          (*   Printf.printf "il: %s\n" (List.split_by_comma string_of_int il) *)
+          (* in *)
+          match rev_find_opt tab il with
+          | Some mt_str ->
+              (* let () = Printf.printf "mt_str: %s\n" mt_str in *)
+              string_to_mt mt_str
+          | None -> _failatwith __FILE__ __LINE__ "die")
+        il_list
+    in
+    mt_list
+end
+
 module RegZ3BackendV1 = struct
   let delimit = '_'
 

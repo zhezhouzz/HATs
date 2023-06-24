@@ -383,7 +383,7 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
   match comp.x with
   | CVal v ->
       let rhs_regexs = Auxtyping.branchize_regex rty in
-      List.for_all
+      List.exists
         (fun (r, pty) ->
           subtyping_regex_bool __FILE__ __LINE__ mctx.typectx (mctx.curA, r)
           && value_type_check mctx.typectx v #: comp.ty pty)

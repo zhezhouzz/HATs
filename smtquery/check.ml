@@ -173,7 +173,7 @@ let inclusion_query ctx r1 r2 =
   let encoding, encoded_size, qs = mk_q_version2 ctx r1 r2 in
   let _ =
     record_max stat_max_inclusion_alphabet
-    @@ Z3reg.RegZ3BackendV0.get_cardinal encoding
+    @@ Regencoding.RegZ3.get_cardinal encoding
   in
   let _ = record_max stat_max_inclusion_automaton_size @@ encoded_size in
   (* let () = *)
