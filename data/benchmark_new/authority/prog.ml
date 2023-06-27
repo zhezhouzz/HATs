@@ -1,26 +1,5 @@
 type effect = Put of (nat -> nat -> int -> unit) | Get of (nat -> nat -> int)
 
-let[@effrty] put ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: nat]))
-    ?l:(va = (true : [%v: int])) =
-  { pre = starA anyA; post = (Ret (true : [%v0: unit]) : unit) }
-
-let[@effrty] get ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: nat])) =
-  let phi = (true : [%v: int -> bool]) in
-  {
-    pre =
-      (starA anyA;
-       Put
-         ((((v0 == tab && v1 == k && phi v2 : [%v0: nat]) : [%v1: nat])
-            : [%v2: int])
-           : [%v: unit]);
-       starA
-         (anyA
-         - Put
-             ((((v0 == tab && v1 == k : [%v0: nat]) : [%v1: nat]) : [%v2: int])
-               : [%v: unit])));
-    post = (Ret (phi v0 : [%v0: int]) : int);
-  }
-
 let prog (auth_tab : nat) (pw_tab : nat) (data_tab : nat) (id : nat) (pw : int)
     : int =
   let (auth_res : int) = perform (Get (auth_tab, id)) in

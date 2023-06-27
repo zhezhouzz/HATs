@@ -16,7 +16,8 @@ type mode =
 type prim_path = {
   qualifier_builtin_type : string;
   normalp : string;
-  under_basicp : string;
+  pure_p : string;
+  eff_p : string;
   under_randomp : string;
   underp_dir : string;
   rev_underp_dir : string;
@@ -92,7 +93,8 @@ let get_measure () =
 
 let get_randomp_path () = (get_prim_path ()).under_randomp
 let get_qualifier_builtin_type () = (get_prim_path ()).qualifier_builtin_type
-let get_builtin_coverage_type () = (get_prim_path ()).under_basicp
+let get_builtin_pure_type () = (get_prim_path ()).pure_p
+let get_builtin_eff_type () = (get_prim_path ()).eff_p
 let known_mp : string list option ref = ref None
 
 let get_known_mp () =
@@ -133,7 +135,8 @@ let load_meta meta_fname =
     {
       qualifier_builtin_type = p |> member "qualifier_builtin_type" |> to_string;
       normalp = p |> member "normal_typing" |> to_string;
-      under_basicp = p |> member "builtin_coverage_typing" |> to_string;
+      pure_p = p |> member "builtin_pure_typing" |> to_string;
+      eff_p = p |> member "builtin_eff_typing" |> to_string;
       under_randomp =
         p |> member "builtin_randomness_coverage_typing" |> to_string;
       underp_dir = p |> member "builtin_datatype_coverage_typing" |> to_string;

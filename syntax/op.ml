@@ -16,4 +16,11 @@ let eq a b =
     | BuiltinOp a, BuiltinOp b -> String.equal a b
     | _, _ -> false
   in
-  aux (a, b)
+  let res = aux (a, b) in
+  (* let () = *)
+  (*   Printf.printf "%s =? %s : %b\n" *)
+  (*     (Sexplib.Sexp.to_string @@ sexp_of_t a) *)
+  (*     (Sexplib.Sexp.to_string @@ sexp_of_t b) *)
+  (*     res *)
+  (* in *)
+  res

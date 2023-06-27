@@ -153,6 +153,17 @@ module POpTypectx = struct
 
   type ctx = pty list poly_ctx
 
+  open Zzdatatype.Datatype
+
+  let _f = List.split_by_comma layout_pty
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
+  let pretty_layout = pretty_layout _f
+
   let filter_map_rty f code =
     List.filter_map
       (fun code ->

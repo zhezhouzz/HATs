@@ -269,6 +269,11 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
   in
   let comp_reg_check_letperform mctx (lhs, opname, appopargs, letbody) rty =
     let () = before_info __LINE__ "LetPerform" in
+    (* let () = *)
+    (*   Env.show_debug_typing @@ fun _ -> *)
+    (*   Printf.printf "Top Operation Ptype Context:\n%s\n\n" *)
+    (*   @@ POpTypectx.pretty_layout mctx.typectx.opctx *)
+    (* in *)
     let f_rtys = POpCtx.get_ty mctx.typectx.opctx (Op.EffOp opname) in
     let get_b f_rty =
       let* rhs_rty = multi_app_type_infer_aux mctx.typectx f_rty appopargs in
