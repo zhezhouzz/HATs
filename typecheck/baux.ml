@@ -77,6 +77,17 @@ let subtyping_regex_bool file line typectx (t1, t2) =
         Pp.printf "@{<orange> subtyping failed at [%s::%i]@}\n" file line);
     false)
 
+let subtyping_pty_is_bot file line typectx t1 =
+  let () =
+    Env.show_debug_typing (fun () ->
+        print_subtyping_str typectx (layout_pty t1, "bot"))
+  in
+  if Subtyping.is_bot_pty typectx.rctx t1 then (
+    Env.show_debug_typing (fun () ->
+        Pp.printf "@{<orange> [%s::%i] %s is bot@}\n" file line (layout_pty t1));
+    true)
+  else false
+
 let subtyping_pre_regex_bool file line typectx (t1, t2) =
   let () =
     Env.show_debug_typing (fun () ->

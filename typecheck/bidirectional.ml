@@ -71,7 +71,10 @@ let rec value_type_infer typectx (value : value typed) : pty option =
         let res =
           match pty with
           | ArrPty _ -> pty
-          | BasePty _ -> mk_pty_var_eq_var Nt.(x #: (erase_pty pty))
+          | BasePty _ -> (
+              match erase_pty pty with
+              | Nt.Ty_unit -> pty
+              | _ -> mk_pty_var_eq_var Nt.(x #: (erase_pty pty)))
           | TuplePty _ -> _failatwith __FILE__ __LINE__ "unimp"
         in
         end_info __LINE__ "Var" (Some res)
@@ -371,14 +374,24 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
     let { v; phi } = rty_force_cty retrty in
     let matched_lit = _value_to_lit __FILE__ __LINE__ matched in
     let phi = P.subst_prop (v.x, matched_lit.x) phi in
-    let a = (Rename.unique "a") #:: (mk_unit_pty_from_prop phi) in
-    let mctx' = mctx_new_to_rights mctx (xs @ [ a ]) in
-    let b = comp_reg_check mctx' exp rty in
-    let () =
-      Env.show_debug_typing @@ fun _ ->
-      Pp.printf "@{<bold>@{<orange>matched case (%s): %b@}@}\n" constructor.x b
-    in
-    b
+    let a_pty = mk_unit_pty_from_prop phi in
+    if subtyping_pty_is_bot __FILE__ __LINE__ mctx.typectx a_pty then
+      let () =
+        Env.show_debug_typing @@ fun _ ->
+        Pp.printf "@{<bold>@{<orange>matched case (%s) is unreachable@}@}\n"
+          constructor.x
+      in
+      true
+    else
+      let a = (Rename.unique "a") #:: a_pty in
+      let mctx' = mctx_new_to_rights mctx (xs @ [ a ]) in
+      let b = comp_reg_check mctx' exp rty in
+      let () =
+        Env.show_debug_typing @@ fun _ ->
+        Pp.printf "@{<bold>@{<orange>matched case (%s): %b@}@}\n" constructor.x
+          b
+      in
+      b
   in
   match comp.x with
   | CVal v ->

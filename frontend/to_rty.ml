@@ -202,6 +202,7 @@ and regex_of_ocamlexpr_aux expr =
         )
     | Pexp_sequence (a, b) -> SeqA (aux a, aux b)
     | Pexp_construct _ -> EventA (sevent_of_ocamlexpr_aux expr)
+    | Pexp_fun _ -> EventA (RetEvent (pty_of_ocamlexpr_aux expr))
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux expr
