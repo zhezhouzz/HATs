@@ -77,10 +77,10 @@ and sevent_check opctx ctx retbty sevent =
       in
       RetEvent pty
   | EffEvent { op; vs; v; phi } ->
-      let () = Printf.printf "sevent: %s\n" (To_rty.layout_sevent sevent) in
-      let () =
-        Printf.printf "vs: %s\n" (List.split_by_comma (fun x -> x.Nt.x) vs)
-      in
+      (* let () = Printf.printf "sevent: %s\n" (To_rty.layout_sevent sevent) in *)
+      (* let () = *)
+      (*   Printf.printf "vs: %s\n" (List.split_by_comma (fun x -> x.Nt.x) vs) *)
+      (* in *)
       let opty = Aux.infer_op opctx (Op.EffOp op) in
       let argsty, retnty = Nt.destruct_arr_tp opty in
       let vs =

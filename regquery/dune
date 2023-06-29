@@ -1,7 +1,0 @@
-(library
- (name regquery)
- (wrapped true)
- (libraries utils language core env z3)
- (modules
-   regsyntax
-))

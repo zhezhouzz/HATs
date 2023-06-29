@@ -1,3 +1,6 @@
+let[@effrty] boolGen ?l:(k = (true : [%v: unit])) =
+  { pre = starA anyA; post = (Ret (true : [%v0: bool]) : bool) }
+
 let[@effrty] write ?l:(k = (true : [%v: int])) =
   { pre = starA anyA; post = (Ret (true : [%v0: unit]) : unit) }
 
@@ -109,4 +112,30 @@ let[@effrty] get ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: nat])) =
              ((((v0 == tab && v1 == k : [%v0: nat]) : [%v1: nat]) : [%v2: int])
                : [%v: unit])));
     post = (Ret (phi v0 : [%v0: int]) : int);
+  }
+
+let[@effrty] exists ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: nat])) =
+  {
+    pre =
+      (starA anyA;
+       Put
+         ((((v0 == tab && v1 == k : [%v0: nat]) : [%v1: nat]) : [%v2: int])
+           : [%v: unit]);
+       starA
+         (anyA
+         - Put
+             ((((v0 == tab && v1 == k : [%v0: nat]) : [%v1: nat]) : [%v2: int])
+               : [%v: unit])));
+    post = (Ret (v0 : [%v0: bool]) : bool);
+  }
+
+let[@effrty] exists ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: nat])) =
+  {
+    pre =
+      starA
+        (anyA
+        - Put
+            ((((v0 == tab && v1 == k : [%v0: nat]) : [%v1: nat]) : [%v2: int])
+              : [%v: unit]));
+    post = (Ret (not v0 : [%v0: bool]) : bool);
   }

@@ -278,7 +278,7 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
     let get_b f_rty =
       let* rhs_rty = multi_app_type_infer_aux mctx.typectx f_rty appopargs in
       let previousA = smart_seq (mctx.preA, mctx.curA) in
-      let* rhs_reg =
+      let get_rhs_reg () =
         match rhs_rty with
         | Pty
             (ArrPty
@@ -300,8 +300,16 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
               Env.show_debug_debug @@ fun _ ->
               Pp.printf "@{<bold>prereg: @}%s\n" (layout_regex prereg)
             in
-            Infer_ghost.infer_prop_func mctx.typectx.rctx previousA
-              (prop_func, prereg) postreg
+            let runtime, res =
+              Sugar.clock (fun () ->
+                  Infer_ghost.infer_prop_func mctx.typectx.rctx previousA
+                    (prop_func, prereg) postreg)
+            in
+            let () =
+              Env.show_debug_debug @@ fun _ ->
+              Pp.printf "@{<bold>Infer_ghost.infer_prop_func: @}%f\n" runtime
+            in
+            res
         | Regty { prereg; postreg; _ } ->
             if
               subtyping_pre_regex_bool __FILE__ __LINE__ mctx.typectx
@@ -310,6 +318,13 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
             else None
         | _ -> _failatwith __FILE__ __LINE__ "die"
       in
+      let runtime, rhs_reg = Sugar.clock get_rhs_reg in
+      let () =
+        Env.show_debug_debug @@ fun _ ->
+        Pp.printf "@{<bold>comp_reg_check_letperform::get_rhs_reg: @}%f\n"
+          runtime
+      in
+      let* rhs_reg = rhs_reg in
       (* let rhs_cty = pty_to_cty @@ regex_to_pty rhs_reg in *)
       let lits = List.map (_value_to_lit __FILE__ __LINE__) appopargs in
       let rhs_reg =
@@ -380,7 +395,7 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
     let matched_lit = _value_to_lit __FILE__ __LINE__ matched in
     let phi = P.subst_prop (v.x, matched_lit.x) phi in
     let a_pty = mk_unit_pty_from_prop phi in
-    if subtyping_pty_is_bot __FILE__ __LINE__ mctx.typectx a_pty then
+    if subtyping_pty_is_bot_bool __FILE__ __LINE__ mctx.typectx a_pty then
       let () =
         Env.show_debug_typing @@ fun _ ->
         Pp.printf "@{<bold>@{<orange>matched case (%s) is unreachable@}@}\n"
@@ -427,9 +442,17 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
               comp_reg_check_letappop mctx (lhs, op, appopargs, letbody) rty
           | Op.DtOp _ -> _failatwith __FILE__ __LINE__ "die"
           | Op.EffOp opname ->
-              comp_reg_check_letperform mctx
-                (lhs, opname, appopargs, letbody)
-                rty)
+              let runtime, res =
+                Sugar.clock (fun () ->
+                    comp_reg_check_letperform mctx
+                      (lhs, opname, appopargs, letbody)
+                      rty)
+              in
+              let () =
+                Env.show_debug_debug @@ fun _ ->
+                Pp.printf "@{<bold>comp_reg_check_letperform: @}%f\n" runtime
+              in
+              res)
       | _ ->
           let () = Printf.printf "ERR:\n%s\n" (layout_comp rhs) in
           _failatwith __FILE__ __LINE__ "die")

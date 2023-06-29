@@ -18,7 +18,11 @@ let check_implies_with_pre pres a b =
 let check vc = check_with_pre [] vc
 
 let check_bool vc =
-  match check vc with
+  let runtime, res = Sugar.clock (fun () -> check vc) in
+  let () =
+    Env.show_debug_stat @@ fun _ -> Printf.printf "check_bool: %f\n" runtime
+  in
+  match res with
   | None -> true
   | Some _ ->
       (* | Some model -> *)
@@ -36,7 +40,12 @@ let check_inclusion (r1, r2) = Check.inclusion_query ctx r1 r2
 (* open Zzdatatype.Datatype *)
 
 let check_inclusion_bool (r1, r2) =
-  match check_inclusion (r1, r2) with
+  let runtime, res = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
+  let () =
+    Env.show_debug_debug @@ fun _ ->
+    Printf.printf "check_inclusion_bool: %f\n" runtime
+  in
+  match res with
   | None -> true
   (* | Some _ -> *)
   | Some mt_list ->
@@ -48,7 +57,12 @@ let check_inclusion_bool (r1, r2) =
       false
 
 let check_inclusion_counterexample (r1, r2) =
-  match check_inclusion (r1, r2) with
+  let runtime, res = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Printf.printf "check_inclusion_counterexample: %f\n" runtime
+  in
+  match res with
   | None -> None
   | Some mt_list ->
       ( Env.show_debug_info @@ fun _ ->
@@ -58,35 +72,4 @@ let check_inclusion_counterexample (r1, r2) =
 
 let stat_init = Check.stat_init
 let stat_get_cur = Check.stat_get_cur
-
-(* let test0 () = *)
-(*   let open Zzdatatype.Datatype in *)
-(*   let m = StrMap.add "z" 3 StrMap.empty in *)
-(*   let x = (StrMap.map (fun x -> x + 1) m, m) in *)
-
 let test0 () = ()
-(* open Language.NRegex *)
-(* let test0 () = *)
-(*   (\* let r1 = Epslion in *\) *)
-(*   let r1 = *)
-(*     Minterm *)
-(*       { *)
-(*         op = "Put"; *)
-(*         global_embedding = 1; *)
-(*         ret_embedding = 1; *)
-(*         local_embedding = 3; *)
-(*       } *)
-(*   in *)
-(*   (\* let r2 = Concat [ Epslion; r1 ] in *\) *)
-(*   let r2 = *)
-(*     Language.Rty.( *)
-(*       SeqA *)
-(*         ( EventA (GuardEvent mk_false), *)
-(*           EventA (EffEvent { op = "Put"; vs = []; phi = mk_true }) )) *)
-(*   in *)
-(*   let dctx, mts = Desymbolic.ctx_init r2 in *)
-(*   let () = *)
-(*     Printf.printf "%b" *)
-(*       (check_inclusion_bool (r1, Desymbolic.desymbolic dctx mts r2)) *)
-(*   in *)
-(*   () *)

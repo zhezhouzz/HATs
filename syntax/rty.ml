@@ -321,68 +321,6 @@ module F (L : Lit.T) = struct
     in
     aux regex (gathered_lits_init ())
 
-  (* let get_lits_from_sevent sevent = *)
-  (*   match sevent with *)
-  (*   | GuardEvent phi -> *)
-  (*       let global_lits = P.get_lits phi in *)
-  (*       Some (guard_name, global_lits, []) *)
-  (*   | RetEvent _ -> None *)
-  (*   | EffEvent { op; phi; vs } -> *)
-  (*       let vs = List.map (fun x -> x.Nt.x) vs in *)
-  (*       let is_contain_local_free lit = *)
-  (*         match List.interset ( == ) vs @@ P.fv_lit lit with *)
-  (*         | [] -> false *)
-  (*         | _ -> true *)
-  (*       in *)
-  (*       let lits = P.get_lits phi in *)
-  (*       let local_lits, global_lits = *)
-  (*         List.partition is_contain_local_free lits *)
-  (*       in *)
-  (*       Some (op, global_lits, local_lits) *)
-
-  (* let get_lits_from_regex regex = *)
-  (*   let update_local m (op, lits) = *)
-  (*     StrMap.update op *)
-  (*       (fun lits' -> *)
-  (*         match lits' with *)
-  (*         | None -> Some lits *)
-  (*         | Some lits' -> Some (List.slow_rm_dup P.eq_lit (lits @ lits'))) *)
-  (*       m *)
-  (*   in *)
-  (*   let update_global m lits = List.slow_rm_dup P.eq_lit (lits @ m) in *)
-  (*   let rec aux regex (global_m, local_m) = *)
-  (*     match regex with *)
-  (*     | EpsilonA -> (global_m, local_m) *)
-  (*     | EventA se -> ( *)
-  (*         match get_lits_from_sevent se with *)
-  (*         | None -> (global_m, local_m) *)
-  (*         | Some (op, global_lits, _) when String.equal op guard_name -> *)
-  (*             (update_global global_m global_lits, local_m) *)
-  (*         | Some (op, global_lits, local_lits) -> *)
-  (*             ( update_global global_m global_lits, *)
-  (*               update_local local_m (op, local_lits) )) *)
-  (*     | LorA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m) *)
-  (*     | LandA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m) *)
-  (*     | SeqA (t1, t2) -> aux t1 @@ aux t2 (global_m, local_m) *)
-  (*     | StarA t -> aux t (global_m, local_m) *)
-  (*   in *)
-  (*   aux regex ([], StrMap.empty) *)
-
-  (* let get_ptys_from_sevent sevent = *)
-  (*   match sevent with RetEvent pty -> [ pty ] | _ -> [] *)
-
-  (* let get_ptys_from_regex regex = *)
-  (*   let rec aux regex res = *)
-  (*     match regex with *)
-  (*     | EpsilonA -> res *)
-  (*     | EventA se -> res @ get_ptys_from_sevent se *)
-  (*     | LorA (t1, t2) -> aux t1 @@ aux t2 res *)
-  (*     | LandA (t1, t2) -> aux t1 @@ aux t2 res *)
-  (*     | SeqA (t1, t2) -> aux t1 @@ aux t2 res *)
-  (*     | StarA t -> aux t res *)
-  (*   in *)
-  (*   List.slow_rm_dup eq_pty @@ aux regex [] *)
-
   (* normalize name *)
 
   let rec normalize_name_pty tau1 =
@@ -497,6 +435,93 @@ module F (L : Lit.T) = struct
       | ComplementA t -> ComplementA (aux t)
     in
     aux regex
+
+  (* stat *)
+
+  let rec stat_num_events_am regex =
+    let rec aux regex =
+      match regex with
+      | AnyA | EmptyA | EpsilonA -> 1
+      | EventA se -> stat_num_events_sevent se
+      | LorA (t1, t2) -> aux t1 + aux t2
+      | SetMinusA (t1, t2) -> aux t1 + aux t2
+      | LandA (t1, t2) -> aux t1 + aux t2
+      | SeqA (t1, t2) -> aux t1 + aux t2
+      | StarA t -> 1 + aux t
+      | ComplementA t -> 1 + aux t
+    in
+    aux regex
+
+  and stat_num_events_sevent se =
+    match se with
+    | GuardEvent _ -> 1
+    | RetEvent pty -> stat_num_events_pty pty
+    | EffEvent _ -> 1
+
+  and stat_num_events_rty rty =
+    match rty with
+    | Pty pty -> stat_num_events_pty pty
+    | Regty { prereg; postreg; _ } ->
+        stat_num_events_am prereg + stat_num_events_am postreg
+
+  and stat_num_events_pty rty =
+    match rty with
+    | BasePty _ -> 1
+    | TuplePty _ -> 1
+    | ArrPty { retrty; _ } -> stat_num_events_rty retrty
+
+  let rec stat_lits_from_pty rty =
+    let res =
+      match rty with
+      | BasePty { cty = { phi; _ }; _ } -> P.get_lits phi
+      | TuplePty _ -> _failatwith __FILE__ __LINE__ "die"
+      | ArrPty { rarg; retrty; _ } ->
+          let l1 = stat_lits_from_pty rarg.pty in
+          let l2 = stat_lits_from_rty retrty in
+          l1 @ l2
+    in
+    res
+  (* List.slow_rm_dup eq_lit @@ res *)
+
+  and stat_lits_from_rty rty =
+    let res =
+      match rty with
+      | Pty pty -> stat_lits_from_pty pty
+      | Regty { prereg; postreg; _ } ->
+          stat_lits_from_regex prereg @ stat_lits_from_regex postreg
+    in
+    res
+  (* List.slow_rm_dup eq_lit @@ res *)
+
+  and stat_lits_from_regex regex =
+    let rec aux regex =
+      match regex with
+      | EmptyA -> []
+      | AnyA -> []
+      | EpsilonA -> []
+      | EventA se -> stat_lits_from_sevent se
+      | LorA (t1, t2) -> aux t1 @ aux t2
+      | SetMinusA (t1, t2) -> aux t1 @ aux t2
+      | LandA (t1, t2) -> aux t1 @ aux t2
+      | SeqA (t1, t2) -> aux t1 @ aux t2
+      | StarA t -> aux t
+      | ComplementA t -> aux t
+    in
+    aux regex
+  (* List.slow_rm_dup eq_lit (aux regex) *)
+
+  and stat_lits_from_sevent sevent =
+    let res =
+      match sevent with
+      | GuardEvent phi -> P.get_lits phi
+      | RetEvent pty -> stat_lits_from_pty pty
+      | EffEvent { phi; _ } -> P.get_lits phi
+    in
+    res
+  (* List.slow_rm_dup eq_lit @@ res *)
+
+  let stat_lits_from_rty_no_dup rty =
+    List.slow_rm_dup eq_lit @@ stat_lits_from_rty rty
 
   (* mk bot/top *)
 

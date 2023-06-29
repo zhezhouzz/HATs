@@ -12,7 +12,7 @@ import json
 meta_config_file = "meta-config.json"
 stat_file = ".stat.json"
 
-def load_stat ():
+def load_stat (source):
     with open (stat_file) as f:
         j = json.load(f)
         stat = analyze.analyze(j)
@@ -25,7 +25,7 @@ def run_all_benchs(verbose):
     res = {}
     for name, (source, path) in tab.items():
         run.typecheck(path, verbose)
-        res[name] = load_stat ()
+        res[name] = load_stat (source)
     mk_table.show_latex_tab(res)
     return
 
@@ -35,15 +35,20 @@ def run_one_benchs(verbose, bench_name):
     for name, (source, path) in tab.items():
         if bench_name == name:
             run.typecheck(path, verbose)
-            res[name] = load_stat ()
-    mk_table.show_latex_tab(res)
-    return
+            res[name] = load_stat (source)
+            mk_table.show_latex_tab(res)
+            return
+    exit(1)
 
-def make_table(verbose, name):
+def make_table(verbose, bench_name):
+    tab = benchs.load_benchmarks()
     res = {}
-    res[name] = load_stat ()
-    mk_table.show_latex_tab(res)
-    return
+    for name, (source, path) in tab.items():
+        if bench_name == name:
+            res[name] = load_stat(source)
+            mk_table.show_latex_tab(res)
+            return
+    exit(1)
 
 if __name__ == '__main__':
     verbose = False

@@ -189,6 +189,7 @@ let mk_ictx gamma prop_func m =
     List.slow_rm_dup eq_lit @@ gather_op_vs_related_lits m prop_func.x ws
   in
   let () =
+    Env.show_debug_queries @@ fun _ ->
     Pp.printf "@{<bold>@{<orange>lits: %s@}@}\n"
       (List.split_by_comma layout_lit lits)
   in
@@ -241,14 +242,23 @@ let elrond n verifier =
   let rec loop () =
     match pick_maybepos () with
     | Some fv ->
-        let () = Pp.printf "@{<bold>@{<orange> pick_maybepos: %i@}@}\n" fv in
+        let () =
+          Env.show_debug_queries @@ fun _ ->
+          Pp.printf "@{<bold>@{<orange> pick_maybepos: %i@}@}\n" fv
+        in
         let () = Hashtbl.replace pn_tab fv Neg in
         let fvs = get_current_prop is_not_neg in
         if verifier fvs then
-          let () = Pp.printf "@{<bold>@{<orange> label %i as - @}@}\n" fv in
+          let () =
+            Env.show_debug_queries @@ fun _ ->
+            Pp.printf "@{<bold>@{<orange> label %i as - @}@}\n" fv
+          in
           loop ()
         else
-          let () = Pp.printf "@{<bold>@{<orange> label %i as + @}@}\n" fv in
+          let () =
+            Env.show_debug_queries @@ fun _ ->
+            Pp.printf "@{<bold>@{<orange> label %i as + @}@}\n" fv
+          in
           Hashtbl.replace pn_tab fv Pos;
           loop ()
     | None ->
@@ -323,7 +333,13 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
   let gathered =
     gathered_rm_dup @@ gather_from_regex (LorA (previousA, templateA))
   in
-  let ictx = mk_ictx gamma prop_func gathered.local_lits in
+  let runtime, ictx =
+    Sugar.clock (fun () -> mk_ictx gamma prop_func gathered.local_lits)
+  in
+  let () =
+    Env.show_debug_debug @@ fun _ ->
+    Pp.printf "@{<bold>Infer_ghost.mk_ictx: @}%f\n" runtime
+  in
   let verifier fvs =
     let solution = PropFunc { candidate = fvs } in
     let () =
@@ -337,10 +353,23 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
       Pp.printf "%s @{<bold><:@} %s\n" (layout_regex previousA)
         (layout_regex specA)
     in
-    let res = Subtyping.sub_pre_regex_bool gamma (previousA, specA) in
+    let res =
+      Baux._subtyping_pre_regex_bool gamma (previousA, specA)
+      (* Subtyping.sub_pre_regex_bool gamma (previousA, specA)) *)
+    in
+    (* let () = *)
+    (*   Env.show_debug_stat @@ fun _ -> *)
+    (*   Pp.printf "@{<bold>subtyping_pre_regex_bool: @}%f\n" runtime *)
+    (* in *)
     res
   in
-  let candidate = elrond (List.length ictx.ftab) verifier in
+  let runtime, candidate =
+    Sugar.clock (fun () -> elrond (List.length ictx.ftab) verifier)
+  in
+  let () =
+    Env.show_debug_debug @@ fun _ ->
+    Pp.printf "@{<bold>Infer_ghost.elrond: @}%f\n" runtime
+  in
   let () = pop_stat () in
   (* let () = failwith "end" in *)
   let res =
@@ -359,43 +388,3 @@ let infer_prop_func gamma previousA (prop_func, templateA) postreg =
         Some postreg
   in
   res
-
-(* let infer_prop_func_old gamma previousA (prop_func, templateA) postreg = *)
-(*   let gathered = *)
-(*     gathered_rm_dup @@ gather_from_regex (LorA (previousA, templateA)) *)
-(*   in *)
-(*   let ictx = mk_ictx prop_func gathered.local_lits in *)
-(*   let () = *)
-(*     Pp.printf "@{<bold>@{<orange>Solution Len: %i@}@}\n" (List.length solutions) *)
-(*   in *)
-(*   let () = if 5 < List.length solutions then failwith "end" else () in *)
-(*   let solutions = *)
-(*     List.filter *)
-(*       (fun solution -> *)
-(*         let () = *)
-(*           Env.show_debug_queries @@ fun _ -> *)
-(*           Pp.printf "@{<bold>@{<orange>Check Solution: @}@}%s\n" *)
-(*           @@ layout_solution ictx solution *)
-(*         in *)
-(*         let specA = *)
-(*           template_subst_regex ictx (prop_func.x, solution) templateA *)
-(*         in *)
-(*         let () = *)
-(*           Env.show_debug_queries @@ fun _ -> *)
-(*           Pp.printf "%s @{<bold><:@} %s\n" (layout_regex previousA) *)
-(*             (layout_regex specA) *)
-(*         in *)
-(*         let res = Subtyping.sub_pre_regex_bool gamma (previousA, specA) in *)
-(*         res) *)
-(*       solutions *)
-(*   in *)
-(*   match best_solution solutions with *)
-(*   | None -> None *)
-(*   | Some solution -> *)
-(*       let () = *)
-(*         Env.show_debug_queries @@ fun _ -> *)
-(*         Pp.printf "@{<bold>@{<orange>Final Solution: @}@}%s\n" *)
-(*         @@ layout_solution ictx solution *)
-(*       in *)
-(*       let postreg = template_subst_regex ictx (prop_func.x, solution) postreg in *)
-(*       Some postreg *)

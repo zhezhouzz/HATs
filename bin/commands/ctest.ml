@@ -61,21 +61,21 @@ let print_source_code_ meta_config_file source_file =
   let oprctx = POpTypectx.new_to_rights effoprctx @@ oprctx in
   let opnctx = effopnctx @ opnctx in
   let () =
-    Env.show_debug_typing @@ fun _ ->
+    Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout topnctx
   in
   let () =
-    Env.show_debug_typing @@ fun _ ->
+    Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "Top Operation Type Context:\n%s\n\n"
     @@ NOpTypectx.pretty_layout opnctx
   in
   let () =
-    Env.show_debug_typing @@ fun _ ->
+    Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "Top Operation Ptype Context:\n%s\n\n"
     @@ POpTypectx.pretty_layout oprctx
   in
   let () =
-    Env.show_debug_typing @@ fun _ ->
+    Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "%s\n" @@ StructureRaw.layout_structure code
   in
   (oprctx, topnctx, opnctx, code)
@@ -86,7 +86,7 @@ let print_typed_source_code_ meta_config_file source_file =
   in
   let code = Ntypecheck.opt_to_typed_structure topnopctx topnctx code in
   let () =
-    Env.show_debug_typing @@ fun _ ->
+    Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "%s\n" @@ Structure.layout_structure code
   in
   (oprctx, topnctx, topnopctx, code)
@@ -97,7 +97,7 @@ let print_typed_normalized_source_code_ meta_config_file source_file =
   in
   let normalized = Normalize.get_normalized_code code in
   let () =
-    Env.show_debug_typing @@ fun _ ->
+    Env.show_debug_preprocess @@ fun _ ->
     List.iter
       ~f:(fun (name, e) ->
         Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp_omit_type e))
