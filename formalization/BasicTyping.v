@@ -102,11 +102,12 @@ Ltac instantiate_atom_listctx :=
               specialize (H a Htmp); clear Htmp; repeat destruct_hyp_conj; auto
           end; simpl).
 
-Lemma basic_typing_regular_value: forall Γ v t, Γ ⊢t v ⋮v t -> lc v.
-Admitted.
-
-Lemma basic_typing_regular_tm: forall Γ e t, Γ ⊢t e ⋮t t -> lc e.
-Admitted.
+Lemma basic_typing_regular_value: forall Γ v t, Γ ⊢t v ⋮v t -> lc v
+with basic_typing_regular_tm: forall Γ e t, Γ ⊢t e ⋮t t -> lc e.
+Proof.
+  all: destruct 1; simpl;
+    try econstructor; try instantiate_atom_listctx; eauto.
+Qed.
 
 Ltac basic_typing_regular_simp :=
   repeat match goal with

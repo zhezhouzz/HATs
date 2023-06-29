@@ -266,6 +266,7 @@ Ltac equate x y :=
 Ltac specialize_with x :=
   match goal with
   | [H: forall x, x ∉ ?L -> _ |- _] =>
+      let Htmp := fresh "Htmp" in
       assert (x ∉ L) as Htmp by fast_set_solver; specialize (H x Htmp); try clear Htmp
   end.
 
@@ -352,3 +353,14 @@ Ltac auto_pose_fv a :=
   let acc := collect_stales tt in
   pose (fv_of_set acc) as a;
   assert (a ∉ acc) by (apply fv_of_set_fresh; auto).
+
+Ltac simpl_union H :=
+  let rec go H :=
+      lazymatch type of H with
+      | _ ∉ _ ∪ _ =>
+        rewrite not_elem_of_union in H;
+          let H1 := fresh "Hfresh" in
+          let H2 := fresh "Hfresh" in
+          destruct H as [H1 H2]; go H1; go H2
+      | _ => idtac
+  end in go H.

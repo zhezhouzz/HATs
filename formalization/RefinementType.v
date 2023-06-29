@@ -22,18 +22,16 @@ Import List.
 Inductive am : Type :=
 | aemp
 | aϵ
+| aany
 | aevent (op: effop) (ϕ: qualifier) (** bvar 1 is argument, bvar 0 is result value *)
 | aconcat (a: am) (b: am)
 | aunion (a: am) (b: am)
-| acomp (a: am)
+| adiff (a: am) (b : am)
 | astar (a: am)
 .
 
 Notation "'⟨' op '|' ϕ '⟩'" := (aevent op ϕ) (at level 5, format "⟨ op | ϕ ⟩", op constr, ϕ constr).
 Notation " a ';+' b " := (aconcat a b) (at level 5, format "a ;+ b", b constr, a constr, right associativity).
-
-Definition aany: am.
-Admitted.
 
 Notation "∘" := aany (at level 5).
 Notation "a∅" := aemp (at level 80, right associativity).
@@ -107,15 +105,13 @@ Fixpoint am_fv a : aset :=
   match a with
   | aemp => ∅
   | aϵ => ∅
+  | aany => ∅
   | aevent _ ϕ => qualifier_fv ϕ
   | aconcat a b => (am_fv a) ∪ (am_fv b)
   | aunion a b => (am_fv a) ∪ (am_fv b)
   | astar a => am_fv a
-  | acomp a => am_fv a
+  | adiff a b => am_fv a ∪ am_fv b
   end.
-
-Definition listctx_fmap {A: Type} {B: Type} (f: A -> B) (l: listctx A) :=
-  List.map (fun e => (e.1, f e.2)) l.
 
 Fixpoint pty_fv ρ : aset :=
   match ρ with
@@ -148,11 +144,12 @@ Fixpoint am_open (k: nat) (s: value) (a : am): am :=
   match a with
   | aemp => aemp
   | aϵ => aϵ
+  | aany => aany
   | aevent op ϕ => aevent op (qualifier_open (S (S k)) s ϕ)
   | aconcat a b => aconcat (am_open k s a) (am_open k s b)
   | aunion a b => aunion (am_open k s a) (am_open k s b)
   | astar a => astar (am_open k s a)
-  | acomp a => acomp (am_open k s a)
+  | adiff a b => adiff (am_open k s a) (am_open k s b)
   end.
 
 Fixpoint pty_open (k: nat) (s: value) (ρ: pty) : pty :=
@@ -187,11 +184,12 @@ Fixpoint am_subst (k: atom) (s: value) (a : am): am :=
   match a with
   | aemp => aemp
   | aϵ => aϵ
+  | aany => aany
   | aevent op ϕ => aevent op (qualifier_subst k s ϕ)
   | aconcat a b => aconcat (am_subst k s a) (am_subst k s b)
   | aunion a b => aunion (am_subst k s a) (am_subst k s b)
   | astar a => astar (am_subst k s a)
-  | acomp a => acomp (am_subst k s a)
+  | adiff a b => adiff (am_subst k s a) (am_subst k s b)
   end.
 
 Fixpoint pty_subst (k: atom) (s: value) (ρ: pty) : pty :=
@@ -222,10 +220,10 @@ Definition amlist_typed (B: list (am * pty)) (T: ty) :=
 
 Inductive valid_pty: pty -> Prop :=
 | valid_pty_base: forall B ϕ, valid_pty {v: B | ϕ }
-| valid_pty_arr: forall ρ T A B,
+| valid_pty_arr: forall ρ T A B (L : aset),
     valid_pty ρ ->
     amlist_typed B T ->
-    (forall Bi ρi, In (Bi, ρi) B -> valid_pty ρi) ->
+    (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> valid_pty (ρi ^p^ x)) ->
     valid_pty (-: ρ ⤑[: T | A ⇒ B ]).
 
 Inductive valid_hty: hty -> Prop :=
@@ -236,6 +234,7 @@ Inductive valid_hty: hty -> Prop :=
 Inductive lc_am : am -> Prop :=
 | lc_aemp : lc_am aemp
 | lc_aϵ : lc_am aϵ
+| lc_aany : lc_am aany
 | lc_aevent: forall op ϕ (L : aset),
     (* This is quite annoying. *)
     (forall (x y : atom), x ∉ L -> y ∉ L -> lc_qualifier (ϕ ^q^ x ^q^ y)) ->
@@ -243,7 +242,7 @@ Inductive lc_am : am -> Prop :=
 | lc_aconcat : forall a b, lc_am a -> lc_am b -> lc_am (aconcat a b)
 | lc_aunion : forall a b, lc_am a -> lc_am b -> lc_am (aunion a b)
 | lc_astar: forall a, lc_am a -> lc_am (astar a)
-| lc_acomp : forall a, lc_am a -> lc_am (acomp a)
+| lc_adiff : forall a b, lc_am a -> lc_am b -> lc_am (adiff a b)
 .
 
 Inductive lc_pty : pty -> Prop :=
@@ -279,7 +278,7 @@ Fixpoint remove_arr_pty (Γ: listctx pty) :=
   match Γ with
   | [] => []
   | (x, {v: B | ϕ}) :: Γ => (x, {v: B | ϕ}) :: remove_arr_pty Γ
-  | (x, _) :: Γ =>  Γ
+  | (x, _) :: Γ => remove_arr_pty Γ
   end.
 
 (* langledot *)
@@ -317,8 +316,67 @@ Definition mk_eq_var ty (x: atom) := {v: ty | b0:x= x }.
 
 (* Dummy implementation  *)
 Inductive builtin_typing_relation: effop -> pty -> Prop :=
-| builtin_typing_relation_: forall op ρx A B ρ,
-    builtin_typing_relation op (-: ρx ⤑[: ret_ty_of_op op | A ⇒ [(B, ρ)] ]).
+| builtin_typing_relation_: forall op ϕ A B ρ,
+    builtin_typing_relation op (-: {v: TNat | ϕ} ⤑[: ret_ty_of_op op | A ⇒ [(B, ρ)] ]).
+
+Lemma pty_erase_open_eq ρ k s :
+  pty_erase ρ = pty_erase ({k ~p> s} ρ).
+Proof.
+  induction ρ; eauto.
+  cbn. f_equal. eauto.
+Qed.
+
+Lemma pty_erase_subst_eq ρ x s :
+  pty_erase ρ = pty_erase ({x := s}p ρ).
+Proof.
+  induction ρ; eauto.
+  cbn. f_equal. eauto.
+Qed.
+
+Lemma ctx_erase_lookup Γ x ρ :
+  ctxfind Γ x = Some ρ ->
+  ⌊Γ⌋* !! x = Some ⌊ρ⌋.
+Proof.
+  induction Γ; simpl; intros; try easy.
+  destruct a. case_decide. simplify_eq.
+  cbn. simplify_map_eq. reflexivity.
+  simp_hyps.
+  cbn. rewrite insert_empty. rewrite <- insert_union_singleton_l.
+  simplify_map_eq. reflexivity.
+Qed.
+
+Lemma ctx_erase_app Γ Γ':
+  ⌊Γ ++ Γ'⌋* = ⌊Γ⌋* ∪ ⌊Γ'⌋*.
+Proof.
+  induction Γ; simpl.
+  - cbn. by rewrite map_empty_union.
+  - destruct a. unfold ctx_erase in *. cbn. rewrite IHΓ.
+    by rewrite map_union_assoc.
+Qed.
+
+Lemma ctx_erase_dom Γ :
+  dom ⌊Γ⌋* ≡ ctxdom Γ.
+Proof.
+  induction Γ; simpl.
+  - cbn. apply dom_empty.
+  - destruct a. cbn in *.
+    rewrite insert_empty.
+    setoid_rewrite dom_union.
+    rewrite dom_singleton.
+    f_equiv. eauto.
+Qed.
+
+Lemma ctx_erase_app_r Γ x ρ :
+  x # Γ ->
+  ⌊Γ ++ [(x, ρ)]⌋* = <[x:=⌊ρ⌋]> ⌊Γ⌋*.
+Proof.
+  intros H.
+  rewrite ctx_erase_app.
+  cbn. rewrite map_union_empty. rewrite insert_empty.
+  rewrite <- insert_union_singleton_r. auto.
+  simpl in H. rewrite <- ctx_erase_dom in H.
+  by apply not_elem_of_dom.
+Qed.
 
 Lemma subst_fresh_am: forall (a: am) (x:atom) (u: value),
     x ∉ (am_fv a) -> {x := u}a a = a.
@@ -340,7 +398,7 @@ Proof.
   apply map_ext_Forall.
 
   (* A better proof is probably first show [x ∉ ⋃ map ... post] is equivalent to
-  [Forall (fun ... => x ∉ ...) post], and then go from ther. But don't bother. *)
+  [Forall (fun ... => x ∉ ...) post], and then go from there. But don't bother. *)
   induction post; eauto.
   simp_hyps. simpl in *.
   decompose_Forall_hyps.
@@ -379,4 +437,193 @@ Proof.
   intros.
   induction pa; simpl; f_equal; eauto.
   f_equal; eauto using subst_commute_pty, subst_commute_am.
+Qed.
+
+Lemma subst_commute_hty : forall x u_x y u_y e,
+    x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
+    {x := u_x }h ({y := u_y }h e) = {y := u_y }h ({x := u_x }h e).
+Proof.
+  intros.
+  destruct e. simpl.
+  rewrite subst_commute_am, subst_commute_postam; eauto.
+Qed.
+
+Lemma open_var_fv_am' (a : am) (x : atom) k :
+  am_fv a ⊆ am_fv ({k ~a> x} a).
+Proof.
+  induction a; simpl; eauto using open_var_fv_qualifier';
+    my_set_solver.
+Qed.
+
+Lemma open_var_fv_pty' (ρ : pty) (x : atom) k :
+  pty_fv ρ ⊆ pty_fv ({k ~p> x} ρ).
+Proof.
+  revert k.
+  induction ρ using pty_ind'; intros; simpl; eauto using open_var_fv_qualifier'.
+  repeat apply union_mono; eauto using open_var_fv_am'.
+  rewrite map_map. simpl.
+  apply union_list_mono.
+  clear - H.
+  (* Should have a [Forall] to [Forall2] lemma, or something about [Forall2] and
+  [map]. *)
+  induction post; simpl.
+  econstructor.
+  destruct a. simpl.
+  econstructor.
+  apply union_mono. eauto using open_var_fv_am'.
+  sinvert H. eauto.
+  apply IHpost.
+  sinvert H. eauto.
+Qed.
+
+Lemma remove_arr_pty_ctx_dom_union Γ Γ' :
+  ctxdom ⦑ Γ ++ Γ' ⦒ = ctxdom ⦑ Γ ⦒ ∪ ctxdom ⦑ Γ' ⦒.
+Proof.
+  induction Γ; intros; simpl.
+  my_set_solver.
+  destruct a. case_split; eauto.
+  simpl. rewrite <- union_assoc_L. f_equal. eauto.
+Qed.
+
+Lemma remove_arr_pty_ctx_dom_singleton x v :
+  ctxdom ⦑ [(x, v)] ⦒ ⊆ {[x]}.
+Proof.
+  simpl. case_split. simpl. my_set_solver.
+  simpl. my_set_solver.
+Qed.
+
+Lemma open_subst_same_qualifier: forall x y (ϕ : qualifier) k,
+    x # ϕ ->
+    {x := y }q ({k ~q> x} ϕ) = {k ~q> y} ϕ.
+Proof.
+  destruct ϕ. cbn. intros.
+  f_equal. clear - H.
+  (* A better proof should simply reduce to vector facts. Don't bother yet. *)
+  induction vals; cbn; eauto.
+  cbn in H.
+  f_equal. apply open_subst_same_value. my_set_solver.
+  apply IHvals. my_set_solver.
+Qed.
+
+Lemma open_subst_same_am: forall x y (a : am) k,
+    x # a ->
+    {x := y }a ({k ~a> x} a) = {k ~a> y} a.
+Proof.
+  induction a; cbn; intros; eauto.
+  f_equal. eauto using open_subst_same_qualifier.
+  all:
+  repeat
+    match goal with
+    | H : forall k, _ # _ -> _ =_ |- _ => rewrite H by my_set_solver; eauto
+    end.
+Qed.
+
+Lemma not_in_union_list {A C} `{SemiSet A C} (x : A) (ss : list C):
+  x ∉ ⋃ ss ->
+  forall s, In s ss -> x ∉ s.
+Proof.
+  induction ss; cbn; intros; eauto.
+  qsimpl.
+Qed.
+
+Lemma open_subst_same_pty: forall x y (ρ : pty) k,
+    x # ρ ->
+    {x := y }p ({k ~p> x} ρ) = {k ~p> y} ρ.
+Proof.
+  induction ρ using pty_ind'; cbn; intros; eauto.
+  f_equal. eauto using open_subst_same_qualifier.
+  f_equal. auto_apply. my_set_solver.
+  apply open_subst_same_am. my_set_solver.
+  rewrite map_map. apply map_ext_in.
+  intros [] **.
+  simpl_union H0.
+  eapply not_in_union_list in Hfresh0; eauto using in_map.
+  cbn in *. f_equal. apply open_subst_same_am. my_set_solver.
+  eapply Forall_forall in H; eauto. apply H.
+  my_set_solver.
+Qed.
+
+Lemma open_subst_same_postam: forall x y (pa : postam) k,
+    x # pa ->
+    {x := y }pa ({k ~pa> x} pa) = {k ~pa> y} pa.
+Proof.
+  induction pa; intros; eauto.
+  destruct a. cbn in *.
+  f_equal. f_equal. apply open_subst_same_am. my_set_solver.
+  apply open_subst_same_pty. my_set_solver.
+  rewrite map_map. apply map_ext_in.
+  intros [] **. cbn.
+  simpl_union H.
+  eapply not_in_union_list in Hfresh0; eauto using in_map.
+  f_equal. apply open_subst_same_am. my_set_solver.
+  apply open_subst_same_pty. my_set_solver.
+Qed.
+
+Lemma open_subst_same_hty: forall x y (τ : hty) k,
+    x # τ ->
+    {x := y }h ({k ~h> x} τ) = {k ~h> y} τ.
+Proof.
+  destruct τ. cbn. intros.
+  f_equal. apply open_subst_same_am. my_set_solver.
+  apply open_subst_same_postam. my_set_solver.
+Qed.
+
+Lemma subst_open_qualifier: forall (ϕ: qualifier) (x:atom) (u: value) (w: value) (k: nat),
+    lc w -> {x := w}q ({k ~q> u} ϕ) = ({k ~q> {x := w}v u} ({x := w}q ϕ)).
+Proof.
+  destruct ϕ. cbn. intros.
+  f_equal.
+  rewrite !Vector.map_map.
+  apply Vector.map_ext.
+  eauto using subst_open_value.
+Qed.
+
+Lemma subst_open_am: forall (a: am) (x:atom) (u: value) (w: value) (k: nat),
+    lc w -> {x := w}a ({k ~a> u} a) = ({k ~a> {x := w}v u} ({x := w}a a)).
+Proof.
+  induction a; cbn; intros; eauto.
+  f_equal. eauto using subst_open_qualifier.
+  all:
+  repeat
+    match goal with
+    | H : context [lc _ -> _] |- _ => rewrite H by my_set_solver; eauto
+    end.
+Qed.
+
+Lemma subst_open_pty: forall (ρ: pty) (x:atom) (u: value) (w: value) (k: nat),
+    lc w -> {x := w}p ({k ~p> u} ρ) = ({k ~p> {x := w}v u} ({x := w}p ρ)).
+Proof.
+  induction ρ using pty_ind'; cbn; intros.
+  f_equal. eauto using subst_open_qualifier.
+  f_equal; eauto using subst_open_am.
+  rewrite !map_map. apply map_ext_in.
+  intros [] **. cbn. f_equal. eauto using subst_open_am.
+  eapply Forall_forall in H; eauto.
+  eauto.
+Qed.
+
+Lemma subst_open_postam: forall (pa: postam) (x:atom) (u: value) (w: value) (k: nat),
+    lc w -> {x := w}pa ({k ~pa> u} pa) = ({k ~pa> {x := w}v u} ({x := w}pa pa)).
+Proof.
+  induction pa; cbn; intros; eauto.
+  destruct a. cbn. f_equal. f_equal.
+  eauto using subst_open_am. eauto using subst_open_pty.
+  rewrite !map_map. apply map_ext_in.
+  intros [] **. cbn. f_equal; eauto using subst_open_am, subst_open_pty.
+Qed.
+
+Lemma subst_open_hty: forall (τ: hty) (x:atom) (u: value) (w: value) (k: nat),
+    lc w -> {x := w}h ({k ~h> u} τ) = ({k ~h> {x := w}v u} ({x := w}h τ)).
+Proof.
+  intros. destruct τ.
+  simpl. f_equal; eauto using subst_open_am, subst_open_postam.
+Qed.
+
+Lemma subst_open_hty_closed:
+  ∀ (τ : hty) (x : atom) (u w : value) (k : nat),
+    closed_value u ->
+    lc w → {x := w }h ({k ~h> u} τ) = {k ~h> u} ({x := w }h τ).
+Proof.
+  intros. rewrite subst_open_hty; auto.
+  rewrite (subst_fresh_value); eauto. set_solver.
 Qed.
