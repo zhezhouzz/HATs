@@ -959,4 +959,18 @@ Proof.
   apply (body_lc_after_close_tm x) in H0. rewrite close_open_var_tm in H0; auto.
 Qed.
 
+Lemma open_not_in_eq_tm (x : atom) (t : tm) k :
+  x # {k ~t> x} t ->
+  forall e, t = {k ~t> e} t
+with open_not_in_eq_value (x : atom) (v : value) k :
+  x # {k ~v> x} v ->
+  forall e, v = {k ~v> e} v.
+Proof.
+  all : specialize (open_not_in_eq_tm x).
+  all : specialize (open_not_in_eq_value x).
+  all : destruct t || destruct v; simpl; intros; repeat f_equal.
+  all: try solve [ auto_apply; eauto; my_set_solver ].
+  case_decide; subst. my_set_solver. eauto.
+Qed.
+
 Global Hint Resolve lc_fresh_var_implies_body: core.

@@ -140,6 +140,13 @@ Inductive ctxRst: listctx pty -> env -> Prop :=
     p⟦ msubst pty_subst env ρ ⟧ v ->
     ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> env).
 
+Lemma langA_closed a α :
+  langA a α ->
+  closed_am ∅ a.
+Proof.
+  destruct a; simpl; intuition.
+Qed.
+
 Lemma ptyR_typed_closed t ρ e :
   ptyR t ρ e ->
   ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ.
@@ -165,6 +172,16 @@ Proof.
   intros H.
   apply ptyR_closed_tm in H.
   eauto.
+Qed.
+
+Lemma ptyR_lc t ρ e :
+  ptyR t ρ e ->
+  lc e.
+Proof.
+  intros H.
+  apply ptyR_typed_closed in H.
+  destruct H as (_&H&_).
+  eauto using basic_typing_regular_tm.
 Qed.
 
 Lemma ctxRst_closed_env Γ Γv : ctxRst Γ Γv -> closed_env Γv.
