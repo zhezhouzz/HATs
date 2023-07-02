@@ -48,6 +48,15 @@ let[@effrty] update ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int]))
   { pre = starA anyA; post = (Ret (true : [%v0: unit]) : unit) }
 
 let[@effrty] lookup ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int])) =
+  {
+    pre =
+      (starA anyA;
+       Mem
+         (((v0 == tab && v1 == k && v : [%v0: nat]) : [%v1: int]) : [%v: bool]));
+    post = (Ret (true : [%v0: int]) : int);
+  }
+
+let[@effrty] lookup ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int])) =
   let phi = (true : [%v: int -> bool]) in
   {
     pre =
@@ -64,8 +73,8 @@ let[@effrty] lookup ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int])) =
     post = (Ret (phi v0 : [%v0: int]) : int);
   }
 
-(* let[@effrty] mem ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int])) = *)
-(*   { pre = starA anyA; post = (Ret (true : [%v0: bool]) : bool) } *)
+let[@effrty] mem ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int])) =
+  { pre = starA anyA; post = (Ret (true : [%v0: bool]) : bool) }
 
 let[@effrty] mem ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: int])) =
   {

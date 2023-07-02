@@ -58,11 +58,11 @@ def show_latex_tab(data):
             # stat["code_effects"],
             # stat["num_pty"],
             stat["num_am"],
-            stat["avg_num_candicate_minterm"],
-            # stat["max_num_candicate_minterm"],
+            # stat["avg_num_candicate_minterm"],
+            stat["max_num_candicate_minterm"],
             # stat["max_inclusion_alphabet"],
-            # stat["max_inclusion_automaton_size"],
-            stat["avg_inclusion_automaton_size"],
+            stat["max_inclusion_automaton_size"],
+            # stat["avg_inclusion_automaton_size"],
             stat["time_filter"],
             stat["time_am_without_filter"]
         )
