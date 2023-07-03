@@ -7,8 +7,8 @@ from tabulate import tabulate
 headers = ["", "Recursive", "#LocalVar" , "#OP" , "#Q_{SMT}" , "#Q_{automata}" , "(max. Char, Size)" ,
            "smt total (avg. time)(s)", "automata total (avg. time)(s)"]
 
-latex_headers = ["", "(\\#Branch, \\#LocalVar)" , "(\\#Event, \\#Lit)" , "\\#Query" , "avg. \\#Mt", "avg. size$_{A}$" ,
-                 "(time$_{\\text{trans}}$, time$_{A}$) (s)"]
+latex_headers = ["", "\\#Branch", "\\#LVar" , "\\#Event", "\\#Lit", "\\#Query" , "avg. \\#Mt", "avg. size$_{A}$" ,
+                 "time$_{\\text{trans}}$ (s) ", "time$_{A}$ (s)"]
 
 def show_source(source, name):
     tab = {"Protocols": "⬦", "Algebraic Effects": "*",  "Datatypes": "◯", "leonidas": "★", "stlc": ""}
@@ -48,7 +48,7 @@ def show_latex_tab(data):
  {}\\\\
 \\midrule""".format(header_str))
     for name, stat in data.items():
-        line = "{} & $({}, {})$ & ({}, {}) & ${}$ & ${}$ & ${}$ & (${}$, ${}$) \\\\".format(
+        line = "{} & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ \\\\".format(
             latex_name(name),
             # show_is_rec_latex(stat["is_rec"]),
             stat["code_branchs"],
@@ -58,11 +58,11 @@ def show_latex_tab(data):
             # stat["code_effects"],
             # stat["num_pty"],
             stat["num_am"],
-            # stat["avg_num_candicate_minterm"],
-            stat["max_num_candicate_minterm"],
+            stat["avg_num_candicate_minterm"],
+            # stat["max_num_candicate_minterm"],
             # stat["max_inclusion_alphabet"],
-            stat["max_inclusion_automaton_size"],
-            # stat["avg_inclusion_automaton_size"],
+            stat["avg_inclusion_automaton_size"],
+            # stat["max_inclusion_automaton_size"],
             stat["time_filter"],
             stat["time_am_without_filter"]
         )
