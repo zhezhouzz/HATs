@@ -31,7 +31,7 @@ Inductive step : list evop -> tm -> list evop -> tm -> Prop :=
 | ST_LetAppFix: forall α T_f (v_x: value) Tx (e1: tm) e,
     body (vlam T_f e1) -> lc v_x -> body e ->
     α ⊧ tletapp (vfix T_f (vlam Tx e1)) v_x e ↪{ [] }
-            tletapp ((vlam T_f e1) ^v^ v_x) (vfix T_f (vlam Tx e1)) e
+            tletapp ((vlam T_f e1) ^v^ (vfix T_f (vlam Tx e1))) v_x e
 | ST_Matchb_true: forall α e1 e2,
     lc e1 -> lc e2 ->
     α ⊧ (tmatchb true e1 e2) ↪{ [] } e1
@@ -56,7 +56,7 @@ Proof.
     rewrite body_vlam_eq; eauto.
   - rewrite letapp_lc_body; split; auto.
     + eapply open_lc_value; eauto.
-    + split; auto. rewrite body_vlam_eq in H. rewrite lc_fix_iff_body; eauto.
+      rewrite body_vlam_eq in H. rewrite lc_fix_iff_body; eauto.
 Qed.
 
 Lemma step_regular1: forall α β e1 e2, α ⊧ e1 ↪{ β } e2 -> lc e1.
