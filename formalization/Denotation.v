@@ -42,7 +42,7 @@ Fixpoint langA (a: am) (α: list evop) {struct a} : Prop :=
     | aevent op ϕ =>
         exists (c1 c: constant),
           α = [ev{op ~ c1 := c}] /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\
-          denote_qualifier (ϕ ^q^ c1 ^q^ c)
+          denote_qualifier ({0 ~q> c} ({1 ~q> c1} ϕ))
     | aconcat a1 a2 =>
         exists α1 α2, α = α1 ++ α2 ∧ langA a1 α1 /\ langA a2 α2
     | aunion a1 a2 => langA a1 α ∨ langA a2 α
