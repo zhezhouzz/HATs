@@ -124,8 +124,9 @@ Lemma empty_basic_typing_nat_value_exists: forall (v: value), ∅ ⊢t v ⋮v TN
 Admitted.
 
 Lemma empty_basic_typing_base_const_exists: forall (v: value) (B: base_ty), ∅ ⊢t v ⋮v B -> (exists (c: constant), v = c).
-Admitted.
-
+Proof.
+  inversion 1; subst. eauto. simplify_map_eq.
+Qed.
 
 Lemma empty_basic_typing_arrow_value_lam_exists:
   forall (v: value) T1 T2, ∅ ⊢t v ⋮v T1 ⤍ T2 ->

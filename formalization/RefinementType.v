@@ -237,7 +237,7 @@ Inductive lc_am : am -> Prop :=
 | lc_aany : lc_am aany
 | lc_aevent: forall op ϕ (L : aset),
     (* This is quite annoying. *)
-    (forall (x : atom), x ∉ L -> forall (y : atom), y ∉ L -> lc_qualifier (ϕ ^q^ x ^q^ y)) ->
+    (forall (x : atom), x ∉ L -> forall (y : atom), y ∉ L -> lc_qualifier ({1 ~q> x} ({0 ~q> y} ϕ))) ->
     lc_am (aevent op ϕ)
 | lc_aconcat : forall a b, lc_am a -> lc_am b -> lc_am (aconcat a b)
 | lc_aunion : forall a b, lc_am a -> lc_am b -> lc_am (aunion a b)
@@ -947,4 +947,95 @@ Proof.
   specialize (subst_open_pty ρ x x w k) as J.
   simpl in J. rewrite decide_True in J; auto.
   rewrite J; auto. rewrite subst_fresh_pty; auto.
+Qed.
+
+Lemma lc_subst_qualifier:
+  forall x (u: value) (ϕ: qualifier), lc_qualifier ({x := u}q ϕ) -> lc u -> lc_qualifier ϕ.
+Proof.
+  intros.
+  sinvert H.
+  destruct ϕ. simpl in *. simplify_eq.
+  econstructor.
+  srewrite Vector.to_list_Forall.
+  srewrite Vector.to_list_map.
+  srewrite Forall_map.
+  eapply Forall_impl; eauto.
+  simpl. eauto using lc_subst_value.
+Qed.
+
+Lemma lc_subst_am:
+  forall x (u: value) (a: am), lc_am ({x := u}a a) -> lc u -> lc_am a.
+Proof.
+  intros.
+  remember (({x:=u}a) a).
+  revert dependent a.
+  induction H; intros;
+      match goal with
+      | H : _ = {_:=_}a ?a |- _ => destruct a; simpl in *; simplify_eq
+      end; eauto using lc_am.
+  econstructor.
+  auto_exists_L_intros. specialize_with x0. specialize_with y.
+  rewrite <- !subst_open_qualifier_atom in H by (eauto; my_set_solver).
+  eauto using lc_subst_qualifier.
+Qed.
+
+Lemma lc_subst_pty: forall x (u: value) (ρ: pty), lc_pty ({x := u}p ρ) -> lc u -> lc_pty ρ.
+Proof.
+  intros.
+  remember (({x:=u}p) ρ).
+  revert dependent ρ.
+  induction H; intros.
+  - destruct ρ; simpl in *; simplify_eq.
+    econstructor.
+    instantiate_atom_listctx.
+    rewrite <- subst_open_qualifier_atom in * by (eauto; my_set_solver).
+    eauto using lc_subst_qualifier.
+  - destruct ρ0; simpl in *; simplify_eq.
+    econstructor; eauto.
+    instantiate_atom_listctx.
+    rewrite <- subst_open_am_atom in * by (eauto; my_set_solver).
+    eauto using lc_subst_am.
+    intros. repeat specialize_with x0.
+    eapply postam_in_subst in H6. eapply H2 in H6.
+    rewrite <- subst_open_am_atom in * by (eauto; my_set_solver).
+    eauto using lc_subst_am.
+    intros. repeat specialize_with x0.
+    eapply H4. eauto using postam_in_subst.
+    rewrite <- subst_open_pty_atom in * by (eauto; my_set_solver).
+    eauto.
+Qed.
+
+Lemma open_rec_lc_qualifier: forall (v: value) (ϕ: qualifier) (k: nat),
+    lc_qualifier ϕ -> {k ~q> v} ϕ = ϕ.
+Proof.
+  destruct 1. simpl. f_equal.
+  rewrite <- Vector.map_id.
+  apply Vector.map_ext_in.
+  rewrite Vector.Forall_forall in H.
+  eauto using open_rec_lc_value.
+Qed.
+
+Lemma subst_intro_qualifier: forall (ϕ: qualifier) (x:atom) (w: value) (k: nat),
+    x # ϕ ->
+    lc w -> {x := w}q ({k ~q> x} ϕ) = ({k ~q> w} ϕ).
+Proof.
+  intros.
+  specialize (subst_open_qualifier ϕ x x w k) as J.
+  simpl in J. rewrite decide_True in J; auto.
+  rewrite J; auto. rewrite subst_fresh_qualifier; auto.
+Qed.
+
+Lemma open_lc_qualifier: forall (u: value) (ϕ: qualifier),
+    (* don't body defining body yet. *)
+    (exists L : aset, forall x : atom, x ∉ L -> lc_qualifier (ϕ ^q^ x)) ->
+    lc u ->
+    lc_qualifier ({0 ~q> u} ϕ).
+Proof.
+  intros. destruct H.
+  let acc := collect_stales tt in pose acc.
+  pose (Atom.fv_of_set a).
+  assert (a0 ∉ a). apply Atom.fv_of_set_fresh.
+  erewrite <- subst_intro_qualifier; auto. instantiate (1:= a0).
+  apply subst_lc_qualifier; auto. apply H.
+  my_set_solver. my_set_solver.
 Qed.

@@ -973,4 +973,44 @@ Proof.
   case_decide; subst. my_set_solver. eauto.
 Qed.
 
+Lemma lc_subst_tm: forall x (u: value) (t: tm), lc ({x := u}t t) -> lc u -> lc t.
+Proof.
+  intros.
+  remember ({x:=u}t t).
+  revert dependent t.
+  induction H; intros;
+    repeat
+      match goal with
+      | H : _ = {_:=_}t ?t |- _ => destruct t; simpl in *; simplify_eq
+      | H : _ = {_:=_}v ?v |- _ => destruct v; simpl in *; simplify_eq
+      end; eauto using lc.
+
+  all:
+  econstructor; eauto;
+  let x := fresh "x" in
+  let acc := collect_stales tt in instantiate (1 := acc); intros x **; simpl;
+  repeat specialize_with x;
+  rewrite <- subst_open_var_tm in * by (eauto; my_set_solver);
+  eauto.
+Qed.
+
+Lemma lc_subst_value: forall x (u: value) (v: value), lc ({x := u}v v) -> lc u -> lc v.
+Proof.
+  intros.
+  sinvert H;
+    repeat
+      match goal with
+      | H : _ = {_:=_}t ?t |- _ => destruct t; simpl in *; simplify_eq
+      | H : _ = {_:=_}v ?v |- _ => destruct v; simpl in *; simplify_eq
+      end; eauto using lc.
+  all:
+  econstructor; eauto;
+  let x := fresh "x" in
+  let acc := collect_stales tt in instantiate (1 := acc); intros x **; simpl;
+  repeat specialize_with x;
+  rewrite <- subst_open_var_tm in * by (eauto; my_set_solver);
+  eauto using lc_subst_tm.
+Qed.
+
+
 Global Hint Resolve lc_fresh_var_implies_body: core.

@@ -120,7 +120,9 @@ Qed.
   (* forall x y1 y2 : tm, R x y1 -> R x y2 -> y1 = y2. *)
 
 Lemma multi_step_regular: forall α β e1 e2, α ⊧ e1 ↪*{ β } e2 -> lc e1 /\ lc e2.
-Admitted.
+Proof.
+  induction 1; intuition eauto.
+Qed.
 
 Lemma multi_step_regular1: forall α β e1 e2, α ⊧ e1 ↪*{ β } e2 -> lc e1.
 Proof.
