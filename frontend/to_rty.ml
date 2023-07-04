@@ -151,6 +151,45 @@ and pty_of_ocamlexpr_aux expr =
   in
   aux expr
 
+and desugar_sevent expr =
+  let force_typed { x; ty } =
+    match ty with None -> Nt.{ x; ty = Nt.Ty_int } | Some ty -> Nt.{ x; ty }
+  in
+  match expr.pexp_desc with
+  | Pexp_tuple es -> (
+      match List.last_destruct_opt es with
+      | None -> _failatwith __FILE__ __LINE__ "wrong refinement type"
+      | Some (prefix, e) ->
+          let pre_args = List.map To_lit.typed_lit_of_ocamlexpr prefix in
+          let pre_args = List.map force_typed pre_args in
+          let pre_names = vs_names @@ List.length pre_args in
+          let pre_names =
+            List.map (fun (x, y) -> Nt.{ x; ty = y.ty })
+            @@ _safe_combine __FILE__ __LINE__ pre_names pre_args
+          in
+          let pre_vs =
+            List.map (fun x -> Nt.{ x = AVar x.x; ty = x.ty }) pre_names
+          in
+          (* let pre_vs_opt = *)
+          (*   List.map (fun x -> { x = AVar x.x; ty = Some x.Nt.ty }) pre_names *)
+          (* in *)
+          (* let pre_args_opt = *)
+          (*   List.map (fun x -> { x = x.x; ty = Some x.Nt.ty }) pre_args *)
+          (* in *)
+          let pre_phi =
+            List.map (fun (x, y) ->
+                let ty = x.Nt.ty in
+                let arr_ty = Nt.(Ty_arrow (ty, Ty_arrow (ty, Ty_bool))) in
+                let op_eq = { x = Op.BuiltinOp "=="; ty = Some arr_ty } in
+                let x = { x = x.Nt.x; ty = Some ty } in
+                let y = { x = y.Nt.x; ty = Some ty } in
+                Lit (AAppOp (op_eq, [ x; y ])))
+            @@ _safe_combine __FILE__ __LINE__ pre_vs pre_args
+          in
+          let vs, phi = vars_phi_of_ocamlexpr e in
+          (pre_names @ vs, And (pre_phi @ [ phi ])))
+  | _ -> vars_phi_of_ocamlexpr expr
+
 and sevent_of_ocamlexpr_aux expr =
   match expr.pexp_desc with
   | Pexp_construct (op, Some e) ->
@@ -159,7 +198,7 @@ and sevent_of_ocamlexpr_aux expr =
         GuardEvent (To_qualifier.qualifier_of_ocamlexpr e)
       else if String.equal op ret_name then RetEvent (pty_of_ocamlexpr_aux e)
       else
-        let vs, phi = vars_phi_of_ocamlexpr e in
+        let vs, phi = desugar_sevent e in
         let vs, v =
           match List.last_destruct_opt vs with
           | None -> _failatwith __FILE__ __LINE__ "die"

@@ -11,7 +11,8 @@
         "CGI",
         "Authority",
         "Firewall",
-        "Newsletter"
+        "Newsletter",
+        "Graph"
       ]
     }
   ],
