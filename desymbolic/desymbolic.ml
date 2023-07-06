@@ -40,7 +40,28 @@ let display_trace rctx ctx mt_list =
       ()
   | None -> Printf.printf "Empty trace ϵ\n"
 
+let stat_filter_time_record = ref []
+let stat_num_candicate_minterm_record = ref []
+let candicate_minterm_counter = ref 0
+
+let stat_init () =
+  stat_filter_time_record := [];
+  stat_num_candicate_minterm_record := [];
+  candicate_minterm_counter := 0
+
+let stat_counter_reset () = candicate_minterm_counter := 0
+
+let stat_update runtime =
+  stat_filter_time_record := !stat_filter_time_record @ [ runtime ];
+  stat_num_candicate_minterm_record :=
+    !stat_num_candicate_minterm_record @ [ !candicate_minterm_counter ];
+  candicate_minterm_counter := 0
+
+let stat_get_cur () =
+  (!stat_num_candicate_minterm_record, !stat_filter_time_record)
+
 let model_verify_bool sub_pty_bool (global_m, ret_m, local_m) =
+  let () = candicate_minterm_counter := !candicate_minterm_counter + 1 in
   let bindings =
     match local_m with
     | EmptyTab | LitTab _ ->
@@ -195,6 +216,7 @@ let desymbolic ctx mts regex =
     | EpsilonA -> Epsilon
     | EventA se -> desymbolic_sevent ctx mts se
     | LorA (t1, t2) -> Union [ aux t1; aux t2 ]
+    | SetMinusA (t1, t2) -> Diff (aux t1, aux t2)
     | LandA (t1, t2) -> Intersect [ aux t1; aux t2 ]
     | SeqA (t1, t2) -> Concat [ aux t1; aux t2 ]
     | StarA t -> Star (aux t)
@@ -206,3 +228,25 @@ let desymbolic ctx mts regex =
 let get_max_lits () =
   let n = !Head.stat_max_lits in
   if n == 0 then 1 else n
+
+let filter_sat_mts_ ctx sub_pty_bool_with_binding mts =
+  NRegex.mts_filter_map
+    (fun mt ->
+      let () =
+        Env.show_debug_queries @@ fun _ ->
+        Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt)
+      in
+      let b = minterm_verify_bool sub_pty_bool_with_binding ctx mt in
+      if b then Some mt.NRegex.local_embedding else None)
+    mts
+
+let filter_sat_mts ctx sub_pty_bool_with_binding mts =
+  let _ = stat_counter_reset () in
+  let runtime, mts =
+    Sugar.clock (fun () -> filter_sat_mts_ ctx sub_pty_bool_with_binding mts)
+  in
+  let () = stat_update runtime in
+  let () =
+    Env.show_debug_stat @@ fun _ -> Printf.printf "filter_sat_mts: %f\n" runtime
+  in
+  mts

@@ -7,7 +7,17 @@ let common_sub_ptys = Fmerge.common_sub_ptys
 (* open Sugar *)
 
 (* let purify _ _ _ _ = _failatwith __FILE__ __LINE__ "die" *)
-let branchize_regex regex = Branching.branchize_regex regex
-let simp regex = Simp.simp regex
-(* let decide_ret_pty = Decide_ret.decide_ret *)
-(* let concat = Concat.concat *)
+let branchize_regex regex =
+  let runtime, res = Sugar.clock (fun () -> Branching.branchize_regex regex) in
+  let () =
+    Env.show_debug_debug @@ fun _ ->
+    Pp.printf "@{<bold>branchize_regex: @}%f\n" runtime
+  in
+  res
+
+let simp regex =
+  let runtime, res = Sugar.clock (fun () -> Simp.simp regex) in
+  let () =
+    Env.show_debug_debug @@ fun _ -> Pp.printf "@{<bold>simp: @}%f\n" runtime
+  in
+  res

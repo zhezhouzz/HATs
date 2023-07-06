@@ -9,6 +9,7 @@ module T = struct
     | Minterm of mt
     | Union of reg list
     | Intersect of reg list
+    | Diff of reg * reg
     | Concat of reg list
     | Star of reg
     | Complement of reg
@@ -25,6 +26,7 @@ module T = struct
       | Any -> "."
       | Minterm mt -> mt_to_string mt
       | Union rs -> spf "∪(%s)" @@ List.split_by_comma aux rs
+      | Diff (t1, t2) -> spf "(%s \\ %s)" (aux t1) (aux t2)
       | Intersect rs -> spf "⊓(%s)" @@ List.split_by_comma aux rs
       | Concat rs -> List.split_by ";" aux rs
       | Star r -> spf "(%s)*" @@ aux r
@@ -36,6 +38,7 @@ module T = struct
     let rec aux reg =
       match reg with
       | Epsilon | Empt | Any | Minterm _ -> reg
+      | Diff (t1, t2) -> Diff (aux t1, aux t2)
       | Union rs -> (
           let rs = List.map aux rs in
           let rs =

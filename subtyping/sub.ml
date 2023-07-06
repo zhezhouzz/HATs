@@ -78,36 +78,60 @@ and sub_regex_bool pctx (regex1, regex2) =
 
 and sub_regex_bool_aux pctx (regex1, regex2) =
   let () =
-    Env.show_debug_queries @@ fun _ ->
+    Env.show_debug_info @@ fun _ ->
     Printf.printf "sub_regex_bool_aux R: %s\n" (PTypectx.layout_typed_l pctx)
   in
-  let ctx, mts = Desymbolic.ctx_init (LorA (regex1, regex2)) in
+  let runtime, (ctx, mts) =
+    Sugar.clock (fun () -> Desymbolic.ctx_init (LorA (regex1, regex2)))
+  in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Printf.printf "Desymbolic.ctx_init: %f\n" runtime
+  in
+  (* let filter_sat_mts mts = *)
+  (*   NRegex.mts_filter_map *)
+  (*     (fun mt -> *)
+  (*       let () = *)
+  (*         Env.show_debug_queries @@ fun _ -> *)
+  (*         Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt) *)
+  (*       in *)
+  (*       let b = *)
+  (*         Desymbolic.minterm_verify_bool *)
+  (*           (fun bindings (tau1, tau2) -> *)
+  (*             sub_pty_bool (PTypectx.new_to_rights pctx bindings) (tau1, tau2)) *)
+  (*           ctx mt *)
+  (*       in *)
+  (*       if b then Some mt.NRegex.local_embedding else None) *)
+  (*     mts *)
+  (* in *)
   let mts =
-    NRegex.mts_filter_map
-      (fun mt ->
-        let () =
-          Env.show_debug_queries @@ fun _ ->
-          Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt)
-        in
-        let b =
-          Desymbolic.minterm_verify_bool
-            (fun bindings (tau1, tau2) ->
-              sub_pty_bool (PTypectx.new_to_rights pctx bindings) (tau1, tau2))
-            ctx mt
-        in
-        if b then Some mt.NRegex.local_embedding else None)
+    Desymbolic.filter_sat_mts ctx
+      (fun bindings (tau1, tau2) ->
+        sub_pty_bool (PTypectx.new_to_rights pctx bindings) (tau1, tau2))
       mts
   in
   let () = Env.show_debug_queries @@ fun _ -> NRegex.pprint_mts mts in
-  let regex1 = Desymbolic.desymbolic ctx mts regex1 in
-  let regex2 = Desymbolic.desymbolic ctx mts regex2 in
+  let runtime, regex1 =
+    Sugar.clock (fun () -> Desymbolic.desymbolic ctx mts regex1)
+  in
   let () =
-    Env.show_debug_queries @@ fun _ ->
+    Env.show_debug_stat @@ fun _ ->
+    Printf.printf "Desymbolic.desymbolic r1: %f\n" runtime
+  in
+  let runtime, regex2 =
+    Sugar.clock (fun () -> Desymbolic.desymbolic ctx mts regex2)
+  in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Printf.printf "Desymbolic.desymbolic r2: %f\n" runtime
+  in
+  let () =
+    Env.show_debug_info @@ fun _ ->
     Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n"
       (NRegex.reg_to_string regex1)
   in
   let () =
-    Env.show_debug_queries @@ fun _ ->
+    Env.show_debug_info @@ fun _ ->
     Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
       (NRegex.reg_to_string regex2)
   in

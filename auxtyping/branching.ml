@@ -11,6 +11,7 @@ let deseq regex =
     | EpsilonA -> [ res ]
     | StarA _ | EventA _ -> [ res @ [ regex ] ]
     | LorA (t1, t2) -> aux res t1 @ aux res t2
+    | SetMinusA (t1, t2) -> aux res t1 @ aux res t2
     | ComplementA _ -> _failatwith __FILE__ __LINE__ "die"
     | LandA (_, _) -> _failatwith __FILE__ __LINE__ "die"
     | SeqA (t1, t2) -> aux (res @ [ t1 ]) t2
@@ -33,6 +34,7 @@ let branchize_regex regex =
     | ComplementA _ -> _failatwith __FILE__ __LINE__ "die"
     | EventA se -> last_step preA se
     | LorA (t1, t2) -> aux preA t1 @ aux preA t2
+    | SetMinusA _ -> _failatwith __FILE__ __LINE__ "die"
     | LandA (t1, t2) ->
         let l1 = aux preA t1 in
         let l2 = aux preA t2 in

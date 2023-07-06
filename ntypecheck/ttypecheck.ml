@@ -79,7 +79,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
         check ctx x.x ty
   and check (ctx : NTypectx.ctx) (x : term) (ty : Nt.t) : term typed =
     let () =
-      Env.show_debug_typing @@ fun _ ->
+      Env.show_debug_preprocess @@ fun _ ->
       Ctx.pretty_print_judge ctx (layout_term x #: None, ty)
     in
     match (x, ty) with
@@ -326,7 +326,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           (Match (e, cases), ty)
     in
     let () =
-      Env.show_debug_typing @@ fun _ ->
+      Env.show_debug_preprocess @@ fun _ ->
       Ctx.pretty_print_infer ctx (layout_term x #: None, ty)
     in
     (x #: (Some ty), ty)

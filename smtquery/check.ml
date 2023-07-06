@@ -44,12 +44,16 @@ let get_unknown_fv ctx m unknown_fv =
 
 let stat_smt_query_time_record = ref []
 let stat_inclusion_query_time_record = ref []
+let stat_inclusion_alphabet_record = ref []
+let stat_inclusion_automaton_size_record = ref []
 let stat_max_inclusion_alphabet = ref 0
 let stat_max_inclusion_automaton_size = ref 0
 
 let stat_init () =
   stat_smt_query_time_record := [];
   stat_inclusion_query_time_record := [];
+  stat_inclusion_alphabet_record := [];
+  stat_inclusion_automaton_size_record := [];
   stat_max_inclusion_alphabet := 0;
   stat_max_inclusion_automaton_size := 0
 
@@ -57,9 +61,13 @@ let stat_get_cur () =
   ( !stat_smt_query_time_record,
     !stat_inclusion_query_time_record,
     !stat_max_inclusion_alphabet,
-    !stat_max_inclusion_automaton_size )
+    !stat_max_inclusion_automaton_size,
+    !stat_inclusion_alphabet_record,
+    !stat_inclusion_automaton_size_record )
 
-let record_max original n = if n > !original then original := n else ()
+let record_max record original n =
+  record := !record @ [ n ];
+  if n > !original then original := n else ()
 
 let smt_solve ctx assertions =
   (* let _ = printf "check\n" in *)
@@ -158,7 +166,7 @@ let mk_q_version2 ctx r1 r2 =
   (*     (Expr.to_string @@ Regencoding.to_z3 ctx encoding r2) *)
   (* in *)
   let () =
-    Env.show_debug_queries @@ fun _ ->
+    Env.show_debug_info @@ fun _ ->
     Printf.printf "Query:\n%s\n" (Expr.to_string q)
   in
   (encoding, encoded_size, [ q ])
@@ -171,11 +179,15 @@ let layout_counterexample mt_list =
 let inclusion_query ctx r1 r2 =
   (* let open Sugar in *)
   let encoding, encoded_size, qs = mk_q_version2 ctx r1 r2 in
+  let num_inclusion_alphabet = Regencoding.RegZ3.get_cardinal encoding in
   let _ =
-    record_max stat_max_inclusion_alphabet
-    @@ Z3reg.RegZ3BackendV0.get_cardinal encoding
+    record_max stat_inclusion_alphabet_record stat_max_inclusion_alphabet
+      num_inclusion_alphabet
   in
-  let _ = record_max stat_max_inclusion_automaton_size @@ encoded_size in
+  let _ =
+    record_max stat_inclusion_automaton_size_record
+      stat_max_inclusion_automaton_size encoded_size
+  in
   (* let () = *)
   (*   if 1 == !debug_counter then failwith "end" *)
   (*   else debug_counter := !debug_counter + 1 *)
@@ -201,7 +213,7 @@ let inclusion_query ctx r1 r2 =
       (*   if 1 == !debug_counter then failwith "end" *)
       (*   else debug_counter := !debug_counter + 1 *)
       (* in *)
-      ( Env.show_debug_queries @@ fun _ ->
+      ( Env.show_debug_info @@ fun _ ->
         Printf.printf "model:\n%s\n" (Z3.Model.to_string model) );
       let str =
         match Z3aux.get_string_by_name model sequence_name with

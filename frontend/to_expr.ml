@@ -31,6 +31,33 @@ let typed_to_ocamlexpr_desc f expr =
   | Some ty ->
       Pexp_constraint (desc_to_ocamlexpr @@ f expr.x, Type.t_to_core_type ty)
 
+let expr_to_untyped_expr expr =
+  let rec aux expr =
+    let res =
+      match expr.x with
+      | Err -> Err
+      | Tu es -> Tu (List.map aux es)
+      | Var var -> Var var
+      | Const c -> Const c
+      | Let { if_rec; lhs; rhs; letbody } ->
+          Let { if_rec; lhs; rhs = aux rhs; letbody = aux letbody }
+      | AppOp (op, args) -> AppOp (op, List.map aux args)
+      | App (func, args) -> App (aux func, List.map aux args)
+      | Ite (e1, e2, e3) -> Ite (aux e1, aux e2, aux e3)
+      | Match (case_target, cs) ->
+          let cs =
+            List.map
+              (fun { constructor; args; exp } ->
+                { constructor; args; exp = aux exp })
+              cs
+          in
+          Match (aux case_target, cs)
+      | Lam { lamarg; lambody } -> Lam { lamarg; lambody = aux lambody }
+    in
+    res #: None
+  in
+  aux expr
+
 let rec expr_to_ocamlexpr expr =
   desc_to_ocamlexpr @@ typed_expr_to_ocamlexpr_desc expr
 
@@ -228,6 +255,7 @@ let typed_id_of_ocamlexpr expr =
 
 let id_of_ocamlexpr expr = (typed_id_of_ocamlexpr expr).x
 let layout x = Pprintast.string_of_expression @@ expr_to_ocamlexpr x
+let layout_omit_type x = layout @@ expr_to_untyped_expr x
 
 (* let prim_dt = [ "[]"; "::" ] *)
 (* let is_prim_dt x = List.exists (String.equal x) prim_dt *)

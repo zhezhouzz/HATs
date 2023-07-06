@@ -112,10 +112,10 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
           let match_cases =
             List.map
               (fun T.{ constructor; args; exp } ->
-                { constructor; args; exp = normalize_term exp })
+                { constructor; args; exp = normalize_get_comp k' exp })
               match_cases
           in
-          k (CMatch { matched; match_cases }))
+          (CMatch { matched; match_cases }) #: expr.ty)
         matched
 
 module S = Language.Structure

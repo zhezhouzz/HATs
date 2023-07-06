@@ -67,8 +67,17 @@ let rec value_type_infer typectx (value : value typed) : pty option =
         end_info __LINE__ "Const" (Some rty)
     | VVar x ->
         let () = before_info __LINE__ "Var" in
-        let* rty = PCtx.get_ty_opt typectx.rctx x in
-        end_info __LINE__ "Var" (Some rty)
+        let* pty = PCtx.get_ty_opt typectx.rctx x in
+        let res =
+          match pty with
+          | ArrPty _ -> pty
+          | BasePty _ -> (
+              match erase_pty pty with
+              | Nt.Ty_unit -> pty
+              | _ -> mk_pty_var_eq_var Nt.(x #: (erase_pty pty)))
+          | TuplePty _ -> _failatwith __FILE__ __LINE__ "unimp"
+        in
+        end_info __LINE__ "Var" (Some res)
     | VTu _ -> _failatwith __FILE__ __LINE__ "unimp"
     | VLam _ | VFix _ ->
         _failatwith __FILE__ __LINE__
@@ -260,11 +269,16 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
   in
   let comp_reg_check_letperform mctx (lhs, opname, appopargs, letbody) rty =
     let () = before_info __LINE__ "LetPerform" in
+    (* let () = *)
+    (*   Env.show_debug_typing @@ fun _ -> *)
+    (*   Printf.printf "Top Operation Ptype Context:\n%s\n\n" *)
+    (*   @@ POpTypectx.pretty_layout mctx.typectx.opctx *)
+    (* in *)
     let f_rtys = POpCtx.get_ty mctx.typectx.opctx (Op.EffOp opname) in
     let get_b f_rty =
       let* rhs_rty = multi_app_type_infer_aux mctx.typectx f_rty appopargs in
       let previousA = smart_seq (mctx.preA, mctx.curA) in
-      let* rhs_reg =
+      let get_rhs_reg () =
         match rhs_rty with
         | Pty
             (ArrPty
@@ -286,8 +300,16 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
               Env.show_debug_debug @@ fun _ ->
               Pp.printf "@{<bold>prereg: @}%s\n" (layout_regex prereg)
             in
-            Infer_ghost.infer_prop_func mctx.typectx.rctx previousA
-              (prop_func, prereg) postreg
+            let runtime, res =
+              Sugar.clock (fun () ->
+                  Infer_ghost.infer_prop_func mctx.typectx.rctx previousA
+                    (prop_func, prereg) postreg)
+            in
+            let () =
+              Env.show_debug_debug @@ fun _ ->
+              Pp.printf "@{<bold>Infer_ghost.infer_prop_func: @}%f\n" runtime
+            in
+            res
         | Regty { prereg; postreg; _ } ->
             if
               subtyping_pre_regex_bool __FILE__ __LINE__ mctx.typectx
@@ -296,6 +318,13 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
             else None
         | _ -> _failatwith __FILE__ __LINE__ "die"
       in
+      let runtime, rhs_reg = Sugar.clock get_rhs_reg in
+      let () =
+        Env.show_debug_debug @@ fun _ ->
+        Pp.printf "@{<bold>comp_reg_check_letperform::get_rhs_reg: @}%f\n"
+          runtime
+      in
+      let* rhs_reg = rhs_reg in
       (* let rhs_cty = pty_to_cty @@ regex_to_pty rhs_reg in *)
       let lits = List.map (_value_to_lit __FILE__ __LINE__) appopargs in
       let rhs_reg =
@@ -365,20 +394,46 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
     let { v; phi } = rty_force_cty retrty in
     let matched_lit = _value_to_lit __FILE__ __LINE__ matched in
     let phi = P.subst_prop (v.x, matched_lit.x) phi in
-    let a = (Rename.unique "a") #:: (mk_unit_pty_from_prop phi) in
-    let mctx' = mctx_new_to_rights mctx (xs @ [ a ]) in
-    comp_reg_check mctx' exp rty
+    let a_pty = mk_unit_pty_from_prop phi in
+    if subtyping_pty_is_bot_bool __FILE__ __LINE__ mctx.typectx a_pty then
+      let () =
+        Env.show_debug_typing @@ fun _ ->
+        Pp.printf "@{<bold>@{<orange>matched case (%s) is unreachable@}@}\n"
+          constructor.x
+      in
+      true
+    else
+      let a = (Rename.unique "a") #:: a_pty in
+      let mctx' = mctx_new_to_rights mctx (xs @ [ a ]) in
+      let b = comp_reg_check mctx' exp rty in
+      let () =
+        Env.show_debug_typing @@ fun _ ->
+        Pp.printf "@{<bold>@{<orange>matched case (%s): %b@}@}\n" constructor.x
+          b
+      in
+      b
   in
   match comp.x with
   | CVal v ->
       let rhs_regexs = Auxtyping.branchize_regex rty in
-      List.for_all
+      List.exists
         (fun (r, pty) ->
           subtyping_regex_bool __FILE__ __LINE__ mctx.typectx (mctx.curA, r)
           && value_type_check mctx.typectx v #: comp.ty pty)
         rhs_regexs
   | CLetE { lhs; rhs; letbody } -> (
       match rhs.x with
+      | CVal v ->
+          let () = before_info __LINE__ "LetValue" in
+          let pty = value_type_infer mctx.typectx v #: comp.ty in
+          let b =
+            match pty with
+            | None -> false
+            | Some rhs_pty ->
+                let mctx' = mctx_new_to_right mctx lhs.x #:: rhs_pty in
+                comp_reg_check mctx' letbody rty
+          in
+          end_info __LINE__ "LetValue" b
       | CApp { appf; apparg } ->
           comp_reg_check_letapp mctx (lhs, appf, apparg, letbody) rty
       | CAppOp { op; appopargs } -> (
@@ -387,10 +442,20 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
               comp_reg_check_letappop mctx (lhs, op, appopargs, letbody) rty
           | Op.DtOp _ -> _failatwith __FILE__ __LINE__ "die"
           | Op.EffOp opname ->
-              comp_reg_check_letperform mctx
-                (lhs, opname, appopargs, letbody)
-                rty)
-      | _ -> _failatwith __FILE__ __LINE__ "die")
+              let runtime, res =
+                Sugar.clock (fun () ->
+                    comp_reg_check_letperform mctx
+                      (lhs, opname, appopargs, letbody)
+                      rty)
+              in
+              let () =
+                Env.show_debug_debug @@ fun _ ->
+                Pp.printf "@{<bold>comp_reg_check_letperform: @}%f\n" runtime
+              in
+              res)
+      | _ ->
+          let () = Printf.printf "ERR:\n%s\n" (layout_comp rhs) in
+          _failatwith __FILE__ __LINE__ "die")
   | CMatch { matched; match_cases } ->
       let () = before_info __LINE__ "Match" in
       let b =

@@ -58,33 +58,71 @@ let print_typing_rule file line funcname rule =
   Env.show_debug_typing (fun () ->
       Pp.printf "@{<bold>%s::%s@}(%s:%i)\n" funcname rule file line)
 
-let subtyping_rty_bool file line typectx (t1, t2) =
-  let () = Env.show_debug_typing (fun () -> print_subtyping typectx (t1, t2)) in
-  if Subtyping.sub_rty_bool typectx.rctx (t1, t2) then true
-  else (
-    Env.show_debug_typing (fun () ->
-        Pp.printf "@{<orange> subtyping failed at [%s::%i]@}\n" file line);
-    false)
+let stat_pty_time_record = ref []
+let stat_am_time_record = ref []
+
+let stat_init () =
+  stat_pty_time_record := [];
+  stat_am_time_record := []
+
+let stat_get_cur () = (!stat_pty_time_record, !stat_am_time_record)
 
 let subtyping_regex_bool file line typectx (t1, t2) =
   let () =
     Env.show_debug_typing (fun () ->
         print_subtyping_str typectx (layout_regex t1, layout_regex t2))
   in
-  if Subtyping.sub_regex_bool typectx.rctx (t1, t2) then true
+  let runtime, res =
+    Sugar.clock (fun () -> Subtyping.sub_regex_bool typectx.rctx (t1, t2))
+  in
+  let () = stat_am_time_record := !stat_am_time_record @ [ runtime ] in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Pp.printf "@{<bold>subtyping_regex_bool: @}%f\n" runtime
+  in
+  if res then true
   else (
     Env.show_debug_typing (fun () ->
         Pp.printf "@{<orange> subtyping failed at [%s::%i]@}\n" file line);
     false)
 
+let subtyping_pty_is_bot_bool file line typectx t1 =
+  let () =
+    Env.show_debug_typing (fun () ->
+        print_subtyping_str typectx (layout_pty t1, "bot"))
+  in
+  let runtime, res =
+    Sugar.clock (fun () -> Subtyping.is_bot_pty typectx.rctx t1)
+  in
+  let () = stat_pty_time_record := !stat_pty_time_record @ [ runtime ] in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Pp.printf "@{<bold>subtyping_pty_is_bot_bool: @}%f\n" runtime
+  in
+  if res then (
+    Env.show_debug_typing (fun () ->
+        Pp.printf "@{<orange> [%s::%i] %s is bot@}\n" file line (layout_pty t1));
+    true)
+  else false
+
+let _subtyping_pre_regex_bool gamma (t1, t2) =
+  let runtime, res =
+    Sugar.clock (fun () -> Subtyping.sub_pre_regex_bool gamma (t1, t2))
+  in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Pp.printf "@{<bold>_subtyping_pre_regex_bool: @}%f\n" runtime
+  in
+  let () = stat_am_time_record := !stat_am_time_record @ [ runtime ] in
+  res
+
 let subtyping_pre_regex_bool file line typectx (t1, t2) =
   let () =
     Env.show_debug_typing (fun () ->
-        print_subtyping_str typectx
-          ( layout_regex (SeqA (mk_regex_all, t1)),
-            layout_regex (SeqA (mk_regex_all, t2)) ))
+        print_subtyping_str typectx (layout_regex t1, layout_regex t2))
   in
-  if Subtyping.sub_pre_regex_bool typectx.rctx (t1, t2) then true
+  let res = _subtyping_pre_regex_bool typectx.rctx (t1, t2) in
+  if res then true
   else (
     Env.show_debug_typing (fun () ->
         Pp.printf "@{<orange> subtyping failed at [%s::%i]@}\n" file line);
@@ -94,19 +132,19 @@ let subtyping_pty_bool file line typectx (t1, t2) =
   let () =
     Env.show_debug_typing (fun () -> print_subtyping typectx (Pty t1, Pty t2))
   in
-  if Subtyping.sub_pty_bool typectx.rctx (t1, t2) then true
+  let runtime, res =
+    Sugar.clock (fun () -> Subtyping.sub_pty_bool typectx.rctx (t1, t2))
+  in
+  let () = stat_pty_time_record := !stat_pty_time_record @ [ runtime ] in
+  let () =
+    Env.show_debug_stat @@ fun _ ->
+    Pp.printf "@{<bold>subtyping_pty_bool: @}%f\n" runtime
+  in
+  if res then true
   else (
     Env.show_debug_typing (fun () ->
         Pp.printf "@{<orange> subtyping failed at [%s::%i]@}\n" file line);
     false)
-
-let wellformedness_rty_bool typectx tau =
-  let () = Env.show_debug_typing (fun () -> print_wellformedness typectx tau) in
-  if Subtyping.is_bot_rty typectx.rctx tau then (
-    Env.show_debug_typing (fun () ->
-        Pp.printf "@{<orange> wellformedness failed@}\n");
-    false)
-  else true
 
 let print_infer_info1 file line rulename typectx str =
   print_typing_rule file line "Infer" rulename;

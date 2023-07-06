@@ -68,3 +68,7 @@ and denormalize_match_case { constructor; args; exp } : T.match_case =
 
 let layout_comp comp = T.layout_term (denormalize_comp comp)
 let layout_value comp = T.layout_term (denormalize_value comp)
+let layout_comp_omit_type comp = T.layout_term_omit_type (denormalize_comp comp)
+
+let layout_value_omit_type comp =
+  T.layout_term_omit_type (denormalize_value comp)

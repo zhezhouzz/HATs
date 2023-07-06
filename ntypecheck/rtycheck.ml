@@ -20,6 +20,9 @@ let rec rty_check opctx ctx (rty : rty) : rty =
       Regty { nty; prereg; postreg }
 
 and pty_check opctx ctx (rty : pty) : pty =
+  (* let () = *)
+  (*   Printf.printf "rty: %s\n" @@ StructureRaw.layout_pty rty *)
+  (* in *)
   let rec aux ctx rty =
     match rty with
     | BasePty { cty } -> BasePty { cty = cty_check opctx ctx cty }
@@ -103,6 +106,9 @@ and regex_check opctx ctx retbty (regex : regex) : regex =
   | EventA se -> EventA (sevent_check opctx ctx retbty se)
   | LorA (t1, t2) ->
       LorA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
+  | SetMinusA (t1, t2) ->
+      SetMinusA
+        (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | LandA (t1, t2) ->
       LandA (regex_check opctx ctx retbty t1, regex_check opctx ctx retbty t2)
   | SeqA (t1, t2) ->

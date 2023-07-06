@@ -166,8 +166,8 @@ struct
     let aux v =
       match v.x with
       | VVar _ | VConst _ | VTu _ -> 1
-      | VLam { lambody; _ } -> 1 + stat_count_comp_vars lambody
-      | VFix { fixbody; _ } -> 2 + stat_count_comp_vars fixbody
+      | VLam { lambody; _ } -> stat_count_comp_vars lambody
+      | VFix { fixbody; _ } -> stat_count_comp_vars fixbody
     in
     aux comp
 

@@ -69,10 +69,13 @@ and pprint_regex = function
   | EpsilonA -> "ϵ"
   | EventA se -> pprint_sevent se
   | LorA (a1, a2) -> spf "(%s ‖ %s)" (pprint_regex a1) (pprint_regex a2)
+  | SetMinusA (a1, a2) -> spf "(%s \\ %s)" (pprint_regex a1) (pprint_regex a2)
   | LandA (a1, a2) -> spf "(%s && %s)" (pprint_regex a1) (pprint_regex a2)
   | SeqA (a1, a2) -> spf "%s%s" (pprint_regex a1) (pprint_regex a2)
+  | StarA AnyA -> ".*"
   | StarA a -> spf "(%s)*" (pprint_regex a)
   | AnyA -> "."
+  | ComplementA (EventA se) -> spf "%sᶜ" (pprint_regex (EventA se))
   | ComplementA a -> spf "(%s)ᶜ" (pprint_regex a)
 
 let get_denoteopt_from_attr a =
@@ -148,6 +151,45 @@ and pty_of_ocamlexpr_aux expr =
   in
   aux expr
 
+and desugar_sevent expr =
+  let force_typed { x; ty } =
+    match ty with None -> Nt.{ x; ty = Nt.Ty_int } | Some ty -> Nt.{ x; ty }
+  in
+  match expr.pexp_desc with
+  | Pexp_tuple es -> (
+      match List.last_destruct_opt es with
+      | None -> _failatwith __FILE__ __LINE__ "wrong refinement type"
+      | Some (prefix, e) ->
+          let pre_args = List.map To_lit.typed_lit_of_ocamlexpr prefix in
+          let pre_args = List.map force_typed pre_args in
+          let pre_names = vs_names @@ List.length pre_args in
+          let pre_names =
+            List.map (fun (x, y) -> Nt.{ x; ty = y.ty })
+            @@ _safe_combine __FILE__ __LINE__ pre_names pre_args
+          in
+          let pre_vs =
+            List.map (fun x -> Nt.{ x = AVar x.x; ty = x.ty }) pre_names
+          in
+          (* let pre_vs_opt = *)
+          (*   List.map (fun x -> { x = AVar x.x; ty = Some x.Nt.ty }) pre_names *)
+          (* in *)
+          (* let pre_args_opt = *)
+          (*   List.map (fun x -> { x = x.x; ty = Some x.Nt.ty }) pre_args *)
+          (* in *)
+          let pre_phi =
+            List.map (fun (x, y) ->
+                let ty = x.Nt.ty in
+                let arr_ty = Nt.(Ty_arrow (ty, Ty_arrow (ty, Ty_bool))) in
+                let op_eq = { x = Op.BuiltinOp "=="; ty = Some arr_ty } in
+                let x = { x = x.Nt.x; ty = Some ty } in
+                let y = { x = y.Nt.x; ty = Some ty } in
+                Lit (AAppOp (op_eq, [ x; y ])))
+            @@ _safe_combine __FILE__ __LINE__ pre_vs pre_args
+          in
+          let vs, phi = vars_phi_of_ocamlexpr e in
+          (pre_names @ vs, And (pre_phi @ [ phi ])))
+  | _ -> vars_phi_of_ocamlexpr expr
+
 and sevent_of_ocamlexpr_aux expr =
   match expr.pexp_desc with
   | Pexp_construct (op, Some e) ->
@@ -156,7 +198,7 @@ and sevent_of_ocamlexpr_aux expr =
         GuardEvent (To_qualifier.qualifier_of_ocamlexpr e)
       else if String.equal op ret_name then RetEvent (pty_of_ocamlexpr_aux e)
       else
-        let vs, phi = vars_phi_of_ocamlexpr e in
+        let vs, phi = desugar_sevent e in
         let vs, v =
           match List.last_destruct_opt vs with
           | None -> _failatwith __FILE__ __LINE__ "die"
@@ -192,12 +234,14 @@ and regex_of_ocamlexpr_aux expr =
         | "mu", _ ->
             _failatwith __FILE__ __LINE__
               "the recursive automata are disallowed"
-        | "lorA", [ a; b ] -> LorA (aux a, aux b)
+        | "||", [ a; b ] -> LorA (aux a, aux b)
+        | "-", [ a; b ] -> SetMinusA (aux a, aux b)
         | "landA", [ a; b ] -> LandA (aux a, aux b)
         | _, _ -> _failatwith __FILE__ __LINE__ @@ spf "unknown regular op %s" f
         )
     | Pexp_sequence (a, b) -> SeqA (aux a, aux b)
     | Pexp_construct _ -> EventA (sevent_of_ocamlexpr_aux expr)
+    | Pexp_fun _ -> EventA (RetEvent (pty_of_ocamlexpr_aux expr))
     | _ -> _failatwith __FILE__ __LINE__ "die"
   in
   aux expr

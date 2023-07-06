@@ -44,6 +44,7 @@ module StructureRaw = struct
   include StructureRaw
 
   let layout_term = To_expr.layout
+  let layout_term_omit_type = To_expr.layout_omit_type
   let layout_rty = To_rty.layout
   let layout_cty = To_rty.layout_cty
   let layout_pty = To_rty.layout_pty
@@ -137,6 +138,10 @@ module Structure = struct
   module R = Rty
 
   let layout_term x = StructureRaw.layout_term @@ besome_typed_term x
+
+  let layout_term_omit_type x =
+    StructureRaw.layout_term_omit_type @@ besome_typed_term x
+
   let layout_entry x = StructureRaw.layout_entry @@ besome_entry x
   let layout_structure x = StructureRaw.layout_structure @@ besome_structure x
 end
@@ -147,6 +152,17 @@ module POpTypectx = struct
   open Sugar
 
   type ctx = pty list poly_ctx
+
+  open Zzdatatype.Datatype
+
+  let _f = List.split_by_comma layout_pty
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
+  let pretty_layout = pretty_layout _f
 
   let filter_map_rty f code =
     List.filter_map

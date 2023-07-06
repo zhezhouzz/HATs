@@ -12,6 +12,11 @@ let simp regex =
         | EmptyA, _ -> t2
         | _, EmptyA -> t1
         | _, _ -> LorA (t1, t2))
+    | SetMinusA (t1, t2) -> (
+        match (aux t1, aux t2) with
+        | EmptyA, _ -> EmptyA
+        | _, EmptyA -> t1
+        | _, _ -> SetMinusA (t1, t2))
     | LandA (t1, t2) -> (
         match (aux t1, aux t2) with
         | EmptyA, _ | _, EmptyA -> EmptyA
