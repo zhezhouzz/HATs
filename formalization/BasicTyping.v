@@ -118,10 +118,18 @@ Ltac basic_typing_regular_simp :=
     end.
 
 Lemma empty_basic_typing_bool_value_exists: forall (v: value), ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
-Admitted.
+Proof.
+  inversion 1; subst; simpl in *.
+  destruct c; simplify_eq. destruct b; eauto.
+  simplify_map_eq.
+Qed.
 
 Lemma empty_basic_typing_nat_value_exists: forall (v: value), ∅ ⊢t v ⋮v TNat -> (exists (i: nat), v = i).
-Admitted.
+Proof.
+  inversion 1; subst; simpl in *.
+  destruct c; simplify_eq. eauto.
+  simplify_map_eq.
+Qed.
 
 Lemma empty_basic_typing_base_const_exists: forall (v: value) (B: base_ty), ∅ ⊢t v ⋮v B -> (exists (c: constant), v = c).
 Proof.
@@ -130,7 +138,7 @@ Qed.
 
 Lemma empty_basic_typing_arrow_value_lam_exists:
   forall (v: value) T1 T2, ∅ ⊢t v ⋮v T1 ⤍ T2 ->
-                        (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam T1 e)).
+                      (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam T1 e)).
 Admitted.
 
 Lemma tricky_closed_value_exists: forall (T: ty), exists v, forall Γ, Γ ⊢t v ⋮v T.

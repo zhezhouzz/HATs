@@ -41,15 +41,18 @@ Qed.
 
 Lemma basic_typing_subst_tm: forall Γ z u U (v: tm) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮t T -> Γ ⊢t {z := u}t v ⋮t T.
 Proof.
-  intros * Hu Ht; remember (<[z:=U]> Γ); revert dependent Γ.
-  revert c v T Ht.
+  intros * Hu Ht; remember (<[z:=U]> Γ) as Γ'; revert dependent Γ.
+  revert Γ' v T Ht.
   apply (tm_has_type_mutual_rec
-           (fun c v T _ => ∀ Γ : context, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }v v ⋮v T)
-           (fun c v T _ => ∀ Γ : context, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }t v ⋮t T)); intros; subst; simpl in *; eauto; try econstructor; eauto.
+           (fun c v T _ => ∀ Γ, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }v v ⋮v T)
+           (fun c v T _ => ∀ Γ, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }t v ⋮t T));
+  (* [context] should be defined as a notation which helps resolving typeclass
+  instances for, e.g., rewriting. *)
+    unfold context;
+    intros; subst; simpl in *; eauto; try econstructor; eauto.
   case_decide; subst.
-  (* For some reason normal rewrite does not work. *)
-  setoid_rewrite lookup_insert in e. simplify_eq. eauto.
-  econstructor. setoid_rewrite lookup_insert_ne in e; eauto.
+  by simplify_map_eq.
+  econstructor. by simplify_map_eq.
 
   all:
   instantiate_atom_listctx;
@@ -62,15 +65,16 @@ Qed.
 
 Lemma basic_typing_subst_value: forall Γ z u U (v: value) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮v T -> Γ ⊢t {z := u}v v ⋮v T.
 Proof.
-  intros * Hu Ht; remember (<[z:=U]> Γ); revert dependent Γ.
-  revert c v T Ht.
+  intros * Hu Ht; remember (<[z:=U]> Γ) as Γ'; revert dependent Γ.
+  revert Γ' v T Ht.
   apply (value_has_type_mutual_rec
-           (fun c v T _ => ∀ Γ : context, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }v v ⋮v T)
-           (fun c v T _ => ∀ Γ : context, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }t v ⋮t T)); intros; subst; simpl in *; eauto; try econstructor; eauto.
+           (fun c v T _ => ∀ Γ, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }v v ⋮v T)
+           (fun c v T _ => ∀ Γ, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }t v ⋮t T));
+    unfold context;
+    intros; subst; simpl in *; eauto; try econstructor; eauto.
   case_decide; subst.
-  (* For some reason normal rewrite does not work. *)
-  setoid_rewrite lookup_insert in e. simplify_eq. eauto.
-  econstructor. setoid_rewrite lookup_insert_ne in e; eauto.
+  by simplify_map_eq.
+  econstructor. by simplify_map_eq.
 
   all:
   instantiate_atom_listctx;
@@ -79,6 +83,29 @@ Proof.
   auto_eapply; [
       eapply basic_typing_weaken_insert_value; eauto; my_set_solver
     | apply insert_commute; my_set_solver ].
+Qed.
+
+(* This statement can be generalized to taking a union of the context and a
+disjoint new context. *)
+Lemma basic_typing_strengthen_tm: forall Γ x Tx (v: tm) T,
+    (<[x:=Tx]>Γ) ⊢t v ⋮t T -> x # v -> Γ ⊢t v ⋮t T
+with basic_typing_strengthen_value: forall Γ x Tx (v: value) T,
+    (<[x:=Tx]>Γ) ⊢t v ⋮v T -> x # v -> Γ ⊢t v ⋮v T.
+Proof.
+  all : intros * H Hfresh; remember (<[x:=Tx]>Γ);
+    revert dependent Γ;
+    destruct H; intros; unfold context in *; subst;
+    econstructor; eauto;
+    try solve [
+        try instantiate_atom_listctx;
+        try rewrite insert_commute in * by my_set_solver;
+        auto_eapply; eauto;
+        match goal with
+        | |- context [{_ ~t> _} _] =>
+            eapply not_elem_of_weaken; [ | apply open_var_fv_tm ]; my_set_solver
+        | _ => my_set_solver
+        end ].
+  by rewrite lookup_insert_ne in * by my_set_solver.
 Qed.
 
 Lemma eval_op_type_safe: forall α op (v1 v: constant) (T1 T: base_ty),

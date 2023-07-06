@@ -159,3 +159,65 @@ Proof.
   simpl. clear. induction vals; simpl. easy.
   apply union_mono; eauto using open_var_fv_value'.
 Qed.
+
+Lemma lc_qualifier_and q1 q2 :
+  lc_qualifier q1 -> lc_qualifier q2 ->
+  lc_qualifier (q1 & q2).
+Proof.
+  inversion 1. inversion 1. subst.
+  simpl. constructor.
+  rewrite Vector.to_list_Forall in *.
+  rewrite Vector.to_list_append.
+  apply Forall_app. eauto.
+Qed.
+
+Lemma qualifier_and_open k v q1 q2 :
+  {k ~q> v} (q1 & q2) = ({k ~q> v} q1) & ({k ~q> v} q2).
+Proof.
+  destruct q1, q2. simpl. f_equal.
+  (* Need a lemma [map_app] for vector. *)
+  clear.
+  induction vals; eauto.
+  simpl. f_equal. eauto.
+Qed.
+
+Lemma qualifier_and_subst x v q1 q2 :
+  {x := v}q (q1 & q2) = ({x := v}q q1) & ({x := v}q q2).
+Proof.
+  destruct q1, q2. simpl. f_equal.
+  (* Need a lemma [map_app] for vector. *)
+  clear.
+  induction vals; eauto.
+  simpl. f_equal. eauto.
+Qed.
+
+Lemma qualifier_and_fv q1 q2 :
+  qualifier_fv (q1 & q2) = qualifier_fv q1 ∪ qualifier_fv q2.
+Proof.
+  destruct q1, q2. simpl.
+  clear.
+  induction vals; simpl. my_set_solver.
+  rewrite IHvals. my_set_solver.
+Qed.
+
+Lemma denote_vals_app {n1 n2} (vals1 : vec value n1) (vals2 : vec value n2) :
+  denote_vals (vals1 +++ vals2) =
+    match denote_vals vals1, denote_vals vals2 with
+    | Some v1, Some v2 => Some (v1 +++ v2)
+    | _, _ => None
+    end.
+Proof.
+  induction vals1; simpl; qauto.
+Qed.
+
+Lemma denote_qualifier_and q1 q2 :
+  denote_qualifier (q1 & q2) <-> denote_qualifier q1 /\ denote_qualifier q2.
+Proof.
+  destruct q1, q2. simpl.
+  rewrite denote_vals_app.
+  case_split; try qauto.
+  case_split; try qauto.
+  rewrite Vector.splitat_append. eauto.
+Qed.
+
+Arguments qualifier_and : simpl never.
