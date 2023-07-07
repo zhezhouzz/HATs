@@ -221,3 +221,31 @@ Proof.
 Qed.
 
 Arguments qualifier_and : simpl never.
+
+(* Well-founded constraint of base type for fixed point. *)
+Definition constant_measure (c : constant) :=
+  match c with
+  | cnat n => n
+  | cbool b => Nat.b2n b
+  end.
+
+Definition constant_lt := ltof _ constant_measure.
+
+Notation " a '≺' b " := (constant_lt a b) (at level 20, a constr, b constr).
+
+Lemma constant_lt_well_founded : well_founded constant_lt.
+Proof.
+  apply well_founded_ltof.
+Qed.
+
+Notation " 'b0≺b1'" :=
+  (qual [# vbvar 0; vbvar 1] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
+    (at level 5).
+
+Notation " 'b0:x≺' x " :=
+  (qual [# vbvar 0; vfvar x] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
+    (at level 5, x constr).
+
+Notation " 'b0:v≺' v " :=
+  (qual [# vbvar 0; v] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
+    (at level 5).

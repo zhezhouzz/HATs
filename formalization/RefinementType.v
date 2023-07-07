@@ -690,12 +690,39 @@ Proof.
   simpl. f_equal; eauto using subst_open_am, subst_open_postam.
 Qed.
 
+Lemma subst_open_qualifier_closed:
+  ∀ (ϕ : qualifier) (x : atom) (u w : value) (k : nat),
+    closed_value u ->
+    lc w → {x := w }q ({k ~q> u} ϕ) = {k ~q> u} ({x := w }q ϕ).
+Proof.
+  intros. rewrite subst_open_qualifier; auto.
+  rewrite (subst_fresh_value); eauto. set_solver.
+Qed.
+
 Lemma subst_open_pty_closed:
   ∀ (ρ : pty) (x : atom) (u w : value) (k : nat),
     closed_value u ->
     lc w → {x := w }p ({k ~p> u} ρ) = {k ~p> u} ({x := w }p ρ).
 Proof.
   intros. rewrite subst_open_pty; auto.
+  rewrite (subst_fresh_value); eauto. set_solver.
+Qed.
+
+Lemma subst_open_postam_closed:
+  ∀ (pa : postam) (x : atom) (u w : value) (k : nat),
+    closed_value u ->
+    lc w → {x := w }pa ({k ~pa> u} pa) = {k ~pa> u} ({x := w }pa pa).
+Proof.
+  intros. rewrite subst_open_postam; auto.
+  rewrite (subst_fresh_value); eauto. set_solver.
+Qed.
+
+Lemma subst_open_am_closed:
+  ∀ (a : am) (x : atom) (u w : value) (k : nat),
+    closed_value u ->
+    lc w → {x := w }a ({k ~a> u} a) = {k ~a> u} ({x := w }a a).
+Proof.
+  intros. rewrite subst_open_am; auto.
   rewrite (subst_fresh_value); eauto. set_solver.
 Qed.
 
@@ -720,31 +747,25 @@ Proof.
   simpl. eauto using subst_lc_value.
 Qed.
 
-Lemma subst_open_qualifier_atom:
-  forall (ϕ: qualifier) (x:atom) (y: atom) (w: value) (k: nat),
-    lc w -> x <> y -> {x := w}q ({k ~q> y} ϕ) = ({k ~q> y} ({x := w}q ϕ)).
+Lemma subst_open_var_qualifier: forall x y (u: value) (ϕ: qualifier) (k: nat),
+    x <> y -> lc u -> {x := u}q ({k ~q> y} ϕ) = ({k ~q> y} ({x := u}q ϕ)).
 Proof.
   intros.
-  rewrite subst_open_qualifier; eauto.
-  f_equal. apply subst_fresh_value. my_set_solver.
+  rewrite subst_open_qualifier; auto. simpl. rewrite decide_False; auto.
 Qed.
 
-Lemma subst_open_am_atom:
-  forall (a: am) (x:atom) (y: atom) (w: value) (k: nat),
-    lc w -> x <> y -> {x := w}a ({k ~a> y} a) = ({k ~a> y} ({x := w}a a)).
+Lemma subst_open_var_am: forall x y (u: value) (a: am) (k: nat),
+    x <> y -> lc u -> {x := u}a ({k ~a> y} a) = ({k ~a> y} ({x := u}a a)).
 Proof.
   intros.
-  rewrite subst_open_am; eauto.
-  f_equal. apply subst_fresh_value. my_set_solver.
+  rewrite subst_open_am; auto. simpl. rewrite decide_False; auto.
 Qed.
 
-Lemma subst_open_pty_atom:
-  forall (ρ: pty) (x:atom) (y: atom) (w: value) (k: nat),
-    lc w -> x <> y -> {x := w}p ({k ~p> y} ρ) = ({k ~p> y} ({x := w}p ρ)).
+Lemma subst_open_var_pty: forall x y (u: value) (ρ: pty) (k: nat),
+    x <> y -> lc u -> {x := u}p ({k ~p> y} ρ) = ({k ~p> y} ({x := u}p ρ)).
 Proof.
   intros.
-  rewrite subst_open_pty; eauto.
-  f_equal. apply subst_fresh_value. my_set_solver.
+  rewrite subst_open_pty; auto. simpl. rewrite decide_False; auto.
 Qed.
 
 Lemma subst_lc_am : forall x (u: value) (a: am),
@@ -755,7 +776,7 @@ Proof.
   auto_exists_L_intros.
   specialize_with x0.
   specialize_with y.
-  rewrite <- !subst_open_qualifier_atom by (eauto; my_set_solver).
+  rewrite <- !subst_open_var_qualifier by (eauto; my_set_solver).
   eauto using subst_lc_qualifier.
 Qed.
 
@@ -765,18 +786,18 @@ Proof.
   induction 1; intros.
   econstructor. instantiate_atom_listctx.
   - apply_eq subst_lc_qualifier; eauto.
-    apply subst_open_qualifier_atom; eauto; my_set_solver.
+    apply subst_open_var_qualifier; eauto; my_set_solver.
   - simpl. econstructor; eauto.
     instantiate_atom_listctx.
-    rewrite <- subst_open_am_atom by (eauto; my_set_solver).
+    rewrite <- subst_open_var_am by (eauto; my_set_solver).
     eauto using subst_lc_am.
     intros x0 **. repeat specialize_with x0.
     rewrite in_map_iff in H6. simp_hyps. simpl in *.
-    rewrite <- subst_open_am_atom by (eauto; my_set_solver).
+    rewrite <- subst_open_var_am by (eauto; my_set_solver).
     eauto using subst_lc_am.
     intros x0 **. repeat specialize_with x0.
     rewrite in_map_iff in H6. simp_hyps. simpl in *.
-    rewrite <- subst_open_pty_atom by (eauto; my_set_solver).
+    rewrite <- subst_open_var_pty by (eauto; my_set_solver).
     eauto.
 Qed.
 
@@ -975,7 +996,7 @@ Proof.
       end; eauto using lc_am.
   econstructor.
   auto_exists_L_intros. specialize_with x0. specialize_with y.
-  rewrite <- !subst_open_qualifier_atom in H by (eauto; my_set_solver).
+  rewrite <- !subst_open_var_qualifier in H by (eauto; my_set_solver).
   eauto using lc_subst_qualifier.
 Qed.
 
@@ -988,20 +1009,20 @@ Proof.
   - destruct ρ; simpl in *; simplify_eq.
     econstructor.
     instantiate_atom_listctx.
-    rewrite <- subst_open_qualifier_atom in * by (eauto; my_set_solver).
+    rewrite <- subst_open_var_qualifier in * by (eauto; my_set_solver).
     eauto using lc_subst_qualifier.
   - destruct ρ0; simpl in *; simplify_eq.
     econstructor; eauto.
     instantiate_atom_listctx.
-    rewrite <- subst_open_am_atom in * by (eauto; my_set_solver).
+    rewrite <- subst_open_var_am in * by (eauto; my_set_solver).
     eauto using lc_subst_am.
     intros. repeat specialize_with x0.
     eapply postam_in_subst in H6. eapply H2 in H6.
-    rewrite <- subst_open_am_atom in * by (eauto; my_set_solver).
+    rewrite <- subst_open_var_am in * by (eauto; my_set_solver).
     eauto using lc_subst_am.
     intros. repeat specialize_with x0.
     eapply H4. eauto using postam_in_subst.
-    rewrite <- subst_open_pty_atom in * by (eauto; my_set_solver).
+    rewrite <- subst_open_var_pty in * by (eauto; my_set_solver).
     eauto.
 Qed.
 
@@ -1039,3 +1060,15 @@ Proof.
   apply subst_lc_qualifier; auto. apply H.
   my_set_solver. my_set_solver.
 Qed.
+
+(* Lemma open_swap_qualifier: forall (ϕ: qualifier) i j (u v: value), *)
+(*     lc u -> *)
+(*     lc v -> *)
+(*     i <> j -> *)
+(*     {i ~q> v} ({j ~q> u} ϕ) = {j ~q> u} ({i ~q> v} ϕ). *)
+(* Proof. *)
+(*   destruct ϕ. intros. simpl. *)
+(*   f_equal. rewrite !Vector.map_map. *)
+(*   apply Vector.map_ext. *)
+(*   eauto using open_swap_value. *)
+(* Qed. *)

@@ -1012,5 +1012,24 @@ Proof.
   eauto using lc_subst_tm.
 Qed.
 
+(* Lemma open_swap_tm: forall (t: tm) i j (u v: value), *)
+(*     lc u -> *)
+(*     lc v -> *)
+(*     i <> j -> *)
+(*     {i ~t> v} ({j ~t> u} t) = {j ~t> u} ({i ~t> v} t) *)
+(* with open_swap_value: forall (t: value) i j (u v: value), *)
+(*     lc u -> *)
+(*     lc v -> *)
+(*     i <> j -> *)
+(*     {i ~v> v} ({j ~v> u} t) = {j ~v> u} ({i ~v> v} t). *)
+(* Proof. *)
+(*   all: intros; destruct t; simpl; try reflexivity. *)
+(*   6 : { *)
+(*     repeat (case_decide; simpl; subst); try easy; *)
+(*     rewrite !open_rec_lc_value; eauto. *)
+(*   } *)
+(*   all: f_equal; eauto. *)
+(* Qed. *)
+
 
 Global Hint Resolve lc_fresh_var_implies_body: core.
