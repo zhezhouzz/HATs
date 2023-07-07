@@ -1,6 +1,6 @@
-{
+   {
   "benchmark_dir": "data/benchmark_new",
-  "benchmarks_info": [
+  "benchmarks_info_": [
     {
       "benchmark_source": "Protocols",
       "benchmarks": [
@@ -12,15 +12,24 @@
         "Authority",
         "Firewall",
         "Newsletter",
-        "Graph"
+        "LazySet",
+        "MinSet",
+        "ColoredGraph",
+        "AdjMatrixGraph",
+        "DFA"
       ]
     }
   ],
-  "benchmarks_info_": [
+  "benchmarks_info": [
     {
       "benchmark_source": "Protocols",
       "benchmarks": [
-        "WebPageFetcher"
+        "MinSet",
+        "LazySet",
+        "MST",
+        "ColoredGraph",
+        "AdjMatrixGraph",
+        "DFA"
       ]
     }
   ],

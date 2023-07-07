@@ -341,6 +341,11 @@ and comp_reg_check (mctx : monadic_ctx) (comp : comp typed) (rty : regex) : bool
     let b =
       List.fold_left
         (fun b f_rty ->
+          let () =
+            Env.show_debug_typing @@ fun _ ->
+            Pp.printf "@{<bold>Try type for (%s): @}%s\n" opname
+              (layout_pty f_rty)
+          in
           match b with Some true -> Some true | _ -> get_b f_rty)
         None f_rtys
     in

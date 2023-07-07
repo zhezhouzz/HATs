@@ -142,6 +142,10 @@ and pty_of_ocamlexpr_aux expr =
     | Pexp_tuple es -> TuplePty (List.map aux es)
     | Pexp_fun (_, Some ptyexpr, pattern, body) ->
         mk_arrpty PiArr pattern ptyexpr body
+    | Pexp_fun _ ->
+        _failatwith __FILE__ __LINE__
+          (spf "wrong refinement type: %s"
+             (Pprintast.string_of_expression expr))
     | Pexp_let (_, [ vb ], body) ->
         mk_arrpty SigamArr vb.pvb_pat vb.pvb_expr body
     | _ ->

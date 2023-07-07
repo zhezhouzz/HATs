@@ -20,24 +20,26 @@ let rec rty_check opctx ctx (rty : rty) : rty =
       Regty { nty; prereg; postreg }
 
 and pty_check opctx ctx (rty : pty) : pty =
-  (* let () = *)
-  (*   Printf.printf "rty: %s\n" @@ StructureRaw.layout_pty rty *)
-  (* in *)
+  (* let () = Printf.printf "rty: %s\n" @@ StructureRaw.layout_pty rty in *)
   let rec aux ctx rty =
     match rty with
     | BasePty { cty } -> BasePty { cty = cty_check opctx ctx cty }
     | TuplePty ptys -> TuplePty (List.map (aux ctx) ptys)
     | ArrPty { arr_kind; rarg; retrty } ->
-        let rarg = { px = rarg.px; pty = aux ctx rarg.pty } in
+        let pty = aux ctx rarg.pty in
+        let rarg =
+          { px = rarg.px; pty }
+          (* if is_base_pty pty then { px = rarg.px; pty } else { px = None; pty } *)
+        in
         let () =
           match rarg.px with
           | None ->
               _assert __FILE__ __LINE__
                 (spf "syntax error: argument type %s" (To_rty.layout_pty rty))
               @@ (is_arr_pty rarg.pty || is_base_pty rarg.pty)
-          | Some _ ->
-              _assert __FILE__ __LINE__ "syntax error: argument type"
-              @@ is_base_pty rarg.pty
+          | Some _ -> ()
+          (* _assert __FILE__ __LINE__ "syntax error: argument type" *)
+          (* @@ is_base_pty rarg.pty *)
         in
         let opctx', ctx' =
           match rarg.px with
