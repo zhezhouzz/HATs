@@ -14,7 +14,9 @@ Import OperationalSemantics.
 Import BasicTyping.
 Import Trace.
 
-Definition env := amap value.
+Notation env := (amap value).
+
+Definition closed_env (env : env) := map_Forall (fun _ => closed_value) env.
 
 Definition msubst {A} (subst : atom -> value -> A -> A)
                   (env : env) (a : A) : A :=
@@ -61,3 +63,12 @@ Proof.
   intros. constructor; auto. intro; auto.
 Qed.
 
+Lemma closed_env_insert env x v :
+  env !! x = None ->
+  closed_env (<[x:=v]>env) ->
+  closed_value v /\ closed_env env.
+Proof.
+  intro.
+  unfold closed_env.
+  rewrite map_Forall_insert; eauto.
+Qed.

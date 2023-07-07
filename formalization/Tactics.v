@@ -1,5 +1,6 @@
 From CT Require Import Atom.
 From stdpp Require Export prelude fin_maps fin_map_dom.
+From Hammer Require Export Tactics.
 
 Import Atom.
 
