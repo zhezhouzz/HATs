@@ -3,17 +3,8 @@
  (wrapped true)
  (libraries utils language core env ocolor normalization)
  (modules
-   ; aux
-   ; fexists
    fmerge
-   ; the aux function of regular expression
-   ; retilize
-   ; finalize
-   ; alpha
-   ; purify
    branching
-   ; concat
    simp
-   ; decide_ret
    auxtyping
 ))

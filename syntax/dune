@@ -10,7 +10,7 @@
    qualifier
    cty
    rty
-   algebraic
+   ; algebraic
    type_dec
    typectx
    structure

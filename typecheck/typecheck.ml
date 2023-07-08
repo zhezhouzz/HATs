@@ -3,7 +3,6 @@ module PCtx = PTypectx
 module POpCtx = POpTypectx
 module R = Rty
 module P = Rty.P
-module ECtx = Eqctx
 open Sugar
 
 let check opctx' structure normalized_structure =

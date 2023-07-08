@@ -169,7 +169,8 @@ module POpTypectx = struct
       (fun code ->
         let open Structure in
         match code with
-        | EquationEntry _ | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        (* | EquationEntry _ *)
+        | FuncImp _ | Func_dec _ | Type_dec _ -> None
         | Rty { name; kind; rty } -> f (name, kind, rty_force_pty rty))
       code
 
@@ -271,7 +272,8 @@ module PTypectx = struct
       (fun code ->
         let open Structure in
         match code with
-        | EquationEntry _ | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        (* | EquationEntry _ *)
+        | FuncImp _ | Func_dec _ | Type_dec _ -> None
         | Rty { name; kind; rty } -> f (name, kind, rty_force_pty rty))
       code
 
@@ -316,7 +318,8 @@ module RTypectx = struct
       (fun code ->
         let open Structure in
         match code with
-        | EquationEntry _ | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        (* | EquationEntry _ *)
+        | FuncImp _ | Func_dec _ | Type_dec _ -> None
         | Rty { name; kind; rty } -> f (name, kind, rty))
       code
 
@@ -348,54 +351,4 @@ module TypedCoreEff = struct
       | VTu _ -> _failatwith file line "?"
     in
     lit #: v.ty
-end
-
-module Eqctx = struct
-  include Equation
-
-  type ctx = equation list
-
-  open Zzdatatype.Datatype
-  open Sugar
-
-  let layout_ret_res = function
-    | RetResLit lit -> spf "ret_res %s" (Rty.layout_lit lit)
-    | Drop -> "Drop"
-
-  let layout_equation e =
-    To_algebraic.layout_equation @@ Coersion.besome_equation e
-
-  let layout_equations e = List.split_by " ; " layout_equation e
-
-  let find_ret_rules ctx (op1, args1) (op2, args2) =
-    let () =
-      Printf.printf "find_ret_rules: <%s(%s)><%s(%s)>\n" op1
-        (List.split_by_comma Rty.layout_lit args1)
-        op2
-        (List.split_by_comma Rty.layout_lit args2)
-    in
-    match_equation_2op ctx (op1, args1) (op2, args2)
-
-  let find_none_ret_rules ctx (op2, args2) =
-    let () =
-      Printf.printf "find_none_ret_rules: <%s(%s)>\n" op2
-        (List.split_by_comma Rty.layout_lit args2)
-    in
-    let () = Printf.printf "%s\n" @@ layout_equations ctx in
-    match_equation_1op ctx (op2, args2)
-
-  let filter_map_equation f code =
-    List.filter_map
-      (fun code ->
-        let open Structure in
-        match code with EquationEntry e -> f e | _ -> None)
-      code
-
-  let from_code code = filter_map_equation (fun e -> Some e) code
-  (* let from_code code = *)
-  (* filter_map_rty *)
-  (*   (fun (name, kind, rty) -> *)
-  (*     let open Structure in *)
-  (*     match kind with RtyLib -> Some R.(name #: rty) | RtyToCheck -> None) *)
-  (*   code *)
 end

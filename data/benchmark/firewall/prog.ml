@@ -1,84 +1,94 @@
 type effect =
-  | AddDevice of (int -> unit)
-  | IsDevice of (int -> bool)
-  | DeleteDevice of (int -> unit)
-  | MakeCentral of (int -> unit)
-(* | BoolGen of (unit -> bool) *)
-(* | EvenGen of (unit -> int) *)
+  | Mem of (nat -> int -> bool)
+  | Update of (nat -> int -> int -> unit)
+  | Lookup of (nat -> int -> int)
 
-let[@effrty] addDevice ?l:(a = (true : [%v: int])) =
-  {
-    pre =
-      lorA
-        (starA anyA;
-         DeleteDevice (v0 == a : [%v0: int]);
-         starA (compA (AddDevice (v0 == a : [%v0: int]))))
-        (starA (compA (AddDevice (v0 == a : [%v0: int]))));
-    post = (Ret (true : [%v0: unit]) : unit);
-  }
+(* ctab 0  -> central device *)
+(* atab id -> auth *)
+(* dtab id -> channel data; where id should greater than 0 *)
 
-let[@effrty] isDevice ?l:(a = (true : [%v: int])) =
-  {
-    pre =
-      (starA anyA;
-       AddDevice (v0 == a : [%v0: int]);
-       starA (compA (DeleteDevice (v0 == a : [%v0: int]))));
-    post = (Ret (v0 : [%v0: bool]) : bool);
-  }
+(* let send (ctab : nat) (atab : nat) (dtab : nat) (cid : int) (id : int) : *)
+(*     int -> unit = *)
+(*   let (cid_ : int) = perform (Lookup (ctab, 0)) in *)
+(*   if cid == cid_ then *)
+(*     if cid == id then *)
+(*       let (dummy3 : int) = perform (Lookup (dtab, cid)) in *)
+(*       fun (data : int) -> *)
+(*         let (dummy0 : unit) = perform (Update (dtab, id, data)) in *)
+(*         dummy0 *)
+(*     else if perform (Mem (atab, id)) then *)
+(*       if perform (Lookup (atab, id)) > 0 then *)
+(*         let (dummy4 : int) = perform (Lookup (dtab, cid)) in *)
+(*         fun (data : int) -> *)
+(*           let (dummy1 : unit) = perform (Update (dtab, id, data)) in *)
+(*           dummy1 *)
+(*       else fun (data : int) -> () *)
+(*     else fun (data : int) -> () *)
+(*   else fun (data : int) -> () *)
 
-let[@effrty] isDevice ?l:(a = (true : [%v: int])) =
-  {
-    pre =
-      lorA
-        (starA anyA;
-         DeleteDevice (v0 == a : [%v0: int]);
-         starA (compA (AddDevice (v0 == a : [%v0: int]))))
-        (starA (compA (AddDevice (v0 == a : [%v0: int]))));
-    post = (Ret (not v0 : [%v0: bool]) : bool);
-  }
+let send (ctab : nat) (atab : nat) (dtab : nat) (cid : int) (id : int) :
+    int -> unit =
+  if cid == id then
+    let (x : int) = perform (Lookup (dtab, id)) in
+    if x > 0 then fun (data : int) ->
+      let (dummy0 : unit) = perform (Update (dtab, id, data)) in
+      dummy0
+    else fun (data : int) -> ()
+  else if perform (Lookup (atab, id)) > 0 then
+    let (y : int) = perform (Lookup (dtab, cid)) in
+    if y > 0 then fun (data : int) ->
+      let (dummy1 : unit) = perform (Update (dtab, id, data)) in
+      dummy1
+    else fun (data : int) -> ()
+  else fun (data : int) -> ()
 
-let[@effrty] deleteDevice ?l:(a = (true : [%v: int])) =
-  {
-    pre =
-      (starA anyA;
-       AddDevice (v0 == a : [%v0: int]);
-       starA (compA (DeleteDevice (v0 == a : [%v0: int])));
-       MakeCentral (not (v0 == a) : [%v0: int]);
-       starA (compA (DeleteDevice (v0 == a : [%v0: int]))));
-    post = (Ret (true : [%v0: unit]) : unit);
-  }
-
-let[@effrty] makeCentral ?l:(a = (true : [%v: int])) =
+let[@assert] send ?l:(ctab = (true : [%v: nat]))
+    ?l:(atab = (not (v == ctab) : [%v: nat]))
+    ?l:(dtab = ((not (v == ctab)) && not (v == atab) : [%v: nat]))
+    ?l:(cid = (true : [%v: int])) ?l:(id = (true : [%v: int])) =
   {
     pre =
       (starA anyA;
-       AddDevice (v0 == a : [%v0: int]);
-       starA (compA (DeleteDevice (v0 == a : [%v0: int]))));
-    post = (Ret (true : [%v0: unit]) : unit);
-  }
-
-(* let[@effrty] boolGen ?l:(a = (true : [%v: unit])) = *)
-(*   { pre = starA anyA; post = (Ret (true : [%v0: bool]) : bool) } *)
-
-(* let[@effrty] intGen ?l:(a = (true : [%v: unit])) = *)
-(*   { pre = starA anyA; post = (Ret (true : [%v0: int]) : int) } *)
-
-let rec prog (n : int) : unit =
-  if 0 == n then
-    let (dummy0 : unit) = perform (AddDevice n) in
-    let (dummy1 : unit) = perform (MakeCentral n) in
-    ()
-  else
-    let (dummy2 : unit) = prog (n - 1) in
-    let (dummy3 : unit) = perform (AddDevice n) in
-    let (dummy4 : unit) = perform (MakeCentral n) in
-    ()
-
-let[@assert] prog ?l:(n = (0 <= v : [%v: int]) [@over]) =
-  {
-    pre = epsilonA;
+       Update
+         ((((v0 == ctab && v1 == 0 && v2 == cid : [%v0: nat]) : [%v1: int])
+            : [%v2: int])
+           : [%v: unit]);
+       starA
+         (anyA
+         - Update
+             ((((v0 == ctab : [%v0: nat]) : [%v1: int]) : [%v2: int])
+               : [%v: unit])));
     post =
-      ((starA (compA (AddDevice (not (v0 <= n) : [%v0: int])));
-        MakeCentral (v0 == n : [%v0: int]);
-        Ret (true : [%v0: unit])) : unit);
+      ((starA
+          (anyA
+          - Update
+              ((((true : [%v0: nat]) : [%v1: int]) : [%v2: int]) : [%v: unit]));
+        (Lookup
+           (((v0 == dtab && v1 == cid && v > 0 : [%v0: nat]) : [%v1: int])
+             : [%v: int]);
+         fun ?l:(data = (true : [%v: int])) ->
+           {
+             pre =
+               (starA anyA;
+                Lookup
+                  (((v0 == atab && v1 == id && v > 0 : [%v0: nat]) : [%v1: int])
+                    : [%v: int]);
+                starA
+                  (anyA
+                  - Update
+                      ((((v0 == atab && v1 == id : [%v0: nat]) : [%v1: int])
+                         : [%v2: int])
+                        : [%v: unit]))
+                (* starA anyA *));
+             post =
+               ((Update
+                   ((((v0 == dtab && v1 == id && v2 == data : [%v0: nat])
+                       : [%v1: int])
+                      : [%v2: int])
+                     : [%v: unit]);
+                 Ret (true : [%v0: unit])) : unit);
+           })
+        || fun ?l:(data = (true : [%v: int])) ->
+        { pre = starA anyA; post = (Ret (true : [%v0: unit]) : unit) }) : int ->
+                                                                          unit);
   }

@@ -7,7 +7,7 @@
    coersion_qualifier
    coersion_rty
    coersion_termlang
-   coersion_algebraic
+   ; coersion_algebraic
    coersion_structure
    coersion
  )

@@ -41,9 +41,9 @@ let ocaml_structure_to_structure structure =
               kind = RtyToCheck;
               rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
             }
-      | [ x ] when String.equal x.attr_name.txt "equation" ->
-          EquationEntry
-            (To_algebraic.equation_of_ocamlexpr value_binding.pvb_expr)
+      (* | [ x ] when String.equal x.attr_name.txt "equation" -> *)
+      (*     EquationEntry *)
+      (*       (To_algebraic.equation_of_ocamlexpr value_binding.pvb_expr) *)
       | _ ->
           let body = To_expr.expr_of_ocamlexpr value_binding.pvb_expr in
           FuncImp { name; if_rec = To_expr.get_if_rec flag; body })
@@ -63,7 +63,7 @@ let layout_entry = function
       spf "let %s%s = %s"
         (if if_rec then "rec " else "")
         name (To_expr.layout body)
-  | EquationEntry equation -> To_algebraic.layout_equation equation
+  (* | EquationEntry equation -> To_algebraic.layout_equation equation *)
   | Rty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
         (match kind with RtyLib -> "librty" | RtyToCheck -> "rty")

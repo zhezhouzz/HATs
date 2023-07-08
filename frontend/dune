@@ -15,7 +15,7 @@
    to_type_dec
    to_structure
    to_rty
-   to_algebraic
+   ; to_algebraic
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert))
  (inline_tests)

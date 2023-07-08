@@ -9,7 +9,7 @@ let besome_kind = function RtyLib -> Raw.RtyLib | RtyToCheck -> Raw.RtyToCheck
 
 let force_entry entry =
   match entry with
-  | Raw.EquationEntry e -> EquationEntry (Coersion_algebraic.force_equation e)
+  (* | Raw.EquationEntry e -> EquationEntry (Coersion_algebraic.force_equation e) *)
   | Raw.Type_dec d -> Type_dec d
   | Raw.Func_dec d -> Func_dec d
   | Raw.FuncImp { name; if_rec; body } ->
@@ -19,7 +19,7 @@ let force_entry entry =
 
 let besome_entry entry =
   match entry with
-  | EquationEntry e -> Raw.EquationEntry (Coersion_algebraic.besome_equation e)
+  (* | EquationEntry e -> Raw.EquationEntry (Coersion_algebraic.besome_equation e) *)
   | Type_dec d -> Raw.Type_dec d
   | Func_dec d -> Raw.Func_dec d
   | FuncImp { name; if_rec; body } ->
