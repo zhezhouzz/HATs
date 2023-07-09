@@ -34,34 +34,34 @@ Reserved Notation "Γ '⊢t' t '⋮v' T" (at level 40).
 
 (** Basic typing rules  *)
 Inductive tm_has_type : context -> tm -> ty -> Prop :=
-| T_Value : forall Γ v T, Γ ⊢t v ⋮v T -> Γ ⊢t v ⋮t T
-| T_Lete : forall Γ e1 e2 T1 T2 (L: aset),
+| BtValue : forall Γ v T, Γ ⊢t v ⋮v T -> Γ ⊢t v ⋮t T
+| BtLetE : forall Γ e1 e2 T1 T2 (L: aset),
     Γ ⊢t e1 ⋮t T1 ->
     (forall (x: atom), x ∉ L -> (<[ x := T1]> Γ) ⊢t e2 ^t^ x ⋮t T2) ->
     Γ ⊢t (tlete e1 e2) ⋮t T2
-| T_LetOp : forall Γ (op: effop) v1 e (T1 Tx: base_ty) T (L: aset),
+| BtEffOp : forall Γ (op: effop) v1 e (T1 Tx: base_ty) T (L: aset),
     Γ ⊢t v1 ⋮v T1 ->
     (ty_of_op op) = T1 ⤍ Tx ->
     (forall (x: atom), x ∉ L -> (<[x := TBase Tx]> Γ) ⊢t e ^t^ x ⋮t T) ->
     Γ ⊢t tleteffop op v1 e ⋮t T
-| T_LetApp : forall Γ v1 v2 e T1 Tx T (L: aset),
+| BtApp : forall Γ v1 v2 e T1 Tx T (L: aset),
     Γ ⊢t v1 ⋮v T1 ⤍ Tx ->
     Γ ⊢t v2 ⋮v T1 ->
     (forall (x: atom), x ∉ L -> (<[x := Tx]> Γ) ⊢t e ^t^ x ⋮t T) ->
     Γ ⊢t tletapp v1 v2 e ⋮t T
-| T_Matchb: forall Γ v e1 e2 T,
+| BtMatchb: forall Γ v e1 e2 T,
     Γ ⊢t v ⋮v TBool ->
     Γ ⊢t e1 ⋮t T ->
     Γ ⊢t e2 ⋮t T ->
     Γ ⊢t (tmatchb v e1 e2) ⋮t T
 with value_has_type : context -> value -> ty -> Prop :=
-| T_Const : forall Γ (c: constant), Γ ⊢t c ⋮v (ty_of_const c)
-| T_Var : forall Γ (x: atom) T,
+| BtConst : forall Γ (c: constant), Γ ⊢t c ⋮v (ty_of_const c)
+| BtVar : forall Γ (x: atom) T,
     Γ !! x = Some T -> Γ ⊢t x ⋮v T
-| T_Lam : forall Γ Tx T e (L: aset),
+| BtFun : forall Γ Tx T e (L: aset),
     (forall (x: atom), x ∉ L -> (<[x := Tx]> Γ) ⊢t e ^t^ x ⋮t T) ->
     Γ ⊢t vlam Tx e ⋮v Tx ⤍ T
-| T_Fix : forall Γ (Tx: base_ty) T e (L: aset),
+| BtFix : forall Γ (Tx: base_ty) T e (L: aset),
     (forall (x: atom), x ∉ L -> (<[x := TBase Tx]>Γ) ⊢t (vlam (Tx ⤍ T) e) ^v^ x ⋮v ((Tx ⤍ T) ⤍ T)) ->
     Γ ⊢t vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e) ⋮v Tx ⤍ T
 where "Γ '⊢t' t '⋮t' T" := (tm_has_type Γ t T) and "Γ '⊢t' t '⋮v' T" := (value_has_type Γ t T).
@@ -139,12 +139,13 @@ Qed.
 Lemma empty_basic_typing_arrow_value_lam_exists:
   forall (v: value) T1 T2, ∅ ⊢t v ⋮v T1 ⤍ T2 ->
                       (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam T1 e)).
+(* Proof. *)
+(*   inversion 1; subst. simplify_map_eq. *)
+(*   - left. eauto. *)
+(*   - right. eexists. f_equal. eauto. *)
+
+(*   eauto. simplify_map_eq. *)
+(* Qed. *)
 Admitted.
 
-Lemma tricky_closed_value_exists: forall (T: ty), exists v, forall Γ, Γ ⊢t v ⋮v T.
-Proof.
-  induction T.
-  - destruct b. exists 0. constructor; auto. exists true. constructor; auto.
-  - mydestr. exists (vlam T1 x). econstructor; eauto.
-    intros.
-Admitted.
+

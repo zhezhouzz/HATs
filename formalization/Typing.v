@@ -1421,7 +1421,7 @@ Lemma reduction_tlete':  forall e_x e α βx βe (v_x v : value),
 Proof.
   intros * Hb H. remember (treturn v_x).
   induction H; intros; subst.
-  - econstructor; eauto using ST_Lete2.
+  - econstructor; eauto using STLetE2.
   - simp_hyps.
     simplify_list_eq.
     econstructor.
@@ -1449,7 +1449,7 @@ Proof.
     apply multi_step_regular1 in H. sinvert H. eauto.
   }
   eapply_eq multistep_step.
-  eapply ST_Lete2.
+  eapply STLetE2.
   apply multi_step_regular1 in H. sinvert H. eauto.
   (* Probably should be a lemma. *)
   eexists. instantiate_atom_listctx.
@@ -1486,7 +1486,7 @@ Lemma reduction_letapplam' α Tb e (v_x : value) β (v : value) :
 Proof.
   intros Hlc Hb H.
   eapply_eq multistep_step.
-  eapply ST_Lete2.
+  eapply STLetE2.
   qauto using lc_abs_iff_body.
   (* probably should be a lemma. *)
   eexists. instantiate_atom_listctx.

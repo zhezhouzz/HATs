@@ -4,7 +4,6 @@ Tactics.v
 CoreLang.v
 NamelessTactics.v
 CoreLangProp.v
-# Equation.v
 Trace.v
 OperationalSemantics.v
 BasicTyping.v
