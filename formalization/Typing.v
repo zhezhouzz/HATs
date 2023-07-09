@@ -2523,4 +2523,52 @@ Proof.
         eauto using ctxRst_closed_env; simpl_fv; my_set_solver.
 Qed.
 
+Transparent msubst.
+
+Definition valid_evop '(evop_ op argv retv) :=
+  ∅ ⊢t argv ⋮v TNat /\ ∅ ⊢t retv ⋮v ret_ty_of_op op.
+
+Definition valid_trace := Forall valid_evop.
+
+Lemma valid_evop_any ev :
+  valid_evop ev ->
+  a⟦ ∘ ⟧ [ev].
+Proof.
+  intros H. split. repeat econstructor. my_set_solver.
+  destruct ev. repeat esplit; qauto.
+Qed.
+
+Lemma valid_trace_any_star α :
+  valid_trace α ->
+  a⟦ astar ∘ ⟧ α.
+Proof.
+  intros H.
+  split. repeat econstructor. my_set_solver.
+  induction α. constructor.
+  rewrite <- app_one_is_cons.
+  sinvert H.
+  econstructor; eauto using valid_evop_any.
+Qed.
+
+Corollary soundness : forall (e : tm) T B,
+    [] ⊢ e ⋮t [: T | astar ∘ ⇒ B] ->
+    forall α β (v : value),
+      (* Alternatively, we can simply say [a⟦ astar ∘ ⟧ α]. *)
+      valid_trace α ->
+      α ⊧ e ↪*{ β } v ->
+      exists Bi ρi, In (Bi, ρi) B /\
+                 a⟦ Bi ⟧ β /\
+                 p⟦ ρi ⟧ v.
+Proof.
+  intros.
+  apply fundamental with (Γv := ∅) in H. 2 : constructor.
+  unfold msubst in *.
+  rewrite !map_fold_empty in *.
+  destruct H as (Ht & Hc & H).
+  eapply H; eauto.
+  sinvert Hc. sinvert H2. eauto.
+  eauto using valid_trace_any_star.
+Qed.
+
 Print Assumptions fundamental.
+Print Assumptions soundness.
