@@ -102,7 +102,7 @@ Proof.
         auto_eapply; eauto;
         match goal with
         | |- context [{_ ~t> _} _] =>
-            eapply not_elem_of_weaken; [ | apply open_var_fv_tm ]; my_set_solver
+            eapply not_elem_of_weaken; [ | apply open_fv_tm ]; my_set_solver
         | _ => my_set_solver
         end ].
   by rewrite lookup_insert_ne in * by my_set_solver.

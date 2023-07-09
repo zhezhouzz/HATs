@@ -16,8 +16,7 @@ Notation " 'ev{' op '~' v1 ':=' v2 '}' " := (evop_ op v1 v2)
 
 Definition trace : Type := list evop.
 
-Definition tr_reduction: list evop -> effop -> constant -> constant -> Prop.
-Admitted.
+Parameter tr_reduction: list evop -> effop -> constant -> constant -> Prop.
 
 Notation "α '⊧{' op '~' c1 '}⇓{' c '}' " := (tr_reduction α op c1 c)
                                               (at level 30, format "α ⊧{ op ~ c1 }⇓{ c }", c1 constr, α constr).

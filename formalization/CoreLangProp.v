@@ -69,41 +69,41 @@ Proof with eauto.
     + rewrite decide_False...
 Qed.
 
-Lemma open_var_fv_value: forall (v: value) (x: atom) (k: nat), fv_value ({k ~v> x} v) ⊆ {[ x ]} ∪ fv_value v.
+Lemma open_fv_value: forall (v: value) (u: value) (k: nat), fv_value ({k ~v> u} v) ⊆ fv_value u ∪ fv_value v.
 Proof with eauto.
   apply (value_mutual_rec
-           (fun (v: value) => forall (x: atom) (k: nat), fv_value ({k ~v> x} v) ⊆ {[ x ]} ∪ fv_value v)
-           (fun (e: tm) => forall (x: atom) (k: nat), fv_tm ({k ~t> x} e) ⊆ {[ x ]} ∪ fv_tm e)
+           (fun (v: value) => forall (u: value) (k: nat), fv_value ({k ~v> u} v) ⊆ fv_value u ∪ fv_value v)
+           (fun (e: tm) => forall (u: value) (k: nat), fv_tm ({k ~t> u} e) ⊆ fv_value u ∪ fv_tm e)
         ); simpl;
     try (intros; repeat rewrite_by_set_solver; auto);
     try var_dec_solver;
     try my_set_solver.
 Qed.
 
-Lemma open_var_fv_tm: forall (e: tm) (x: atom) (k: nat), fv_tm ({k ~t> x} e) ⊆ {[ x ]} ∪ fv_tm e.
+Lemma open_fv_tm: forall (e: tm) (u: value) (k: nat), fv_tm ({k ~t> u} e) ⊆ fv_value u ∪ fv_tm e.
 Proof with eauto.
   apply (tm_mutual_rec
-           (fun (v: value) => forall (x: atom) (k: nat), fv_value ({k ~v> x} v) ⊆ {[ x ]} ∪ fv_value v)
-           (fun (e: tm) => forall (x: atom) (k: nat), fv_tm ({k ~t> x} e) ⊆ {[ x ]} ∪ fv_tm e)
+           (fun (v: value) => forall (u: value) (k: nat), fv_value ({k ~v> u} v) ⊆ fv_value u ∪ fv_value v)
+           (fun (e: tm) => forall (u: value) (k: nat), fv_tm ({k ~t> u} e) ⊆ fv_value u ∪ fv_tm e)
         ); simpl; intros; auto;
     try var_dec_solver;
     my_set_solver.
 Qed.
 
-Lemma open_var_fv_value': forall (v: value) (x: atom) (k: nat), fv_value v ⊆ fv_value ({k ~v> x} v).
+Lemma open_fv_value': forall (v: value) (u: value) (k: nat), fv_value v ⊆ fv_value ({k ~v> u} v).
 Proof with eauto.
   apply (value_mutual_rec
-           (fun (v: value) => forall (x: atom) (k: nat), fv_value v ⊆ fv_value ({k ~v> x} v))
-           (fun (e: tm) => forall (x: atom) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e))
+           (fun (v: value) => forall (u: value) (k: nat), fv_value v ⊆ fv_value ({k ~v> u} v))
+           (fun (e: tm) => forall (u: value) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> u} e))
         ); simpl;
     try my_set_solver.
 Qed.
 
-Lemma open_var_fv_tm': forall (e: tm) (x: atom) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e).
+Lemma open_fv_tm': forall (e: tm) (x: value) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e).
 Proof with eauto.
   apply (tm_mutual_rec
-           (fun (v: value) => forall (x: atom) (k: nat), fv_value v ⊆ fv_value ({k ~v> x} v))
-           (fun (e: tm) => forall (x: atom) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> x} e))
+           (fun (v: value) => forall (u: value) (k: nat), fv_value v ⊆ fv_value ({k ~v> u} v))
+           (fun (e: tm) => forall (u: value) (k: nat), fv_tm e ⊆ fv_tm ({k ~t> u} e))
         ); simpl;
     try my_set_solver.
 Qed.
@@ -1012,24 +1012,71 @@ Proof.
   eauto using lc_subst_tm.
 Qed.
 
-(* Lemma open_swap_tm: forall (t: tm) i j (u v: value), *)
-(*     lc u -> *)
-(*     lc v -> *)
-(*     i <> j -> *)
-(*     {i ~t> v} ({j ~t> u} t) = {j ~t> u} ({i ~t> v} t) *)
-(* with open_swap_value: forall (t: value) i j (u v: value), *)
-(*     lc u -> *)
-(*     lc v -> *)
-(*     i <> j -> *)
-(*     {i ~v> v} ({j ~v> u} t) = {j ~v> u} ({i ~v> v} t). *)
-(* Proof. *)
-(*   all: intros; destruct t; simpl; try reflexivity. *)
-(*   6 : { *)
-(*     repeat (case_decide; simpl; subst); try easy; *)
-(*     rewrite !open_rec_lc_value; eauto. *)
-(*   } *)
-(*   all: f_equal; eauto. *)
-(* Qed. *)
+Lemma open_swap_tm: forall (t: tm) i j (u v: value),
+    lc u ->
+    lc v ->
+    i <> j ->
+    {i ~t> v} ({j ~t> u} t) = {j ~t> u} ({i ~t> v} t)
+with open_swap_value: forall (t: value) i j (u v: value),
+    lc u ->
+    lc v ->
+    i <> j ->
+    {i ~v> v} ({j ~v> u} t) = {j ~v> u} ({i ~v> v} t).
+Proof.
+  all: intros; destruct t; simpl; try reflexivity.
+  6 : {
+    repeat (case_decide; simpl; subst); try easy;
+    rewrite !open_rec_lc_value; eauto.
+  }
+  all: f_equal; eauto.
+Qed.
+
+Lemma open_lc_respect_tm: forall (t: tm) (u v : value) k,
+    lc ({k ~t> u} t) ->
+    lc u ->
+    lc v ->
+    lc ({k ~t> v} t).
+Proof.
+  intros * H. remember ({k ~t> u} t) as t'.
+  revert dependent t. revert k.
+  induction H; intros;
+    repeat
+      match goal with
+      | H : _ = {_ ~t> _} ?t |- _ =>
+          destruct t; simpl in *; simplify_eq
+      | H : _ = {_ ~v> _} ?v |- _ =>
+          destruct v; simpl in *; try case_decide; simplify_eq
+      end; eauto.
+  all:
+  econstructor;
+  change (lc ({?k ~v> ?u} ?v)) with (lc ({k ~t> u} v)); eauto;
+  let x := fresh "x" in
+  let acc := collect_stales tt in instantiate (1 := acc); intros x **; simpl;
+  repeat specialize_with x;
+  rewrite open_swap_tm in * by eauto; eauto.
+Qed.
+
+Lemma open_lc_respect_value: forall (t: value) (u v : value) k,
+    lc ({k ~v> u} t) ->
+    lc u ->
+    lc v ->
+    lc ({k ~v> v} t).
+Proof.
+  intros * H. remember (treturn ({k ~v> u} t)) as t'.
+  revert dependent t. revert k.
+  induction H; intros;
+    repeat
+      match goal with
+      | H : _ = treturn ({_ ~v> _} ?v) |- _ =>
+          destruct v; simpl in *; try case_decide; simplify_eq
+      end; eauto.
+  all:
+  econstructor;
+  let x := fresh "x" in
+  let acc := collect_stales tt in instantiate (1 := acc); intros x **; simpl;
+  repeat specialize_with x;
+  rewrite open_swap_tm in * by eauto; eauto using open_lc_respect_tm.
+Qed.
 
 
 Global Hint Resolve lc_fresh_var_implies_body: core.

@@ -84,7 +84,7 @@ Proof.
   repeat
     match goal with
     | H : fv_tm ({_ ~t> _} _) ⊆ _ |- _ =>
-        setoid_rewrite <- open_var_fv_tm' in H
+        setoid_rewrite <- open_fv_tm' in H
     | H : _ ⊆ dom (<[_:=_]>_) |- _ =>
         setoid_rewrite dom_insert in H
     | H : _ !! _ = _ |- _ =>

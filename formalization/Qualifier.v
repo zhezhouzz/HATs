@@ -152,12 +152,12 @@ Proof.
   auto_apply. my_set_solver.
 Qed.
 
-Lemma open_var_fv_qualifier'(ϕ : qualifier) (x : atom) k :
-  qualifier_fv ϕ ⊆ qualifier_fv ({k ~q> x} ϕ).
+Lemma open_fv_qualifier' (ϕ : qualifier) (v : value) k :
+  qualifier_fv ϕ ⊆ qualifier_fv ({k ~q> v} ϕ).
 Proof.
   intros. destruct ϕ.
   simpl. clear. induction vals; simpl. easy.
-  apply union_mono; eauto using open_var_fv_value'.
+  apply union_mono; eauto using open_fv_value'.
 Qed.
 
 Lemma lc_qualifier_and q1 q2 :

@@ -234,7 +234,7 @@ Inductive lc_am : am -> Prop :=
 | lc_aany : lc_am aany
 | lc_aevent: forall op ϕ (L : aset),
     (* This is quite annoying. *)
-    (forall (x : atom), x ∉ L -> forall (y : atom), y ∉ L -> lc_qualifier ({1 ~q> x} ({0 ~q> y} ϕ))) ->
+    (forall (x : atom), x ∉ L -> forall (y : atom), y ∉ L -> lc_qualifier ({0 ~q> y} ({1 ~q> x} ϕ))) ->
     lc_am (aevent op ϕ)
 | lc_aconcat : forall a b, lc_am a -> lc_am b -> lc_am (aconcat a b)
 | lc_aunion : forall a b, lc_am a -> lc_am b -> lc_am (aunion a b)
@@ -307,11 +307,6 @@ Definition mk_eq_constant c := {: ty_of_const c | b0:c= c }.
 Definition mk_bot ty := {: ty | mk_q_under_bot }.
 Definition mk_top ty := {: ty | mk_q_under_top }.
 Definition mk_eq_var ty (x: atom) := {: ty | b0:x= x }.
-
-(* Dummy implementation  *)
-Inductive builtin_typing_relation: effop -> pty -> Prop :=
-| builtin_typing_relation_: forall op ϕ A B ρ,
-    builtin_typing_relation op (-: {: TNat | ϕ} ⤑[: ret_ty_of_op op | A ▶ [(B, ρ)] ]).
 
 Lemma pty_erase_open_eq ρ k s :
   pty_erase ρ = pty_erase ({k ~p> s} ρ).
@@ -469,19 +464,19 @@ Proof.
   rewrite subst_commute_am, subst_commute_postam; eauto.
 Qed.
 
-Lemma open_var_fv_am' (a : am) (x : atom) k :
-  am_fv a ⊆ am_fv ({k ~a> x} a).
+Lemma open_fv_am' (a : am) (v : value) k :
+  am_fv a ⊆ am_fv ({k ~a> v} a).
 Proof.
-  induction a; simpl; eauto using open_var_fv_qualifier';
+  induction a; simpl; eauto using open_fv_qualifier';
     my_set_solver.
 Qed.
 
-Lemma open_var_fv_pty' (ρ : pty) (x : atom) k :
-  pty_fv ρ ⊆ pty_fv ({k ~p> x} ρ).
+Lemma open_fv_pty' (ρ : pty) (v : value) k :
+  pty_fv ρ ⊆ pty_fv ({k ~p> v} ρ).
 Proof.
   revert k.
-  induction ρ using pty_ind'; intros; simpl; eauto using open_var_fv_qualifier'.
-  repeat apply union_mono; eauto using open_var_fv_am'.
+  induction ρ using pty_ind'; intros; simpl; eauto using open_fv_qualifier'.
+  repeat apply union_mono; eauto using open_fv_am'.
   rewrite map_map. simpl.
   apply union_list_mono.
   clear - H.
@@ -491,7 +486,7 @@ Proof.
   econstructor.
   destruct a. simpl.
   econstructor.
-  apply union_mono. eauto using open_var_fv_am'.
+  apply union_mono. eauto using open_fv_am'.
   sinvert H. eauto.
   apply IHpost.
   sinvert H. eauto.
@@ -1053,4 +1048,32 @@ Proof.
   erewrite <- subst_intro_qualifier; auto. instantiate (1:= a0).
   apply subst_lc_qualifier; auto. apply H.
   my_set_solver. my_set_solver.
+Qed.
+
+Lemma open_swap_qualifier: forall (ϕ: qualifier) i j (u v: value),
+    lc u ->
+    lc v ->
+    i <> j ->
+    {i ~q> v} ({j ~q> u} ϕ) = {j ~q> u} ({i ~q> v} ϕ).
+Proof.
+  destruct ϕ. intros. simpl.
+  f_equal. rewrite !Vector.map_map.
+  apply Vector.map_ext.
+  eauto using open_swap_value.
+Qed.
+
+Lemma open_lc_respect_qualifier: forall (ϕ: qualifier) (u v : value) k,
+    lc_qualifier ({k ~q> u} ϕ) ->
+    lc u ->
+    lc v ->
+    lc_qualifier ({k ~q> v} ϕ).
+Proof.
+  intros. sinvert H.
+  destruct ϕ. simpl in *. simplify_eq.
+  econstructor.
+  srewrite Vector.to_list_Forall.
+  rewrite Vector.to_list_map in *.
+  rewrite Forall_map in *.
+  eapply Forall_impl; eauto.
+  simpl. eauto using open_lc_respect_value.
 Qed.
