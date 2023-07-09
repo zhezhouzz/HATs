@@ -2551,7 +2551,7 @@ Proof.
 Qed.
 
 Corollary soundness : forall (e : tm) T B,
-    [] ⊢ e ⋮t [: T | astar ∘ ⇒ B] ->
+    [] ⊢ e ⋮t [: T | astar ∘ ▶ B] ->
     forall α β (v : value),
       (* Alternatively, we can simply say [a⟦ astar ∘ ⟧ α]. *)
       valid_trace α ->
