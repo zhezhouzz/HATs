@@ -44,7 +44,6 @@ Ltac list_app_simpl :=
     end; auto.
 
 (** * Type Context Definition *)
-(** Both basic typing and refinement typing shares this polymorphic context. *)
 (** We use list instead of set since the type context in the refinement typing has dependency. *)
 Definition listctx (A: Type) := list (atom * A).
 

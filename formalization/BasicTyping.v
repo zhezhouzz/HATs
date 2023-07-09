@@ -138,14 +138,9 @@ Qed.
 
 Lemma empty_basic_typing_arrow_value_lam_exists:
   forall (v: value) T1 T2, ∅ ⊢t v ⋮v T1 ⤍ T2 ->
-                      (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam T1 e)).
-(* Proof. *)
-(*   inversion 1; subst. simplify_map_eq. *)
-(*   - left. eauto. *)
-(*   - right. eexists. f_equal. eauto. *)
-
-(*   eauto. simplify_map_eq. *)
-(* Qed. *)
-Admitted.
-
-
+                      (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam (T1 ⤍ T2) e)).
+Proof.
+  inversion 1; subst. simplify_map_eq.
+  - left. eauto.
+  - right. eexists. f_equal.
+Qed.

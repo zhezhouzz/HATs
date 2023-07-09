@@ -15,7 +15,6 @@ Import ListCtx.
 Import OperationalSemantics.
 Import BasicTyping.
 Import RefinementType.
-(* Import Substitution. *)
 Import Qualifier.
 Import Trace.
 Import mapset.
@@ -57,14 +56,14 @@ Notation "'a⟦' a '⟧' " := (langA a) (at level 20, format "a⟦ a ⟧", a con
 Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
   ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
     match ρ with
-    | {v: b | ϕ } => forall (c: constant), e ↪* c -> bpropR ϕ c
-    | -: {v:b | ϕ} ⤑[: T | A ⇒ B ] =>
+    | {: b | ϕ } => forall (c: constant), e ↪* c -> bpropR ϕ c
+    | -: {:b | ϕ} ⤑[: T | A ▶ B ] =>
         match t with
         | TBase _ => False
         | TArrow t1 t2 =>
             amlist_typed B T ->
             forall (v_x: constant),
-              ptyR t1 {v:b | ϕ} v_x ->
+              ptyR t1 {:b | ϕ} v_x ->
               forall (α β: list evop) (v: value),
                 a⟦ A ^a^ v_x ⟧ α ->
                 α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
@@ -72,13 +71,13 @@ Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
                            a⟦ Bi ^a^ v_x ⟧ β /\
                            ptyR t2 (ρi ^p^ v_x) v
         end
-    | -: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ] =>
+    | -: (-: ρ ⤑[: Tx | ax ▶ bx ]) ⤑[: T | A ▶ B ] =>
         match t with
         | TBase _ => False
         | TArrow t1 t2 =>
             amlist_typed B T ->
             forall (v_x: value),
-              ptyR t1 (-: ρ ⤑[: Tx | ax ⇒ bx ]) v_x ->
+              ptyR t1 (-: ρ ⤑[: Tx | ax ▶ bx ]) v_x ->
               forall (α β: list evop) (v: value),
                 a⟦ A ⟧ α ->
                 α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
@@ -94,7 +93,7 @@ Notation "'p⟦' ρ '⟧' " :=
 Definition htyR τ (e: tm) : Prop :=
   ∅ ⊢t e ⋮t ⌊ τ ⌋  /\ closed_hty ∅ τ /\
   match τ with
-  | [: T | A ⇒ B ] =>
+  | [: T | A ▶ B ] =>
       amlist_typed B T ->
       forall (α β: list evop) (v: value),
         a⟦ A ⟧ α ->
@@ -106,21 +105,6 @@ Definition htyR τ (e: tm) : Prop :=
 
 Notation "'⟦' τ '⟧' " := (htyR τ) (at level 20, format "⟦ τ ⟧", τ constr).
 Notation "'⟦' τ '⟧p' " := (ptyR τ) (at level 20, format "⟦ τ ⟧p", τ constr).
-
-(** Connect the inductive constructor of pty with hty *)
-Lemma ptyR_constr_base_arr: forall (b: base_ty) ϕ T A B e,
-    ∅ ⊢t e ⋮t ⌊ -: {v:b | ϕ} ⤑[: T | A ⇒ B ] ⌋ /\
-      closed_pty ∅ (-: {v:b | ϕ} ⤑[: T | A ⇒ B ]) /\
-      (forall (v_x: constant), p⟦ {v:b | ϕ}  ⟧ v_x -> ⟦ [: T | A ⇒ B ] ^h^ v_x ⟧ (e ^t^ v_x)) ->
-      p⟦ -: {v:b | ϕ} ⤑[: T | A ⇒ B ] ⟧ e.
-Admitted.
-
-Lemma ptyR_constr_arr_arr: forall ρ Tx ax bx T A B e,
-    ∅ ⊢t e ⋮t ⌊ -: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ] ⌋ /\
-      closed_pty ∅ (-: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ]) /\
-      (forall (v_x: value), p⟦ (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⟧ v_x -> ⟦ [: T | A ⇒ B ] ⟧ (e ^t^ v_x)) ->
-      p⟦ -: (-: ρ ⤑[: Tx | ax ⇒ bx ]) ⤑[: T | A ⇒ B ] ⟧ e.
-Admitted.
 
 Notation "'m{' x '}q'" := (msubst qualifier_subst x) (at level 20, format "m{ x }q", x constr).
 Notation "'m{' x '}p'" := (msubst pty_subst x) (at level 20, format "m{ x }p", x constr).

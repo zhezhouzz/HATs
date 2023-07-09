@@ -32,7 +32,8 @@ Inductive am : Type :=
 
 Notation "'⟨' op '|' ϕ '⟩'" := (aevent op ϕ) (at level 5, format "⟨ op | ϕ ⟩", op constr, ϕ constr).
 Notation " a ';+' b " := (aconcat a b) (at level 5, format "a ;+ b", b constr, a constr, right associativity).
-
+Notation " a ';||' b " := (aunion a b) (at level 5, format "a ;|| b", b constr, a constr, right associativity).
+Notation " a ';∖' b " := (adiff a b) (at level 5, format "a ;∖ b", b constr, a constr, right associativity).
 Notation "∘" := aany (at level 5).
 Notation "a∅" := aemp (at level 80, right associativity).
 
@@ -71,22 +72,22 @@ Global Hint Constructors hty: core.
 Global Hint Constructors pty: core.
 Global Hint Constructors am: core.
 
-Notation "'{v:' B '|' ϕ '}'" := (basepty B ϕ) (at level 5, format "{v: B | ϕ }", B constr, ϕ constr).
-Notation "'[:' T '|' a '⇒' b ']'" := (hty_ T a b) (at level 5, format "[: T | a ⇒ b ]", T constr, a constr, b constr).
-Notation "'-:' ρ '⤑[:' T '|' a '⇒' b ']' " :=
-  (arrpty ρ T a b) (at level 80, format "-: ρ ⤑[: T | a ⇒ b ]", right associativity, ρ constr, T constr, a constr, b constr).
+Notation "'{:' B '|' ϕ '}'" := (basepty B ϕ) (at level 5, format "{: B | ϕ }", B constr, ϕ constr).
+Notation "'[:' T '|' a '▶' b ']'" := (hty_ T a b) (at level 5, format "[: T | a ▶ b ]", T constr, a constr, b constr).
+Notation "'-:' ρ '⤑[:' T '|' a '▶' b ']' " :=
+  (arrpty ρ T a b) (at level 80, format "-: ρ ⤑[: T | a ▶ b ]", right associativity, ρ constr, T constr, a constr, b constr).
 
 (** Erase *)
 
 Fixpoint pty_erase ρ : ty :=
   match ρ with
-  | {v: B | _} => B
-  | (-: ρ ⤑[: T | _ ⇒ _ ]) => (pty_erase ρ) ⤍ T
+  | {: B | _} => B
+  | (-: ρ ⤑[: T | _ ▶ _ ]) => (pty_erase ρ) ⤍ T
   end.
 
 Definition hty_erase ρ : ty :=
   match ρ with
-  | [: T | _ ⇒ _ ] => T
+  | [: T | _ ▶ _ ] => T
   end.
 
 Class Erase A := erase : A -> ty.
@@ -97,7 +98,7 @@ Class Erase A := erase : A -> ty.
 
 Notation " '⌊' ty '⌋' " := (erase ty) (at level 5, format "⌊ ty ⌋", ty constr).
 
-Definition pty_to_rty (ρ: pty) := [: ⌊ ρ ⌋ | astar ∘ ⇒ [(aϵ, ρ)] ].
+Definition pty_to_rty (ρ: pty) := [: ⌊ ρ ⌋ | astar ∘ ▶ [(aϵ, ρ)] ].
 
 (** free variables *)
 
@@ -115,15 +116,15 @@ Fixpoint am_fv a : aset :=
 
 Fixpoint pty_fv ρ : aset :=
   match ρ with
-  | {v: _ | ϕ } => qualifier_fv ϕ
-  | -: ρ ⤑[: _ | a ⇒ b ] => (pty_fv ρ) ∪ (am_fv a) ∪ (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) b))
+  | {: _ | ϕ } => qualifier_fv ϕ
+  | -: ρ ⤑[: _ | a ▶ b ] => (pty_fv ρ) ∪ (am_fv a) ∪ (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) b))
   end.
 
 Definition postam_fv (B : (list (am * pty))) := (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) B)).
 
 Definition hty_fv ρ : aset :=
   match ρ with
-  | [: _ | a ⇒ b ] => (am_fv a) ∪ postam_fv b
+  | [: _ | a ▶ b ] => (am_fv a) ∪ postam_fv b
   end.
 
 #[global]
@@ -154,9 +155,9 @@ Fixpoint am_open (k: nat) (s: value) (a : am): am :=
 
 Fixpoint pty_open (k: nat) (s: value) (ρ: pty) : pty :=
   match ρ with
-  | {v: B | ϕ } => {v: B | qualifier_open (S k) s ϕ }
-  | -: ρ ⤑[: T | a ⇒ b ] =>
-      -: pty_open k s ρ ⤑[: T | am_open (S k) s a ⇒ (List.map (fun e => (am_open (S k) s e.1, pty_open (S k) s e.2)) b) ]
+  | {: B | ϕ } => {: B | qualifier_open (S k) s ϕ }
+  | -: ρ ⤑[: T | a ▶ b ] =>
+      -: pty_open k s ρ ⤑[: T | am_open (S k) s a ▶ (List.map (fun e => (am_open (S k) s e.1, pty_open (S k) s e.2)) b) ]
   end.
 
 Definition pam_open (k: nat) (s: value) (l: list (am * pty)) : list (am * pty) :=
@@ -164,7 +165,7 @@ Definition pam_open (k: nat) (s: value) (l: list (am * pty)) : list (am * pty) :
 
 Definition hty_open (k: nat) (s: value) (a : hty): hty :=
   match a with
-  | [: T | a ⇒ b ] => [: T | am_open k s a ⇒ pam_open k s b ]
+  | [: T | a ▶ b ] => [: T | am_open k s a ▶ pam_open k s b ]
   end.
 
 Notation "'{' k '~p>' s '}' e" := (pty_open k s e) (at level 20, k constr).
@@ -175,10 +176,6 @@ Notation "e '^p^' s" := (pty_open 0 s e) (at level 20).
 Notation "e '^a^' s" := (am_open 0 s e) (at level 20).
 Notation "e '^pa^' s" := (pam_open 0 s e) (at level 20).
 Notation "e '^h^' s" := (hty_open 0 s e) (at level 20).
-
-(* Notation " '{' x '↦' v '}' " := (state_insert_value x v) (at level 20, format "{ x ↦ v }", x constr, v constr). *)
-
-(* Notation " '{' x ':={' d '}' v '}' " := (state_subst d x v) (at level 20, format "{ x :={ d } v }", x constr, v constr). *)
 
 Fixpoint am_subst (k: atom) (s: value) (a : am): am :=
   match a with
@@ -194,9 +191,9 @@ Fixpoint am_subst (k: atom) (s: value) (a : am): am :=
 
 Fixpoint pty_subst (k: atom) (s: value) (ρ: pty) : pty :=
   match ρ with
-  | {v: B | ϕ } => {v: B | qualifier_subst k s ϕ }
-  | -: ρ ⤑[: T | a ⇒ b ] =>
-      -: pty_subst k s ρ ⤑[: T | am_subst k s a ⇒ (List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) b)]
+  | {: B | ϕ } => {: B | qualifier_subst k s ϕ }
+  | -: ρ ⤑[: T | a ▶ b ] =>
+      -: pty_subst k s ρ ⤑[: T | am_subst k s a ▶ (List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) b)]
   end.
 
 Definition postam_subst (k: atom) (s: value) (B: list (am * pty)): list (am * pty) :=
@@ -205,7 +202,7 @@ Definition postam_subst (k: atom) (s: value) (B: list (am * pty)): list (am * pt
 
 Definition hty_subst (k: atom) (s: value) (a : hty): hty :=
   match a with
-  | [: T | a ⇒ B ] => [: T | am_subst k s a ⇒ (postam_subst k s B)]
+  | [: T | a ▶ B ] => [: T | am_subst k s a ▶ (postam_subst k s B)]
   end.
 
 Notation "'{' x ':=' s '}p'" := (pty_subst x s) (at level 20, format "{ x := s }p", x constr).
@@ -219,17 +216,17 @@ Definition amlist_typed (B: list (am * pty)) (T: ty) :=
   (forall Bi ρi, In (Bi, ρi) B -> ⌊ ρi ⌋ = T).
 
 Inductive valid_pty: pty -> Prop :=
-| valid_pty_base: forall B ϕ, valid_pty {v: B | ϕ }
+| valid_pty_base: forall B ϕ, valid_pty {: B | ϕ }
 | valid_pty_arr: forall ρ T A B (L : aset),
     valid_pty ρ ->
     amlist_typed B T ->
     (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> valid_pty (ρi ^p^ x)) ->
-    valid_pty (-: ρ ⤑[: T | A ⇒ B ]).
+    valid_pty (-: ρ ⤑[: T | A ▶ B ]).
 
 Inductive valid_hty: hty -> Prop :=
 | valid_hty_: forall T A B,
     amlist_typed B T -> (forall Bi ρi, In (Bi, ρi) B -> valid_pty ρi) ->
-    valid_hty [: T | A ⇒ B ].
+    valid_hty [: T | A ▶ B ].
 
 Inductive lc_am : am -> Prop :=
 | lc_aemp : lc_am aemp
@@ -248,20 +245,20 @@ Inductive lc_am : am -> Prop :=
 Inductive lc_pty : pty -> Prop :=
 | lc_pty_base: forall B ϕ (L : aset),
     (forall x : atom, x ∉ L -> lc_qualifier (ϕ ^q^ x)) ->
-    lc_pty {v: B | ϕ }
+    lc_pty {: B | ϕ }
 | lc_pty_arr: forall ρ T A B (L : aset),
     lc_pty ρ ->
     (forall x : atom, x ∉ L -> lc_am (A ^a^ x)) ->
     (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> lc_am (Bi ^a^ x)) ->
     (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> lc_pty (ρi ^p^ x)) ->
-    lc_pty (-: ρ ⤑[: T | A ⇒ B ]).
+    lc_pty (-: ρ ⤑[: T | A ▶ B ]).
 
 Inductive lc_hty : hty -> Prop :=
 | lc_hty_ : forall T A B,
     lc_am A ->
     (forall Bi ρi, In (Bi, ρi) B -> lc_am Bi) ->
     (forall Bi ρi, In (Bi, ρi) B -> lc_pty ρi) ->
-    lc_hty [: T | A ⇒ B ].
+    lc_hty [: T | A ▶ B ].
 
 Inductive closed_pty (d : aset) (ρ: pty): Prop :=
 | closed_pty_: valid_pty ρ -> lc_pty ρ -> pty_fv ρ ⊆ d -> closed_pty d ρ.
@@ -277,7 +274,7 @@ Inductive closed_hty (d: aset) (ρ: hty): Prop :=
 Fixpoint remove_arr_pty (Γ: listctx pty) :=
   match Γ with
   | [] => []
-  | (x, {v: B | ϕ}) :: Γ => (x, {v: B | ϕ}) :: remove_arr_pty Γ
+  | (x, {: B | ϕ}) :: Γ => (x, {: B | ϕ}) :: remove_arr_pty Γ
   | (x, _) :: Γ => remove_arr_pty Γ
   end.
 
@@ -300,24 +297,21 @@ Proof.
   induction 1; eauto.
 Qed.
 
-Lemma ok_ctx_regular: forall Γ, ok_ctx Γ -> ok Γ /\ ctx_closed_pty Γ.
-Admitted.
-
 Definition ctx_erase (Γ: listctx pty) :=
   ⋃ ((List.map (fun e => {[e.1 := pty_erase e.2]}) Γ): list (amap ty)).
 
 Notation " '⌊' Γ '⌋*' " := (ctx_erase Γ) (at level 5, format "⌊ Γ ⌋*", Γ constr).
 
 (** Ty Function *)
-Definition mk_eq_constant c := {v: ty_of_const c | b0:c= c }.
-Definition mk_bot ty := {v: ty | mk_q_under_bot }.
-Definition mk_top ty := {v: ty | mk_q_under_top }.
-Definition mk_eq_var ty (x: atom) := {v: ty | b0:x= x }.
+Definition mk_eq_constant c := {: ty_of_const c | b0:c= c }.
+Definition mk_bot ty := {: ty | mk_q_under_bot }.
+Definition mk_top ty := {: ty | mk_q_under_top }.
+Definition mk_eq_var ty (x: atom) := {: ty | b0:x= x }.
 
 (* Dummy implementation  *)
 Inductive builtin_typing_relation: effop -> pty -> Prop :=
 | builtin_typing_relation_: forall op ϕ A B ρ,
-    builtin_typing_relation op (-: {v: TNat | ϕ} ⤑[: ret_ty_of_op op | A ⇒ [(B, ρ)] ]).
+    builtin_typing_relation op (-: {: TNat | ϕ} ⤑[: ret_ty_of_op op | A ▶ [(B, ρ)] ]).
 
 Lemma pty_erase_open_eq ρ k s :
   pty_erase ρ = pty_erase ({k ~p> s} ρ).
@@ -1060,15 +1054,3 @@ Proof.
   apply subst_lc_qualifier; auto. apply H.
   my_set_solver. my_set_solver.
 Qed.
-
-(* Lemma open_swap_qualifier: forall (ϕ: qualifier) i j (u v: value), *)
-(*     lc u -> *)
-(*     lc v -> *)
-(*     i <> j -> *)
-(*     {i ~q> v} ({j ~q> u} ϕ) = {j ~q> u} ({i ~q> v} ϕ). *)
-(* Proof. *)
-(*   destruct ϕ. intros. simpl. *)
-(*   f_equal. rewrite !Vector.map_map. *)
-(*   apply Vector.map_ext. *)
-(*   eauto using open_swap_value. *)
-(* Qed. *)

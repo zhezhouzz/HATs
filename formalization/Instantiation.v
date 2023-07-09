@@ -22,9 +22,6 @@ Definition msubst {A} (subst : atom -> value -> A -> A)
                   (env : env) (a : A) : A :=
   map_fold subst a env.
 
-(* Definition value_msubst := msubst value_subst. *)
-(* Definition tm_msubst := msubst tm_subst. *)
-
 Definition instantiation (Γ: amap ty) (Γv: env) :=
   forall (x: atom),
     match Γ !! x with

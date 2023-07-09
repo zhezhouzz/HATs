@@ -108,33 +108,10 @@ Proof.
   by rewrite lookup_insert_ne in * by my_set_solver.
 Qed.
 
-Lemma eval_op_type_safe: forall α op (v1 v: constant) (T1 T: base_ty),
-    α ⊧{ op ~ v1 }⇓{ v } ->
-    ty_of_op op = T1 ⤍ T ->
-    ∅ ⊢t v1 ⋮v T1 /\ ∅ ⊢t v ⋮v T.
-Admitted.
-
-Lemma ty_tlete_dummy: forall Γ Tx T (e_x e: tm), Γ ⊢t e_x ⋮t Tx -> Γ ⊢t e ⋮t T -> Γ ⊢t (tlete e_x e) ⋮t T.
-Admitted.
-
 (** perservation *)
 Lemma preservation: forall α β Γ T (e e': tm),α ⊧ e ↪{ β } e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
 Admitted.
 
 (** multi preservation *)
 Lemma multi_preservation: forall α β Γ T (e e': tm),α ⊧ e ↪*{ β } e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
-Admitted.
-
-Lemma closed_has_type_under_empty_value: forall Γ (v: value) T, Γ ⊢t v ⋮v T -> closed_value v -> ∅ ⊢t v ⋮v T.
-Admitted.
-
-Lemma closed_has_type_under_empty_tm: forall Γ (v: tm) T, Γ ⊢t v ⋮t T -> closed_tm v -> ∅ ⊢t v ⋮t T.
-Admitted.
-
-Lemma vlam_tyable_dummy: forall Γ e Tx T,
-  Γ ⊢t e ⋮t T -> Γ ⊢t vlam Tx e ⋮v Tx ⤍ T.
-Admitted.
-
-Lemma vlam_implies_open_tyable: forall Γ e1 v2 Tx T,
-  Γ ⊢t v2 ⋮v Tx -> Γ ⊢t vlam Tx e1 ⋮v Tx ⤍ T -> Γ ⊢t e1 ^t^ v2 ⋮t T.
 Admitted.
