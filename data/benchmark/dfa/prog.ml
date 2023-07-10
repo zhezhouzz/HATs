@@ -51,40 +51,24 @@ let[@assert] add_edge ?l:(vtab = (true : [%v: nat]))
          (anyA
          - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
        epsilonA
-       || (Update ((vtab : nat), start_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
-           starA
-             (anyA
-             - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))
-             );
-           (Update ((c : nat), start_id, start_id, (true : [%v: unit]));
-            starA
-              (anyA
-              - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))
-              ))
-           ||
-           (Update ((vtab : nat), end_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
-            starA
-              (anyA
-              - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))
-              );
-            Update ((c : nat), start_id, end_id, (true : [%v: unit]));
-            starA
-              (anyA
-              - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))
-              )))
        ||
-       (Update ((vtab : nat), end_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
+       (Update ((vtab : nat), start_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
         starA
           (anyA
           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
-        Update ((vtab : nat), start_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
-        starA
-          (anyA
-          - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
-        Update ((c : nat), start_id, end_id, (true : [%v: unit]));
-        starA
-          (anyA
-          - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])))));
+        (Update ((c : nat), start_id, start_id, (true : [%v: unit]));
+         starA
+           (anyA
+           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))))
+        ||
+        (Update ((vtab : nat), end_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
+         starA
+           (anyA
+           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
+         Update ((c : nat), start_id, end_id, (true : [%v: unit]));
+         starA
+           (anyA
+           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))))));
     post =
       ((starA
           (anyA
