@@ -15,7 +15,8 @@ Definition ty_of_const (c: constant): base_ty :=
 Definition ret_ty_of_op (op: effop): base_ty :=
   match op with
   | op_plus_one => TNat
-  | op_eq_zero => TNat
+  | op_minus_one => TNat
+  | op_eq_zero => TBool
   | op_rannat => TNat
   | op_ranbool => TBool
   | op_read => TNat

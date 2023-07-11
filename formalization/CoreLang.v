@@ -33,6 +33,7 @@ Notation " t1 '⤍' t2" := (TArrow t1 t2) (at level 18, right associativity).
 (** * effectful operators *)
 Inductive effop : Type :=
 | op_plus_one
+| op_minus_one
 | op_eq_zero
 | op_rannat
 | op_ranbool
