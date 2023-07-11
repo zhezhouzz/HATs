@@ -52,7 +52,7 @@ let[@assert] add_edge ?l:(vtab = (true : [%v: nat]))
          - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
        epsilonA
        ||
-       (Lookup ((vtab : nat), start_id, (v >= 0 : [%v: int]));
+       (Update ((vtab : nat), start_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
         starA
           (anyA
           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
@@ -61,23 +61,20 @@ let[@assert] add_edge ?l:(vtab = (true : [%v: nat]))
            (anyA
            - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))))
         ||
-        (Lookup ((vtab : nat), start_id, (v >= 0 : [%v: int]));
+        (Update ((vtab : nat), end_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
          starA
            (anyA
            - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
-         Lookup ((vtab : nat), end_id, (v >= 0 : [%v: int]));
+         Update ((c : nat), start_id, end_id, (true : [%v: unit]));
          starA
            (anyA
            - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))))));
     post =
-      (((Mem ((c : nat), start_id, (not v : [%v: bool]));
-         Lookup ((vtab : nat), start_id, (v >= 0 : [%v: int]));
-         Lookup ((vtab : nat), end_id, (v >= 0 : [%v: int]));
-         Update ((c : nat), start_id, end_id, (true : [%v: unit])))
-        || starA
-             (anyA
-             - Update
-                 ((((v0 == vtab : [%v0: nat]) : [%v1: int]) : [%v2: int])
-                   : [%v: unit]));
+      ((starA
+          (anyA
+          - Update
+              ((((v0 == vtab : [%v0: nat]) : [%v1: int]) : [%v2: int])
+                : [%v: unit]));
+        epsilonA || Update ((c : nat), start_id, end_id, (true : [%v: unit]));
         Ret (true : [%v0: unit])) : unit);
   }
