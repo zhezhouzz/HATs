@@ -1618,17 +1618,17 @@ Proof.
       apply ptyR_typed_closed in H0. destruct H0 as (_&_&H0).
       cbn in H4. simp_hyps.
       sinvert H1.
-      dup_hyp H5 (fun H => apply empty_basic_typing_base_const_exists in H).
-      simp_hyps. specialize (H3 c). feed specialize H3.
+      dup_hyp H6 (fun H => apply empty_basic_typing_base_const_exists in H).
+      simp_hyps. specialize (H2 c [] []). feed specialize H2.
       econstructor. econstructor.
-      unfold bpropR in H3.
-      rewrite !qualifier_and_open in H3.
-      rewrite denote_qualifier_and in H3.
-      simpl in H3. simp_hyps.
+      unfold bpropR in H2.
+      rewrite !qualifier_and_open in H2.
+      rewrite denote_qualifier_and in H2.
+      simpl in H2. simp_hyps.
       split; eauto.
       split. eauto. split. econstructor. eauto.
       split. eauto.
-      intros. specialize (H3 []). apply value_reduction_refl in H3.
+      intros. apply value_reduction_refl in H3.
       simp_hyps. unfold bpropR. eauto.
     }
     simp_hyps.
@@ -1795,10 +1795,10 @@ Proof.
     }
     rewrite Htmp; clear Htmp.
     simpl.
-    repeat split; try unshelve solve [repeat econstructor]. exact ∅.
-    simpl. set_solver.
+    split. eauto. split. repeat econstructor.
+    split. unshelve (repeat econstructor). exact ∅. simpl. repeat my_set_solver.
     intros. unfold bpropR. simpl.
-    specialize (H []). apply value_reduction_refl in H.
+    apply value_reduction_refl in H.
     simp_hyps. eauto.
 
   (* [TVar] *)
@@ -2340,8 +2340,8 @@ Proof.
       split.
 
       econstructor; eauto.
-      clear - H4.
-      sinvert H4.
+      clear - H5.
+      sinvert H5.
       econstructor.
       instantiate_atom_listctx.
       rewrite !qualifier_and_open.
@@ -2351,8 +2351,8 @@ Proof.
       eauto using open_lc_respect_qualifier.
 
       simpl. rewrite qualifier_and_fv. simpl.
-      simpl in H5. rewrite <- open_fv_qualifier' in H5.
-      clear - H5.
+      simpl in H6. rewrite <- open_fv_qualifier' in H6.
+      clear - H6.
       repeat my_set_solver.
 
       repeat esplit; eauto.
@@ -2361,7 +2361,7 @@ Proof.
       apply denote_qualifier_and.
       split.
       cbn. cbn. rewrite decide_True by auto. cbn. eauto.
-      apply H3. repeat econstructor.
+      eapply (H2 _ [] []). repeat econstructor.
 
   (* [TMatchb] *)
   - intros Γ v e1 e2 ϕ τ L HWFτ Htv HDv Hte1 HDe1 Hte2 HDe2 Γv HΓv.
@@ -2423,10 +2423,9 @@ Proof.
         simpl.
         simp_hyps.
         repeat (split; eauto).
-        intros.
         unfold bpropR in *.
-        specialize (H3 _ H2).
-        specialize (H2 []). apply value_reduction_refl in H2. simp_hyps.
+        specialize (H2 _ _ _ H3).
+        apply value_reduction_refl in H3. simp_hyps. subst.
         rewrite !qualifier_and_open.
         rewrite !denote_qualifier_and. repeat split; eauto.
         rewrite msubst_qualifier by eauto using ctxRst_closed_env. simpl.
@@ -2474,8 +2473,8 @@ Proof.
         repeat (split; eauto).
         intros.
         unfold bpropR in *.
-        specialize (H3 _ H2).
-        specialize (H2 []). apply value_reduction_refl in H2. simp_hyps.
+        specialize (H2 _ _ _ H3).
+        apply value_reduction_refl in H3. simp_hyps. subst.
         rewrite !qualifier_and_open.
         rewrite !denote_qualifier_and. repeat split; eauto.
         rewrite msubst_qualifier by eauto using ctxRst_closed_env. simpl.
@@ -2542,5 +2541,4 @@ Proof.
   eauto using valid_trace_any_star.
 Qed.
 
-Print Assumptions fundamental.
 Print Assumptions soundness.
