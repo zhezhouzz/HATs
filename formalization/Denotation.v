@@ -56,7 +56,7 @@ Notation "'a⟦' a '⟧' " := (langA a) (at level 20, format "a⟦ a ⟧", a con
 Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
   ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
     match ρ with
-    | {: b | ϕ } => forall (c: constant), e ↪* c -> bpropR ϕ c
+    | {: b | ϕ } => forall (c: constant) α β, α ⊧ e ↪*{β} c -> β = [] /\ bpropR ϕ c
     | -: {:b | ϕ} ⤑[: T | A ▶ B ] =>
         match t with
         | TBase _ => False
