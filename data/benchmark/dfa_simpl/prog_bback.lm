@@ -1,0 +1,83 @@
+type effect =
+  | Mem of (nat -> int -> bool)
+  | Update of (nat -> int -> int -> unit)
+  | Lookup of (nat -> int -> int)
+
+(* There are three tables for a graph *)
+(* vtab vid -> \top *)
+(* char -> in_id -> out_id *)
+
+let add_edge (vtab : nat) (c : nat) (start_id : int) (end_id : int) : unit =
+  if perform (Mem (c, start_id)) then ()
+  else if perform (Lookup (vtab, start_id)) < 0 then ()
+  else
+    let (st : int) = perform (Lookup (vtab, end_id)) in
+    if st <= 0 then ()
+    else
+      let (dummy1 : unit) = perform (Update (c, start_id, end_id)) in
+      ()
+
+(* let Afr = *)
+(*   starA (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))) *)
+
+(* let ADfa1 = *)
+(*   starA (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))); *)
+(*   Update ((vtab : nat), start_id, ((true : [%v2: int]) : [%v: unit])); *)
+(*   starA (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))); *)
+(*   epsilonA *)
+(*   || *)
+(*   (Update ((c : nat), start_id, start_id, (true : [%v: unit])); *)
+(*    starA *)
+(*      (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])))) *)
+
+(* let ADfa2 = *)
+(*   starA (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))); *)
+(*   Update ((vtab : nat), start_id, ((true : [%v2: int]) : [%v: unit])); *)
+(*   starA (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))); *)
+(*   Update ((vtab : nat), end_id, ((true : [%v2: int]) : [%v: unit])); *)
+(*   starA (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))); *)
+(*   epsilonA *)
+(*   || *)
+(*   (Update ((c : nat), start_id, end_id, (true : [%v: unit])); *)
+(*    starA *)
+(*      (anyA - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])))) *)
+
+let[@assert] add_edge ?l:(vtab = (true : [%v: nat]))
+    ?l:(c = (not (v == vtab) : [%v: nat])) ?l:(start_id = (true : [%v: int]))
+    ?l:(end_id = (true : [%v: int])) =
+  {
+    pre =
+      (starA
+         (anyA
+         - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
+       epsilonA
+       ||
+       (Update ((vtab : nat), start_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
+        starA
+          (anyA
+          - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
+        (Update ((c : nat), start_id, start_id, (true : [%v: unit]));
+         starA
+           (anyA
+           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))))
+        ||
+        (Update ((vtab : nat), end_id, ((v2 >= 0 : [%v2: int]) : [%v: unit]));
+         starA
+           (anyA
+           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit])));
+         Update ((c : nat), start_id, end_id, (true : [%v: unit]));
+         starA
+           (anyA
+           - Update ((c : nat), start_id, ((true : [%v2: int]) : [%v: unit]))))));
+    post =
+      (((Mem ((c : nat), start_id, (not v : [%v: bool]));
+         Lookup ((vtab : nat), start_id, (v >= 0 : [%v: int]));
+         Lookup ((vtab : nat), end_id, (v >= 0 : [%v: int]));
+         Update ((c : nat), start_id, end_id, (true : [%v: unit])))
+        || starA
+             (anyA
+             - Update
+                 ((((v0 == vtab : [%v0: nat]) : [%v1: int]) : [%v2: int])
+                   : [%v: unit]));
+        Ret (true : [%v0: unit])) : unit);
+  }
