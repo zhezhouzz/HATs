@@ -116,6 +116,25 @@ let type_check_ meta_config_file source_file =
   (* let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in *)
   ()
 
+let subtype_check_ meta_config_file source_file =
+  let opctx', code, normalized =
+    print_typed_normalized_source_code_ meta_config_file source_file
+  in
+  let opctx, rctx = POpTypectx.from_code code in
+  let opctx = opctx @ opctx' in
+  let assertions = RTypectx.get_task code in
+  let get x =
+    snd @@ List.find_exn ~f:(fun (name, _) -> String.equal x name) assertions
+  in
+  let rty1 = get "rty1" in
+  let rty2 = get "rty2" in
+  let res = Subtyping.sub_rty_bool [] (rty1, rty2) in
+  let () =
+    Printf.printf "subtyping check\n%s\n<:\n%s\nresult: %b\n"
+      (Rty.layout_rty rty1) (Rty.layout_rty rty2) res
+  in
+  ()
+
 let cmd_config_source summary f =
   Command.basic ~summary
     Command.Let_syntax.(
@@ -146,6 +165,11 @@ let test =
       ( "type-check",
         cmd_config_source "type check" (fun meta_config_file source_file () ->
             let x = type_check_ meta_config_file source_file in
+            ()) );
+      ( "subtype-check",
+        cmd_config_source "subtype check"
+          (fun meta_config_file source_file () ->
+            let x = subtype_check_ meta_config_file source_file in
             ()) );
       ( "test-reg",
         cmd_config_source "test reg" (fun meta_config_file _ () ->
