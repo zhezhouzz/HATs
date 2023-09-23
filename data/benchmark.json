@@ -1,204 +1,59 @@
-{
+   {
   "benchmark_dir": "data/benchmark",
   "benchmarks_info": [
     {
-      "benchmark_source": "test",
+      "benchmark_source": "Protocols",
       "benchmarks": [
-          {
-          "name": "putget",
-          "path": "putget",
-          "spath": "",
-          "is_rec": false
-      },
-        {
-          "name": "parse1",
-          "path": "parse1",
-          "spath": "",
-          "is_rec": false
-        },
-        {
-          "name": "parse2",
-          "path": "parse2",
-          "spath": "",
-          "is_rec": false
-        },
-          {
-            "name": "parsecons",
-            "path": "parsecons",
-            "spath": "",
-            "is_rec": false
-        }
+        "WebPageFetcher",
+        "UnixFileSystem",
+        "Connection",
+        "SQliteResource",
+        "CGI",
+        "Authority",
+        "Firewall",
+        "Newsletter",
+        "MinSet",
+        "LazySet",
+        "MST",
+        "ColoredGraph",
+        "DFA"
+      ]
+    }
+  ],
+  "benchmarks_info_": [
+    {
+      "benchmark_source": "Protocols",
+      "benchmarks": [
+        "Authority",
+        "Firewall",
+        "Newsletter",
+        "ColoredGraph",
+        "DFA"
+      ]
+    }
+  ],
+  "benchmarks_info_d": [
+    {
+      "benchmark_source": "Algebraic Effects",
+      "benchmarks": [
+        "IO",
+        "KeyValueStore",
+        "WebPageFetcher",
+        "Connection",
+        "CGI"
       ]
     },
     {
-      "benchmark_source": "quickchick",
+      "benchmark_source": "Datatypes",
       "benchmarks": [
-        {
-          "name": "RedBlackTree",
-          "path": "rbtree",
-          "spath": "",
-          "is_rec": true
-        },
-        {
-          "name": "SizedList",
-          "path": "sizedlist",
-          "spath": "_synth_sizedlist",
-          "is_rec": true
-        },
-        {
-          "name": "SizedTree",
-          "path": "sizedtree",
-          "spath": "_synth_sizedtree",
-          "is_rec": true
-        },
-        {
-          "name": "SortedList",
-          "path": "sortedlist",
-          "spath": "_synth_sortedlist",
-          "is_rec": true
-        }
-      ]
-    },
-    {
-      "benchmark_source": "quickcheck",
-      "benchmarks": [
-        {
-          "name": "SizedHeap",
-          "path": "heap",
-          "is_rec": true
-        },
-        {
-          "name": "SizedSet",
-          "path": "set",
-          "is_rec": true
-        }
-      ]
-    },
-    {
-      "benchmark_source": "elrond",
-      "benchmarks": [
-        {
-          "name": "UniqueList",
-          "path": "uniquel",
-          "spath": "_synth_uniquel",
-          "is_rec": true
-        },
-        {
-          "name": "BatchedQueue",
-          "path": "batchedq",
-          "is_rec": false
-        },
-        {
-          "name": "BankersQueue",
-          "path": "bankersq",
-          "is_rec": false
-        },
-        {
-          "name": "Stream",
-          "path": "stream",
-          "is_rec": false
-        },
-        {
-          "name": "LeftistHeap",
-          "path": "leftisthp",
-          "is_rec": true
-        },
-        {
-          "name": "UnbalanceSet",
-          "path": "unbset",
-          "is_rec": true
-        }
-      ]
-    },
-    {
-      "benchmark_source": "leonidas",
-      "benchmarks": [
-        {
-          "name": "CompleteTree",
-          "path": "completetree",
-          "is_rec": true
-        },
-        {
-          "name": "SizedBST",
-          "path": "sizedbst",
-          "spath": "_synth_sizedbst",
-          "is_rec": true
-        }
-      ]
-    },
-    {
-      "benchmark_source": "stlc",
-      "benchmarks": [
-        {
-          "name": "gen_term_size'",
-          "path": "gen_term_size",
-          "is_rec": true
-        },
-        {
-          "name": "gen_term_size",
-          "path": "gen_term",
-          "is_rec": false
-        },
-        {
-          "name": "gen_term_no_app",
-          "path": "gen_term_no_app",
-          "is_rec": true
-        },
-        {
-          "name": "gen_term_no_app'",
-          "path": "gen_term_no_app_size",
-          "is_rec": true
-        },
-        {
-          "name": "gen_const",
-          "path": "gen_const",
-          "is_rec": false
-        },
-        {
-          "name": "gen_type'",
-          "path": "gen_type_size",
-          "is_rec": true
-        },
-        {
-          "name": "gen_type",
-          "path": "gen_type",
-          "is_rec": false
-        },
-        {
-          "name": "or_var_in_typectx",
-          "path": "or_var_in_typectx",
-          "is_rec": false
-        },
-        {
-          "name": "combine_terms",
-          "path": "combine_terms",
-          "is_rec": false
-        },
-        {
-          "name": "var_with_type",
-          "path": "vars_with_type",
-          "is_rec": false
-        },
-        {
-          "name": "var_with_type'",
-          "path": "vars_with_type_size",
-          "is_rec": true
-        },
-        {
-          "name": "type_eq'",
-          "path": "type_eq_size",
-          "is_rec": true
-        },
-        {
-          "name": "type_eq",
-          "path": "type_eq",
-          "is_rec": false
-        },
-        {
-          "name": "nonderter_dec",
-          "path": "nonderter_dec",
-          "is_rec": false
-        }
+        "WebPageFetcher",
+        "UnixFileSystem",
+        "Connection",
+        "SQliteResource",
+        "CGI",
+        "Firewall",
+        "Newsletter",
+        "Authority"
       ]
     }
   ]

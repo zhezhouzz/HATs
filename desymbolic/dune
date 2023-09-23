@@ -1,0 +1,8 @@
+(library
+ (name desymbolic)
+ (wrapped true)
+ (libraries utils language core env auxtyping)
+ (modules
+   head
+   desymbolic
+))

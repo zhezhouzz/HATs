@@ -1,0 +1,24 @@
+(library
+ (name syntax)
+ (wrapped false)
+ (modules
+   constant
+   op
+   termlang
+   corelang
+   lit
+   qualifier
+   cty
+   rty
+   ; algebraic
+   type_dec
+   typectx
+   structure
+   minterm
+   nregex
+   qn
+   syntax
+ )
+ (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
+ (libraries zzdatatype utils normal5ty env)
+)

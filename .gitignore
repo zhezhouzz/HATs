@@ -1,3 +1,4 @@
+*.pyc
 .ocamlformat
 *.annot
 *.cmo
@@ -8,6 +9,8 @@
 *.cmx
 *.cmxs
 *.cmxa
+*.log
+.stat.json
 
 # ocamlbuild working directory
 _build/

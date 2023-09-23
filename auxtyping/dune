@@ -1,0 +1,10 @@
+(library
+ (name auxtyping)
+ (wrapped true)
+ (libraries utils language core env ocolor normalization)
+ (modules
+   fmerge
+   branching
+   simp
+   auxtyping
+))

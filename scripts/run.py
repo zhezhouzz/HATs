@@ -86,6 +86,11 @@ def test_ntypecheck(dir_str, verbose):
                         "{}/{}".format(dir_str, "prog.ml")]
     invoc_cmd(verbose, cmd, None)
 
+def typecheck(dir_str, verbose):
+    cmd = cmd_prefix + ["type-check", meta_config_file,
+                        "{}/{}".format(dir_str, "prog.ml")]
+    invoc_cmd(verbose, cmd, None)
+
 if __name__ == '__main__':
     try:
         if sys.argv[2] == "verbose":

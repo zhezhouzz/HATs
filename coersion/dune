@@ -1,0 +1,16 @@
+(library
+ (name coersion)
+ (wrapped true)
+ (modules
+   coersion_aux
+   coersion_lit
+   coersion_qualifier
+   coersion_rty
+   coersion_termlang
+   ; coersion_algebraic
+   coersion_structure
+   coersion
+ )
+ (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
+ (libraries zzdatatype utils syntax)
+)
