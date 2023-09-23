@@ -36,7 +36,8 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
       (spf "the cty query has free variables %s" (StrList.to_string fvs))
       (0 == List.length fvs)
   in
-  Smtquery.check_bool query
+  Smtquery.cached_check_bool query
+(* Smtquery.check_bool query *)
 
 let sub_cty (pctx : PTypectx.ctx) (cty1, cty2) =
   let rec aux (pctx : PTypectx.ctx) uqvs cty1 cty2 =

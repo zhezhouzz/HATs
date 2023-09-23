@@ -113,6 +113,7 @@ let type_check_ meta_config_file source_file =
   in
   let ress = Typecheck.check oprctx code normalized in
   let () = Stat.dump default_stat_file ress in
+  (* let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in *)
   ()
 
 let cmd_config_source summary f =

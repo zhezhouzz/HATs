@@ -16,6 +16,27 @@ let check_implies_with_pre pres a b =
   _check pres Language.Rty.P.(Implies (a, b))
 
 let check vc = check_with_pre [] vc
+let cache_size = 600
+let check_bool_cache = Hashtbl.create cache_size
+
+let layout_cache cache =
+  let counters = List.map snd @@ List.of_seq @@ Hashtbl.to_seq_values cache in
+  let counters, l = List.partition (fun x -> x > 1) counters in
+  Printf.sprintf "%s\n(hit: %i, miss: %i)\n"
+    (Zzdatatype.Datatype.IntList.to_string counters)
+    (List.length counters) (List.length l)
+
+let cached (cache : ('a, bool * int) Hashtbl.t) (check : 'a -> bool) (vc : 'a) =
+  if Hashtbl.length cache >= cache_size - 1 then check vc
+  else
+    match Hashtbl.find_opt cache vc with
+    | Some (result, counter) ->
+        Hashtbl.replace cache vc (result, counter + 1);
+        result
+    | None ->
+        let res = check vc in
+        Hashtbl.add cache vc (res, 1);
+        res
 
 let check_bool vc =
   let runtime, res = Sugar.clock (fun () -> check vc) in
@@ -30,6 +51,7 @@ let check_bool vc =
       (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
       false
 
+let cached_check_bool vc = cached check_bool_cache check_bool vc
 let check_implies a b = check_implies_with_pre [] a b
 
 let check_implies_bool (a, b) =

@@ -24,11 +24,11 @@
     {
       "benchmark_source": "Protocols",
       "benchmarks": [
-        "MinSet",
-        "LazySet",
-        "MST",
-        "AdjMatrixGraph",
-        "ColoredGraph"
+        "Authority",
+        "Firewall",
+        "Newsletter",
+        "ColoredGraph",
+        "DFA"
       ]
     }
   ],
