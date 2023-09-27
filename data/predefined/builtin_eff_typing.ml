@@ -281,3 +281,52 @@ let[@effrty] exists ?l:(tab = (true : [%v: nat])) ?l:(k = (true : [%v: nat])) =
               : [%v: unit]));
     post = (Ret (not v0 : [%v0: bool]) : bool);
   }
+
+(* simpler put/get *)
+
+let[@effrty] putI ?l:(tab = (true : [%v: int])) ?l:(k = (true : [%v: int]))
+    ?l:(va = (true : [%v: int])) =
+  { pre = starA anyA; post = (Ret (true : [%v0: unit]) : unit) }
+
+let[@effrty] putI ?l:(tab = (true : [%v: int])) ?l:(k = (true : [%v: int])) =
+  let phi = (true : [%v: int -> bool]) in
+  {
+    pre =
+      (starA anyA;
+       PutI
+         ((((v0 == tab && v1 == k && phi v2 : [%v0: int]) : [%v1: int])
+            : [%v2: int])
+           : [%v: unit]);
+       starA
+         (anyA
+         - PutI
+             ((((v0 == tab && v1 == k : [%v0: int]) : [%v1: int]) : [%v2: int])
+               : [%v: unit])));
+    post = (Ret (phi v0 : [%v0: int]) : int);
+  }
+
+let[@effrty] existsI ?l:(tab = (true : [%v: int])) ?l:(k = (true : [%v: int])) =
+  {
+    pre =
+      (starA anyA;
+       PutI
+         ((((v0 == tab && v1 == k : [%v0: int]) : [%v1: int]) : [%v2: int])
+           : [%v: unit]);
+       starA
+         (anyA
+         - PutI
+             ((((v0 == tab && v1 == k : [%v0: int]) : [%v1: int]) : [%v2: int])
+               : [%v: unit])));
+    post = (Ret (v0 : [%v0: bool]) : bool);
+  }
+
+let[@effrty] existsI ?l:(tab = (true : [%v: int])) ?l:(k = (true : [%v: int])) =
+  {
+    pre =
+      starA
+        (anyA
+        - PutI
+            ((((v0 == tab && v1 == k : [%v0: int]) : [%v1: int]) : [%v2: int])
+              : [%v: unit]));
+    post = (Ret (not v0 : [%v0: bool]) : bool);
+  }
