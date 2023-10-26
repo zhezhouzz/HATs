@@ -41,7 +41,7 @@ Qed.
 
 Lemma basic_typing_subst_tm: forall Γ z u U (v: tm) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮t T -> Γ ⊢t {z := u}t v ⋮t T.
 Proof.
-  intros * Hu Ht; remember (<[z:=U]> Γ) as Γ'; revert dependent Γ.
+  intros * Hu Ht; remember (<[z:=U]> Γ) as Γ'; generalize dependent Γ.
   revert Γ' v T Ht.
   apply (tm_has_type_mutual_rec
            (fun c v T _ => ∀ Γ, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }v v ⋮v T)
@@ -65,7 +65,7 @@ Qed.
 
 Lemma basic_typing_subst_value: forall Γ z u U (v: value) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮v T -> Γ ⊢t {z := u}v v ⋮v T.
 Proof.
-  intros * Hu Ht; remember (<[z:=U]> Γ) as Γ'; revert dependent Γ.
+  intros * Hu Ht; remember (<[z:=U]> Γ) as Γ'; generalize dependent Γ.
   revert Γ' v T Ht.
   apply (value_has_type_mutual_rec
            (fun c v T _ => ∀ Γ, Γ ⊢t u ⋮v U → c = <[z:=U]> Γ → Γ ⊢t {z := u }v v ⋮v T)
@@ -93,7 +93,7 @@ with basic_typing_strengthen_value: forall Γ x Tx (v: value) T,
     (<[x:=Tx]>Γ) ⊢t v ⋮v T -> x # v -> Γ ⊢t v ⋮v T.
 Proof.
   all : intros * H Hfresh; remember (<[x:=Tx]>Γ);
-    revert dependent Γ;
+    generalize dependent Γ;
     destruct H; intros; unfold context in *; subst;
     econstructor; eauto;
     try solve [

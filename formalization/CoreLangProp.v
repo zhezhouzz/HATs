@@ -977,7 +977,7 @@ Lemma lc_subst_tm: forall x (u: value) (t: tm), lc ({x := u}t t) -> lc u -> lc t
 Proof.
   intros.
   remember ({x:=u}t t).
-  revert dependent t.
+  generalize dependent t.
   induction H; intros;
     repeat
       match goal with
@@ -1038,7 +1038,7 @@ Lemma open_lc_respect_tm: forall (t: tm) (u v : value) k,
     lc ({k ~t> v} t).
 Proof.
   intros * H. remember ({k ~t> u} t) as t'.
-  revert dependent t. revert k.
+  generalize dependent t. revert k.
   induction H; intros;
     repeat
       match goal with
@@ -1063,7 +1063,7 @@ Lemma open_lc_respect_value: forall (t: value) (u v : value) k,
     lc ({k ~v> v} t).
 Proof.
   intros * H. remember (treturn ({k ~v> u} t)) as t'.
-  revert dependent t. revert k.
+  generalize dependent t. revert k.
   induction H; intros;
     repeat
       match goal with

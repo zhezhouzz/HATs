@@ -978,7 +978,7 @@ Lemma lc_subst_am:
 Proof.
   intros.
   remember (({x:=u}a) a).
-  revert dependent a.
+  generalize dependent a.
   induction H; intros;
       match goal with
       | H : _ = {_:=_}a ?a |- _ => destruct a; simpl in *; simplify_eq
@@ -993,7 +993,7 @@ Lemma lc_subst_pty: forall x (u: value) (ρ: pty), lc_pty ({x := u}p ρ) -> lc u
 Proof.
   intros.
   remember (({x:=u}p) ρ).
-  revert dependent ρ.
+  generalize dependent ρ.
   induction H; intros.
   - destruct ρ; simpl in *; simplify_eq.
     econstructor.

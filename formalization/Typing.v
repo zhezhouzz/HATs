@@ -1367,10 +1367,10 @@ Lemma reduction_tlete:  forall e_x e α β (v : value),
 Proof.
   intros.
   remember (tlete e_x e). remember (treturn v).
-  revert dependent e_x.
+  generalize dependent e_x.
   induction H; intros; subst. easy.
   sinvert H.
-  - efeed specialize IHmultistep; eauto.
+  - ospecialize* IHmultistep; eauto.
     simp_hyps.
     eexists _, _, _. split; [ | split ]; cycle 1.
     econstructor; eauto. simplify_list_eq. eauto.
@@ -1477,15 +1477,15 @@ Lemma reduction_tletapp:  forall v1 v2 e α β (v : value),
 Proof.
   intros.
   remember (tletapp v1 v2 e). remember (treturn v).
-  revert dependent v2.
-  revert dependent v1.
+  generalize dependent v2.
+  generalize dependent v1.
   induction H; intros; subst. easy.
   simp_hyps. sinvert H.
   - eapply reduction_tlete in H0. simp_hyps.
     simplify_list_eq.
     eexists _, _, _. split; [| split]; eauto using reduction_letapplam'.
   - simplify_list_eq.
-    efeed specialize H1; eauto. simp_hyps.
+    ospecialize* H1; eauto. simp_hyps.
     eexists _, _, _.
     repeat split; cycle 1.
 
@@ -1544,7 +1544,7 @@ Proof.
   hnf in H6.
   cbn in H6.
   simp_hyps.
-  efeed specialize H9; eauto using amlist_typed_open.
+  ospecialize* H9; eauto using amlist_typed_open.
   eapply reduction_letapplam; eauto.
   simp_hyps.
   apply postam_open_in in H7. simp_hyps. subst.
@@ -1569,7 +1569,7 @@ Proof.
   hnf in H6.
   cbn in H6.
   simp_hyps.
-  efeed specialize H7; eauto using amlist_typed_open.
+  ospecialize* H7; eauto using amlist_typed_open.
   eapply reduction_letapplam; eauto using ptyR_lc.
   simp_hyps.
   repeat esplit; eauto.
@@ -1600,11 +1600,11 @@ Proof.
   cbn iota in H.
   change (map _ B) with (pam_open 1 v_x B) in *.
   change (pty_erase_ ?e) with (erase e) in *.
-  feed specialize H. {
+  ospecialize (H _). {
     eauto using amlist_typed_open.
   }
   specialize (H (vfix (b ⤍ T) (vlam (b ⤍ T) e))).
-  feed specialize H. {
+  ospecialize (H _). {
     split. eauto. split. eauto. split.
     (* Should be a congruence lemma. *)
     clear - Hca.
@@ -1619,7 +1619,7 @@ Proof.
       cbn in H4. simp_hyps.
       sinvert H1.
       dup_hyp H6 (fun H => apply empty_basic_typing_base_const_exists in H).
-      simp_hyps. specialize (H2 c [] []). feed specialize H2.
+      simp_hyps. specialize (H2 c [] []). ospecialize* H2.
       econstructor. econstructor.
       unfold bpropR in H2.
       rewrite !qualifier_and_open in H2.
@@ -2281,7 +2281,7 @@ Proof.
       qauto.
     }
     specialize (He HH3 (α ++ [ev{op~c2:=c_x}]) β' v).
-    feed specialize He; eauto. {
+    ospecialize* He; eauto. {
       apply am_concat; auto.
       rewrite <- Htmp1 in *.
       rewrite <- msubst_open_am in * by eauto using ctxRst_closed_env, ctxRst_lc.

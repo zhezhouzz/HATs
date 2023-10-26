@@ -198,7 +198,7 @@ Lemma ctxRst_dom Γ Γv :
   ctxRst Γ Γv ->
   ctxdom Γ ≡ dom Γv.
 Proof.
-  induction 1; simpl; eauto. my_set_solver.
+  induction 1; simpl; eauto.
   rewrite ctxdom_app_union.
   rewrite dom_insert.
   simpl. my_set_solver.
