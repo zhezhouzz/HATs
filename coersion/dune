@@ -5,6 +5,10 @@
    coersion_aux
    coersion_lit
    coersion_qualifier
+   coersion_se
+   coersion_srl
+   coersion_ltlf
+   coersion_cty
    coersion_rty
    coersion_termlang
    ; coersion_algebraic

@@ -1,19 +1,20 @@
 open Language
 open Sugar
 open StructureRaw
-open Coersion
+open Coersion.Rty
 open Rtycheck
 
-let opt_to_typed_rty opctx ctx rty : Rty.rty =
-  force_rty (rty_check opctx ctx rty)
+let opt_to_typed_hty opctx ctx hty : Rty.hty =
+  force_hty (hty_check opctx ctx hty)
 
-let opt_to_typed_pty opctx ctx rty : Rty.pty =
-  force_pty (pty_check opctx ctx rty)
+let opt_to_typed_rty opctx ctx hty : Rty.rty =
+  force_rty (rty_check opctx ctx hty)
 
 let opt_to_typed_cty opctx ctx cty : Rty.cty =
-  force_cty (cty_check opctx ctx cty)
+  Coersion.Cty.force (Ctycheck.check opctx ctx cty)
 
 open Ttypecheck
+open Coersion.TermLang
 
 let opt_to_typed_term opctx ctx body ty =
   force_typed_term @@ type_check opctx ctx body ty
@@ -43,4 +44,4 @@ let opt_to_typed_structure opctx ctx l =
   let () = NOpTypectx.pretty_print_lines opctx in
   let l = map_imps (struc_infer_one opctx ctx) l in
   let l = map_rtys (rty_check opctx []) l in
-  force_structure l
+  Coersion.Structure.force_structure l

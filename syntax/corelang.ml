@@ -27,7 +27,6 @@ module type T = sig
         letbody : comp typed;
       }
     | CLetE of { lhs : string typed; rhs : comp typed; letbody : comp typed }
-    (* | CIte of { cond : value typed; et : comp typed; ef : comp typed } *)
     | CMatch of { matched : value typed; match_cases : match_case list }
     | CApp of { appf : value typed; apparg : value typed }
     | CAppOp of { op : Op.t typed; appopargs : value typed list }

@@ -241,6 +241,12 @@ let expr_of_ocamlexpr expr =
         in
         (Lam { lamarg; lambody = aux expr }) #: None
         (* un-curry *)
+    | Pexp_sequence (e1, e2) ->
+        let lhs = [ { x = Rename.unique "unused"; ty = unit_ty } ] in
+        (* let rhs = { x = (aux e1).x; ty = Nt.unit_ty } in *)
+        let rhs = aux e1 in
+        let letbody = aux e2 in
+        (Let { if_rec = false; lhs; rhs; letbody }) #: None
     | _ ->
         raise
         @@ failwith

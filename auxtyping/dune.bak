@@ -3,8 +3,8 @@
  (wrapped true)
  (libraries utils language core env ocolor normalization)
  (modules
-   fmerge
-   branching
-   simp
+   ; fmerge
+   ; branching
+   ; simp
    auxtyping
 ))

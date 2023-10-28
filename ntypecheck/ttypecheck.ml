@@ -94,7 +94,8 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
     | Lam { lamarg; lambody }, Ty_arrow (t1, t2) ->
         let lamarg = _unify_update __FILE__ __LINE__ t1 lamarg in
         let ctx' =
-          NTypectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ lamarg)
+          NTypectx.new_to_right ctx
+            (Coersion.Aux.force __FILE__ __LINE__ lamarg)
         in
         let lambody = bidirect_check ctx' lambody t2 in
         (Lam { lamarg; lambody }) #: (Some ty)
@@ -139,7 +140,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           | true, [ self ] ->
               let ctx' =
                 NTypectx.new_to_right ctx
-                  (Coersion.force __FILE__ __LINE__ self)
+                  (Coersion.Aux.force __FILE__ __LINE__ self)
               in
               bidirect_check ctx' rhs rhsty
           | true, _ -> _failatwith __FILE__ __LINE__ "infer: bad let rec"
@@ -147,7 +148,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
         in
         let ctx' =
           NTypectx.new_to_rights ctx
-          @@ List.map (Coersion.force __FILE__ __LINE__) lhs
+          @@ List.map (Coersion.Aux.force __FILE__ __LINE__) lhs
         in
         let letbody = bidirect_check ctx' letbody ty in
         (Let { if_rec; lhs; rhs; letbody }) #: (Some ty)
@@ -166,7 +167,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
               (infer_op opctx Op.(DtOp constructor.x))
               constructor
           in
-          let c = Coersion.force __FILE__ __LINE__ constructor in
+          let c = Coersion.Aux.force __FILE__ __LINE__ constructor in
           let argsty, retty = _solve_by_retty __FILE__ __LINE__ c.Nt.ty ety in
           let constructor =
             constructor.x #: (Some (Nt.construct_arr_tp (argsty, retty)))
@@ -177,7 +178,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           in
           let ctx' =
             NTypectx.new_to_rights ctx
-              (List.map (Coersion.force __FILE__ __LINE__) args)
+              (List.map (Coersion.Aux.force __FILE__ __LINE__) args)
           in
           let exp = bidirect_check ctx' exp ty in
           let case = { constructor; args; exp } in
@@ -203,11 +204,13 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           (Tu es, Nt.mk_tuple esty)
       | Lam { lamarg; lambody } ->
           let ctx' =
-            NTypectx.new_to_right ctx (Coersion.force __FILE__ __LINE__ lamarg)
+            NTypectx.new_to_right ctx
+              (Coersion.Aux.force __FILE__ __LINE__ lamarg)
           in
           let lambody, lambodyty = bidirect_infer ctx' lambody in
           let ty =
-            Nt.mk_arr (Coersion.force __FILE__ __LINE__ lamarg).Nt.ty lambodyty
+            Nt.mk_arr (Coersion.Aux.force __FILE__ __LINE__ lamarg).Nt.ty
+              lambodyty
           in
           (Lam { lamarg; lambody }, ty)
       | AppOp (op, args) ->
@@ -269,7 +272,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
             | true, [ self ] ->
                 let ctx' =
                   NTypectx.new_to_right ctx
-                    (Coersion.force __FILE__ __LINE__ self)
+                    (Coersion.Aux.force __FILE__ __LINE__ self)
                 in
                 bidirect_check ctx' rhs rhsty
             | true, _ -> _failatwith __FILE__ __LINE__ "infer: bad let rec"
@@ -277,7 +280,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           in
           let ctx' =
             NTypectx.new_to_rights ctx
-            @@ List.map (Coersion.force __FILE__ __LINE__) lhs
+            @@ List.map (Coersion.Aux.force __FILE__ __LINE__) lhs
           in
           let letbody, ty = bidirect_infer ctx' letbody in
           (Let { if_rec; lhs; rhs; letbody }, ty)
@@ -297,7 +300,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
                 (infer_op opctx Op.(DtOp constructor.x))
                 constructor
             in
-            let c = Coersion.force __FILE__ __LINE__ constructor in
+            let c = Coersion.Aux.force __FILE__ __LINE__ constructor in
             let argsty, retty = _solve_by_retty __FILE__ __LINE__ c.Nt.ty ety in
             let constructor =
               constructor.x #: (Some (Nt.construct_arr_tp (argsty, retty)))
@@ -308,7 +311,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
             in
             let ctx' =
               NTypectx.new_to_rights ctx
-                (List.map (Coersion.force __FILE__ __LINE__) args)
+                (List.map (Coersion.Aux.force __FILE__ __LINE__) args)
             in
             let exp, expty = bidirect_infer ctx' exp in
             let case = { constructor; args; exp } in

@@ -2,10 +2,10 @@ open Syntax
 module Raw = RtyRaw
 open Rty
 
-let force_qualifier qualifier =
+let force qualifier =
   let rec aux qualifier =
     match qualifier with
-    | Raw.Lit qualifier -> Lit (Coersion_lit.force_lit qualifier)
+    | Raw.Lit qualifier -> Lit (Coersion_lit.force qualifier)
     | Raw.Implies (e1, e2) -> Implies (aux e1, aux e2)
     | Raw.Ite (e1, e2, e3) -> Ite (aux e1, aux e2, aux e3)
     | Raw.Not e -> Not (aux e)
@@ -17,10 +17,10 @@ let force_qualifier qualifier =
   in
   aux qualifier
 
-let besome_qualifier qualifier =
+let besome qualifier =
   let rec aux qualifier =
     match qualifier with
-    | Lit lit -> Raw.Lit (Coersion_lit.besome_lit lit)
+    | Lit lit -> Raw.Lit (Coersion_lit.besome lit)
     | Implies (e1, e2) -> Raw.Implies (aux e1, aux e2)
     | Ite (e1, e2, e3) -> Raw.Ite (aux e1, aux e2, aux e3)
     | Not e -> Raw.Not (aux e)

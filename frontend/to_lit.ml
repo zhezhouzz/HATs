@@ -40,8 +40,8 @@ and lit_to_ocamlexpr_desc (expr : lit) =
   in
   aux expr
 
-let layout_lit lit = Pprintast.string_of_expression @@ lit_to_ocamlexpr lit
-let layout_typed_lit lit = layout_lit lit.x
+let layout lit = Pprintast.string_of_expression @@ lit_to_ocamlexpr lit
+let layout_typed_lit lit = layout lit.x
 
 let rec term_to_lit expr =
   (fun e ->

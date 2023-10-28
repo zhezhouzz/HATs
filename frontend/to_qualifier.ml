@@ -5,6 +5,7 @@ module Type = Normalty.Frontend
 open Syntax
 open RtyRaw.P
 open Sugar
+open Aux
 
 let typed_to_ocamlexpr_desc f expr =
   match expr.ty with
@@ -23,67 +24,7 @@ let quantifier_to_patten (q, u) =
        ( To_pat.dest_to_pat (Ppat_var (Location.mknoloc u.Nt.x)),
          notated (Qn.to_string q, u.Nt.ty) ))
 
-type layout_setting = {
-  sym_true : string;
-  sym_false : string;
-  sym_and : string;
-  sym_or : string;
-  sym_not : string;
-  sym_implies : string;
-  sym_iff : string;
-  sym_forall : string;
-  sym_exists : string;
-  layout_typedid : string Nt.typed -> string;
-  layout_mp : string -> string;
-}
-
 open Zzdatatype.Datatype
-
-let detailssetting =
-  {
-    sym_true = "⊤";
-    sym_false = "⊥";
-    sym_and = " ∧ ";
-    sym_or = " ∨ ";
-    sym_not = "¬";
-    sym_implies = "=>";
-    sym_iff = "<=>";
-    sym_forall = "∀";
-    sym_exists = "∃";
-    layout_typedid = Nt.(fun x -> spf "(%s:%s)" x.x (layout x.ty));
-    layout_mp = (fun x -> x);
-  }
-
-let psetting =
-  {
-    sym_true = "⊤";
-    sym_false = "⊥";
-    sym_and = " ∧ ";
-    sym_or = " ∨ ";
-    sym_not = "¬";
-    sym_implies = "=>";
-    sym_iff = "<=>";
-    sym_forall = "∀";
-    sym_exists = "∃";
-    layout_typedid = (fun x -> x.x);
-    (* (fun x ->          Printf.spf "(%s:%s)" x.x (Ty.layout x.ty)); *)
-    layout_mp = (fun x -> x);
-  }
-
-let coqsetting =
-  {
-    sym_true = "True";
-    sym_false = "False";
-    sym_and = "/\\ ";
-    sym_or = " \\/ ";
-    sym_not = "~";
-    sym_implies = "->";
-    sym_iff = "<->";
-    sym_forall = "forall";
-    sym_exists = "exists";
-    layout_typedid = (fun x -> x.x);
-    layout_mp = (function "==" -> "=" | x -> x);
-  }
 
 let layout_qualifier
     {
@@ -98,19 +39,23 @@ let layout_qualifier
       _;
     } =
   let rec layout = function
-    | Lit lit -> To_lit.layout_lit lit
-    | Implies (p1, p2) -> spf "(%s %s %s)" (layout p1) sym_implies (layout p2)
+    | Lit lit -> To_lit.layout lit
+    | Implies (p1, p2) -> spf "%s %s %s" (p_layout p1) sym_implies (p_layout p2)
+    | And [ p ] -> layout p
+    | Or [ p ] -> layout p
+    | And [ p1; p2 ] -> spf "%s%s%s" (p_layout p1) sym_and (p_layout p2)
+    | Or [ p1; p2 ] -> spf "%s%s%s" (p_layout p1) sym_or (p_layout p2)
     | And ps -> spf "(%s)" @@ List.split_by sym_and layout ps
     | Or ps -> spf "(%s)" @@ List.split_by sym_or layout ps
-    | Not p -> spf "(%s %s)" sym_not @@ layout p
-    | Iff (p1, p2) -> spf "(%s %s %s)" (layout p1) sym_iff (layout p2)
+    | Not p -> spf "%s%s" sym_not (p_layout p)
+    | Iff (p1, p2) -> spf "%s %s %s" (p_layout p1) sym_iff (p_layout p2)
     | Ite (p1, p2, p3) ->
-        spf "(if %s then %s else %s)" (layout p1) (layout p2) (layout p3)
+        spf "if %s then %s else %s" (layout p1) (layout p2) (layout p3)
     | Forall (u, body) ->
-        spf "(%s%s. %s)" sym_forall (layout_typedid u) (layout body)
+        spf "%s%s. %s" sym_forall (layout_typedid u) (p_layout body)
     | Exists (u, body) ->
-        spf "(%s%s. %s)" sym_exists (layout_typedid u) (layout body)
-  in
+        spf "%s%s. %s" sym_exists (layout_typedid u) (p_layout body)
+  and p_layout p = force_paren @@ layout p in
   layout
 
 let rec qualifier_to_ocamlexpr expr =
@@ -211,7 +156,23 @@ let qualifier_of_ocamlexpr expr =
   in
   aux expr
 
-let layout_lit = To_lit.layout_lit
-let layout_typed_lit = To_lit.layout_typed_lit
+(* let layout = To_lit.layout *)
+(* let layout_typed_lit = To_lit.layout_typed_lit *)
 let layout_raw x = Pprintast.string_of_expression @@ qualifier_to_ocamlexpr x
 let layout = layout_qualifier psetting
+
+let pprint v (phi : prop) =
+  match phi with
+  | Lit
+      (AAppOp
+        ( { x = Op.BuiltinOp "=="; _ },
+          [ { x = AVar id; _ }; { x = AC (Constant.I i); _ } ] ))
+    when String.equal v.Nt.x id ->
+      spf "%i" i
+  | Lit
+      (AAppOp
+        ( { x = Op.BuiltinOp "=="; _ },
+          [ { x = AVar id; _ }; { x = AC (Constant.B b); _ } ] ))
+    when String.equal v.Nt.x id ->
+      spf "%b" b
+  | _ -> layout phi

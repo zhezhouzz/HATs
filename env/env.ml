@@ -15,7 +15,7 @@ type mode =
 
 type prim_path = {
   qualifier_builtin_type : string;
-  normalp : string;
+  normal_p : string;
   pure_p : string;
   eff_p : string;
   under_randomp : string;
@@ -93,6 +93,7 @@ let get_measure () =
 
 let get_randomp_path () = (get_prim_path ()).under_randomp
 let get_qualifier_builtin_type () = (get_prim_path ()).qualifier_builtin_type
+let get_builtin_normal_type () = (get_prim_path ()).normal_p
 let get_builtin_pure_type () = (get_prim_path ()).pure_p
 let get_builtin_eff_type () = (get_prim_path ()).eff_p
 let known_mp : string list option ref = ref None
@@ -105,6 +106,7 @@ open Yojson.Basic.Util
 let load_meta meta_fname =
   (* let () = Printf.printf "meta_fname: %s\n" meta_fname in *)
   (* let () = Printf.printf "pwd: %s\n" (Sys.getcwd ()) in *)
+  let () = Printf.printf "Loading meta-config.json...\n" in
   let metaj = Yojson.Basic.from_file meta_fname in
   let mode =
     match metaj |> member "mode" |> to_string with
@@ -134,7 +136,7 @@ let load_meta meta_fname =
   let prim_path =
     {
       qualifier_builtin_type = p |> member "qualifier_builtin_type" |> to_string;
-      normalp = p |> member "normal_typing" |> to_string;
+      normal_p = p |> member "builtin_normal_typing" |> to_string;
       pure_p = p |> member "builtin_pure_typing" |> to_string;
       eff_p = p |> member "builtin_eff_typing" |> to_string;
       under_randomp =

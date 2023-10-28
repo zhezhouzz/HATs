@@ -1,6 +1,7 @@
 module F (L : Lit.T) = struct
   include Termlang.F (L)
   module R = Rty.F (L)
+  module LR = R.LRty
 
   type rty_kind = RtyLib | RtyToCheck
 
@@ -10,6 +11,7 @@ module F (L : Lit.T) = struct
     | Func_dec of string Normalty.Ntyped.typed
     | FuncImp of { name : string; if_rec : bool; body : term typed }
     | Rty of { name : string; kind : rty_kind; rty : R.rty }
+    | LtlfRty of { name : string; kind : rty_kind; rty : LR.rty }
 
   type structure = entry list
 
@@ -19,13 +21,20 @@ module F (L : Lit.T) = struct
   let mk_normal_top_ctx_ = function
     | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
-        match kind with RtyLib -> [ (name, R.erase rty) ] | RtyToCheck -> [])
+        match kind with
+        | RtyLib -> [ (name, R.erase_rty rty) ]
+        | RtyToCheck -> [])
+    | LtlfRty { name; kind; rty } -> (
+        match kind with
+        | RtyLib -> [ (name, LR.erase_rty rty) ]
+        | RtyToCheck -> [])
     | Func_dec x -> [ (x.x, x.ty) ]
     | Type_dec _ -> []
 
   let mk_normal_top_opctx_ = function
     | FuncImp _ -> []
     | Rty _ -> []
+    | LtlfRty _ -> []
     | Func_dec _ -> []
     | Type_dec d ->
         List.map (fun R.Nt.{ x; ty } -> (x, ty)) @@ Type_dec.mk_ctx_ d

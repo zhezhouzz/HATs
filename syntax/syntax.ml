@@ -3,6 +3,7 @@ module OptNt = Lit.OptTy
 module LRaw = Lit.LitRaw
 module StructureRaw = Structure.F (LRaw)
 module RtyRaw = StructureRaw.R
+module LRtyRaw = StructureRaw.LR
 (* module QualifierRaw = RtyRaw.P *)
 
 (* module OptTypedCoreEff = struct *)

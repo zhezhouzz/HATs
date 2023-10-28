@@ -68,5 +68,10 @@ let layout_entry = function
       spf "val[@%s] %s: %s"
         (match kind with RtyLib -> "librty" | RtyToCheck -> "rty")
         name (To_rty.pprint_rty rty)
+  | LtlfRty { name; kind; rty } ->
+      spf "val[@%s] %s: %s"
+        (match kind with RtyLib -> "librty" | RtyToCheck -> "rty")
+        name
+        (To_ltlf_hty.pprint_rty rty)
 
 let layout l = spf "%s\n" (List.split_by "\n" layout_entry l)

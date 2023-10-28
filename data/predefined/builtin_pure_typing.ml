@@ -50,11 +50,11 @@ let[@librty] ( / ) ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (not (v == 0) : [%v: int]) [@over]) : [%v: int] =
   v == a / b
 
-let[@librty] increment ?l:(n = (true : [%v: int]) [@over]) : [%v: int] =
-  v == n + 1
+(* let[@librty] increment ?l:(n = (true : [%v: int]) [@over]) : [%v: int] = *)
+(*   v == n + 1 *)
 
-let[@librty] decrement ?l:(n = (true : [%v: int]) [@over]) : [%v: int] =
-  v == n - 1
+(* let[@librty] decrement ?l:(n = (true : [%v: int]) [@over]) : [%v: int] = *)
+(*   v == n - 1 *)
 
 (* randomness operators are now effectful *)
 

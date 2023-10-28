@@ -7,6 +7,8 @@ open Structure
 let force_kind = function Raw.RtyLib -> RtyLib | Raw.RtyToCheck -> RtyToCheck
 let besome_kind = function RtyLib -> Raw.RtyLib | RtyToCheck -> Raw.RtyToCheck
 
+open Sugar
+
 let force_entry entry =
   match entry with
   (* | Raw.EquationEntry e -> EquationEntry (Coersion_algebraic.force_equation e) *)
@@ -16,6 +18,7 @@ let force_entry entry =
       FuncImp { name; if_rec; body = force_typed_term body }
   | Raw.Rty { name; kind; rty } ->
       Rty { name; kind = force_kind kind; rty = force_rty rty }
+  | Raw.LtlfRty _ -> _failatwith __FILE__ __LINE__ "die"
 
 let besome_entry entry =
   match entry with
@@ -26,6 +29,7 @@ let besome_entry entry =
       Raw.FuncImp { name; if_rec; body = besome_typed_term body }
   | Rty { name; kind; rty } ->
       Raw.Rty { name; kind = besome_kind kind; rty = besome_rty rty }
+  | LtlfRty _ -> _failatwith __FILE__ __LINE__ "die"
 
 let force_structure st = List.map force_entry st
 let besome_structure st = List.map besome_entry st
