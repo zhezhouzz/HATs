@@ -48,7 +48,7 @@ let of_ocamlexpr_aux expr =
         let args = List.map snd args in
         match (f, args) with
         | "starA", [ e1 ] -> StarA (aux e1)
-        | "compA", [ e1 ] -> ComplementA (aux e1)
+        | "not", [ e1 ] -> ComplementA (aux e1)
         | "mu", _ ->
             _failatwith __FILE__ __LINE__
               "the recursive automata are disallowed"

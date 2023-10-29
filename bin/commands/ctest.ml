@@ -51,7 +51,7 @@ let init_builtinctx () =
   let effoprctx = ROpTypectx.to_effopctx @@ RTypectx.from_code effcode in
   (oprctx, effoprctx, opnctx)
 
-let print_ltlf_rty_ meta_config_file source_file =
+let print_raw_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
   let opnctx = load_builtin_opctx () in
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
@@ -179,9 +179,10 @@ let test =
         cmd_config_source "print rty" (fun meta_config_file source_file () ->
             let x = print_rty_ meta_config_file source_file in
             ()) );
-      ( "print-ltlf-rty",
-        cmd_config_source "print rty" (fun meta_config_file source_file () ->
-            let x = print_ltlf_rty_ meta_config_file source_file in
+      ( "print-raw-rty",
+        cmd_config_source "print raw rty (before desugar LTLf into SRL)"
+          (fun meta_config_file source_file () ->
+            let x = print_raw_rty_ meta_config_file source_file in
             ()) );
       ( "print-source-code",
         cmd_config_source "print raw source code"
@@ -208,7 +209,7 @@ let test =
       (*   cmd_config_source "subtype check" *)
       (*     (fun meta_config_file source_file () -> *)
       (*       let x = subtype_check_ meta_config_file source_file in *)
-      (*       ()) ); *)
+      (*       ()) ) *)
       (* ( "test-reg", *)
       (*   cmd_config_source "test reg" (fun meta_config_file _ () -> *)
       (*       let () = Env.load_meta meta_config_file in *)
