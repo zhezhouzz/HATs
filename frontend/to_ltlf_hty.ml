@@ -21,7 +21,7 @@ and pprint_arr = function
 and pprint_hty = function
   | Rty rty -> pprint_rty rty
   | Htriple { pre; resrty; post } ->
-      spf "[%s] %s [%s]" (To_ltlf.pprint pre) (pprint_rty resrty)
+      spf "[%s]%s[%s]" (To_ltlf.pprint pre) (pprint_rty resrty)
         (To_ltlf.pprint post)
   | Inter (hty1, hty2) -> spf "%s ⊓ %s" (pprint_hty hty1) (pprint_hty hty2)
 
@@ -53,6 +53,18 @@ let rec arr_of_ocamlexpr_aux pattern rtyexpr =
     | [ id ] -> Some id
     | _ -> failwith "rty_of_ocamlexpr_aux"
   in
+  (* let () = *)
+  (*   Printf.printf "get_pat_denoteopt pattern: %s\n" *)
+  (*     (match get_pat_denoteopt pattern with None -> "none" | Some x -> x) *)
+  (* in *)
+  (* let () = *)
+  (*   Printf.printf "px: %s\n" *)
+  (*     (match px with None -> "none" | Some px -> layout_typed (fun x -> x) px) *)
+  (* in *)
+  (* let () = *)
+  (*   Printf.printf "rtyexpr: %s\n" *)
+  (*     (match rtyexpr with None -> "none" | Some _ -> "some") *)
+  (* in *)
   match (get_pat_denoteopt pattern, px, rtyexpr) with
   | None, None, Some rtyexpr -> ArrArr (rty_of_ocamlexpr_aux rtyexpr)
   | None, Some { x = rx; _ }, Some rtyexpr ->
@@ -80,19 +92,20 @@ and rty_of_ocamlexpr_aux expr =
 
 and hty_of_ocamlexpr_aux expr =
   match expr.pexp_desc with
-  | Pexp_record ([ (id1, e1); (id2, e2); (id3, e3) ], None) ->
+  | Pexp_record ([ (id1, e1); (id2, e2); (id3, e3) ], None) -> (
       let id1, id2, id3 = map3 To_id.longid_to_id (id1, id2, id3) in
-      let () =
-        _assert __FILE__ __LINE__
-          "syntax error: {pre = ...; res = ...; post = ...}"
-          (String.equal id1 "pre" && String.equal id2 "res"
-         && String.equal id3 "post")
-      in
       let pre, post = map2 To_ltlf.of_ocamlexpr (e1, e3) in
       let resrty = rty_of_ocamlexpr_aux e2 in
-      Htriple { pre; resrty; post }
+      match (id1, id2, id3) with
+      | "pre", "res", "post" -> Htriple { pre; resrty; post }
+      | "pre", "res", "newadding" ->
+          Htriple { pre; resrty; post = SeqL (pre, post) }
+      | _ ->
+          failwith
+            "syntax error: {pre = ...; res = ...; post = ...} or {pre = ...; \
+             res = ...; newadding = ...}"
       (* | Pexp_array ls when List.length ls -> *)
-      (* failwith "syntax error: empty intersection type" *)
+      (* failwith "syntax error: empty intersection type" *))
   | Pexp_array ls -> (
       let htys = List.map hty_of_ocamlexpr_aux ls in
       match htys with

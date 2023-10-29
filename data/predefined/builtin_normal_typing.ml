@@ -1,6 +1,7 @@
 val ( && ) : bool -> bool -> bool
 val ( == ) : int -> int -> bool
-val eqn : nat -> nat -> bool
+
+(* val eqn : nat -> nat -> bool *)
 val ( != ) : int -> int -> bool
 val ( < ) : int -> int -> bool
 val ( > ) : int -> int -> bool

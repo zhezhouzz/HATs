@@ -1,4 +1,4 @@
-let[@libRty] put ?l:(k = (true : [%v: int])) ?l:(a = (true : [%v: int])) =
+let[@libLTLfRty] put ?l:(k = (true : [%v: int])) ?l:(a = (true : [%v: int])) =
   {
     pre = _G (Any true);
     res = (true : [%v: unit]);
@@ -7,7 +7,7 @@ let[@libRty] put ?l:(k = (true : [%v: int])) ?l:(a = (true : [%v: int])) =
        lastL && Put ((k [@d]), (a [@d]), v, true));
   }
 
-let[@libRty] exists ?l:(k = (true : [%v: int])) =
+let[@libLTLfRty] exists ?l:(k = (true : [%v: int])) =
   [|
     {
       pre = _F (Put ((k [@d]), x_1, v, true));
@@ -21,7 +21,7 @@ let[@libRty] exists ?l:(k = (true : [%v: int])) =
     };
   |]
 
-let[@libRty] get ((a : int) [@ghost]) ?l:(k = (true : [%v: int])) =
+let[@libLTLfRty] get ((a : int) [@ghost]) ?l:(k = (true : [%v: int])) =
   {
     pre =
       _F

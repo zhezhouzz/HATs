@@ -14,7 +14,8 @@ let pprint = function
   | GuardEvent phi -> tpEvent @@ To_qualifier.layout phi
   | EffEvent { op; vs; v; phi } ->
       tpEvent
-      @@ spf "%s %s = %s | %s" op
+      @@ spf "%s %s = %s | %s"
+           (String.uncapitalize_ascii op)
            (List.split_by " " (fun x -> x.x) vs)
            v.x (To_qualifier.layout phi)
 

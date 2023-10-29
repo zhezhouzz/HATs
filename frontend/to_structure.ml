@@ -20,30 +20,48 @@ let ocaml_structure_to_structure structure =
         | _ -> failwith "die"
       in
       match value_binding.pvb_attributes with
-      | [ x ] when String.equal x.attr_name.txt "librty" ->
+      | [ x ] when String.equal x.attr_name.txt "libSRLRty" ->
           Rty
             {
               name;
               kind = RtyLib;
               rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
             }
-      | [ x ] when String.equal x.attr_name.txt "effrty" ->
+      | [ x ] when String.equal x.attr_name.txt "effSRLRty" ->
           Rty
             {
               name = String.capitalize_ascii name;
               kind = RtyLib;
               rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
             }
-      | [ x ] when String.equal x.attr_name.txt "assert" ->
+      | [ x ] when String.equal x.attr_name.txt "assertSRLRty" ->
           Rty
             {
               name;
               kind = RtyToCheck;
               rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
             }
-      (* | [ x ] when String.equal x.attr_name.txt "equation" -> *)
-      (*     EquationEntry *)
-      (*       (To_algebraic.equation_of_ocamlexpr value_binding.pvb_expr) *)
+      | [ x ] when String.equal x.attr_name.txt "libRty" ->
+          LtlfRty
+            {
+              name;
+              kind = RtyLib;
+              rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr;
+            }
+      | [ x ] when String.equal x.attr_name.txt "effRty" ->
+          LtlfRty
+            {
+              name = String.capitalize_ascii name;
+              kind = RtyLib;
+              rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr;
+            }
+      | [ x ] when String.equal x.attr_name.txt "assertRty" ->
+          LtlfRty
+            {
+              name;
+              kind = RtyToCheck;
+              rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr;
+            }
       | _ ->
           let body = To_expr.expr_of_ocamlexpr value_binding.pvb_expr in
           FuncImp { name; if_rec = To_expr.get_if_rec flag; body })
@@ -66,11 +84,11 @@ let layout_entry = function
   (* | EquationEntry equation -> To_algebraic.layout_equation equation *)
   | Rty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
-        (match kind with RtyLib -> "librty" | RtyToCheck -> "rty")
+        (match kind with RtyLib -> "libRty" | RtyToCheck -> "assertRty")
         name (To_rty.pprint_rty rty)
   | LtlfRty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
-        (match kind with RtyLib -> "librty" | RtyToCheck -> "rty")
+        (match kind with RtyLib -> "libSRLRty" | RtyToCheck -> "assertSRLRty")
         name
         (To_ltlf_hty.pprint_rty rty)
 

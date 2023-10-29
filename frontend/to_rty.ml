@@ -22,8 +22,7 @@ and pprint_arr = function
 and pprint_hty = function
   | Rty rty -> pprint_rty rty
   | Htriple { pre; resrty; post } ->
-      spf "[%s]%s[%s]" (To_srl.pprint pre)
-        (force_paren (pprint_rty resrty))
+      spf "[%s]%s[%s]" (To_srl.pprint pre) (pprint_rty resrty)
         (To_srl.pprint post)
   | Inter (hty1, hty2) -> spf "%s ⊓ %s" (pprint_hty hty1) (pprint_hty hty2)
 

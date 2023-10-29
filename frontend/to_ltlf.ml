@@ -31,28 +31,23 @@ open Aux
 let pprint ltlf =
   let rec aux ltlf =
     match ltlf with
-    | EventL se -> To_se.layout se
-    | LastL -> "LAST"
-    | FinalL a -> spf "♢%s" (force_paren @@ aux a)
-    | GlobalL a -> spf "☐%s" (force_paren @@ aux a)
-    | NegL a -> spf "%s%s" psetting.sym_not (force_paren @@ aux a)
+    | EventL se -> (To_se.layout se, true)
+    | LastL -> ("LAST", true)
+    | FinalL a -> (spf "♢%s" (p_pprint a), true)
+    | GlobalL a -> (spf "☐%s" (p_pprint a), true)
+    | NegL a -> (spf "%s%s" psetting.sym_not (p_pprint a), true)
     | LandL (a1, a2) ->
-        spf "%s%s%s"
-          (force_paren @@ aux a1)
-          psetting.sym_and
-          (force_paren @@ aux a2)
+        (spf "%s%s%s" (p_pprint a1) psetting.sym_and (p_pprint a2), false)
     | LorL (a1, a2) ->
-        spf "%s%s%s"
-          (force_paren @@ aux a1)
-          psetting.sym_or
-          (force_paren @@ aux a2)
-    | SeqL (a1, a2) ->
-        spf "%s;%s" (force_paren @@ aux a1) (force_paren @@ aux a2)
-    | NextL a -> spf "◯%s" (force_paren @@ aux a)
-    | UntilL (a1, a2) ->
-        spf "%s𝒰%s" (force_paren @@ aux a1) (force_paren @@ aux a2)
+        (spf "%s%s%s" (p_pprint a1) psetting.sym_or (p_pprint a2), false)
+    | SeqL (a1, a2) -> (spf "%s;%s" (p_pprint a1) (p_pprint a2), false)
+    | NextL a -> (spf "◯%s" (p_pprint a), true)
+    | UntilL (a1, a2) -> (spf "%s𝒰%s" (p_pprint a1) (p_pprint a2), false)
+  and p_pprint a =
+    let str, is_p = aux a in
+    if is_p then str else spf "(%s)" str
   in
-  aux ltlf
+  fst @@ aux ltlf
 
 let layout = pprint
 

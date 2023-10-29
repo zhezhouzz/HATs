@@ -58,7 +58,7 @@ let load_builtin_opctx () =
   in
   topnopctx
 
-let print_rty_ meta_config_file source_file =
+let print_ltlf_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
   let topnopctx = load_builtin_opctx () in
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
@@ -68,6 +68,19 @@ let print_rty_ meta_config_file source_file =
       ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry))
       code
   in
+  ()
+
+let print_rty_ meta_config_file source_file =
+  let () = Env.load_meta meta_config_file in
+  let topnopctx = load_builtin_opctx () in
+  let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
+  let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
+  let code = StructureRaw.ltlf_to_srl code in
+  (* let () = *)
+  (*   List.iter *)
+  (*     ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry)) *)
+  (*     code *)
+  (* in *)
   let code = Ntypecheck.opt_to_typed_structure topnopctx [] code in
   let () =
     List.iter
@@ -174,6 +187,10 @@ let test =
       ( "print-rty",
         cmd_config_source "print rty" (fun meta_config_file source_file () ->
             let x = print_rty_ meta_config_file source_file in
+            ()) );
+      ( "print-ltlf-rty",
+        cmd_config_source "print rty" (fun meta_config_file source_file () ->
+            let x = print_ltlf_rty_ meta_config_file source_file in
             ()) );
       ( "print-source-code",
         cmd_config_source "print raw source code"

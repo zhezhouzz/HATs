@@ -39,24 +39,31 @@ let layout_qualifier
       _;
     } =
   let rec layout = function
-    | Lit lit -> To_lit.layout lit
-    | Implies (p1, p2) -> spf "%s %s %s" (p_layout p1) sym_implies (p_layout p2)
+    | Lit lit -> (To_lit.layout lit, true)
+    | Implies (p1, p2) ->
+        (spf "%s %s %s" (p_layout p1) sym_implies (p_layout p2), false)
     | And [ p ] -> layout p
     | Or [ p ] -> layout p
-    | And [ p1; p2 ] -> spf "%s%s%s" (p_layout p1) sym_and (p_layout p2)
-    | Or [ p1; p2 ] -> spf "%s%s%s" (p_layout p1) sym_or (p_layout p2)
-    | And ps -> spf "(%s)" @@ List.split_by sym_and layout ps
-    | Or ps -> spf "(%s)" @@ List.split_by sym_or layout ps
-    | Not p -> spf "%s%s" sym_not (p_layout p)
-    | Iff (p1, p2) -> spf "%s %s %s" (p_layout p1) sym_iff (p_layout p2)
+    | And [ p1; p2 ] -> (spf "%s%s%s" (p_layout p1) sym_and (p_layout p2), false)
+    | Or [ p1; p2 ] -> (spf "%s%s%s" (p_layout p1) sym_or (p_layout p2), false)
+    | And ps -> (spf "%s" @@ List.split_by sym_and p_layout ps, false)
+    | Or ps -> (spf "%s" @@ List.split_by sym_or p_layout ps, false)
+    | Not p -> (spf "%s%s" sym_not (p_layout p), true)
+    | Iff (p1, p2) -> (spf "%s %s %s" (p_layout p1) sym_iff (p_layout p2), false)
     | Ite (p1, p2, p3) ->
-        spf "if %s then %s else %s" (layout p1) (layout p2) (layout p3)
+        ( spf "if %s then %s else %s"
+            (fst @@ layout p1)
+            (fst @@ layout p2)
+            (fst @@ layout p3),
+          false )
     | Forall (u, body) ->
-        spf "%s%s. %s" sym_forall (layout_typedid u) (p_layout body)
+        (spf "%s%s. %s" sym_forall (layout_typedid u) (p_layout body), false)
     | Exists (u, body) ->
-        spf "%s%s. %s" sym_exists (layout_typedid u) (p_layout body)
-  and p_layout p = force_paren @@ layout p in
-  layout
+        (spf "%s%s. %s" sym_exists (layout_typedid u) (p_layout body), false)
+  and p_layout p =
+    match layout p with str, true -> str | str, false -> spf "(%s)" str
+  in
+  fun a -> fst @@ layout a
 
 let rec qualifier_to_ocamlexpr expr =
   To_expr.desc_to_ocamlexpr @@ qualifier_to_ocamlexpr_desc expr

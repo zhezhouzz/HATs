@@ -8,29 +8,27 @@ open Syntax.RtyRaw.SRL
 open Sugar
 open Aux
 
-let rec pprint = function
-  | EmptyA -> "∅"
-  | EpsilonA -> "ϵ"
-  | EventA se -> To_se.pprint se
+let rec pprint_aux = function
+  | EmptyA -> ("∅", true)
+  | EpsilonA -> ("ϵ", true)
+  | EventA se -> (To_se.pprint se, true)
   | LorA (a1, a2) ->
-      spf "%s%s%s"
-        (force_paren @@ pprint a1)
-        psetting.sym_or
-        (force_paren @@ pprint a2)
-  | SetMinusA (a1, a2) ->
-      spf "%s\\%s" (force_paren @@ pprint a1) (force_paren @@ pprint a2)
+      (spf "%s%s%s" (p_pprint a1) psetting.sym_or (p_pprint a2), false)
+  | SetMinusA (a1, a2) -> (spf "%s\\%s" (p_pprint a1) (p_pprint a2), false)
   | LandA (a1, a2) ->
-      spf "%s%s%s"
-        (force_paren @@ pprint a1)
-        psetting.sym_and
-        (force_paren @@ pprint a2)
-  | SeqA (a1, a2) ->
-      spf "%s;%s" (force_paren @@ pprint a1) (force_paren @@ pprint a2)
-  | StarA AnyA -> ".*"
-  | StarA a -> spf "%s*" (force_paren @@ pprint a)
-  | AnyA -> "."
+      (spf "%s%s%s" (p_pprint a1) psetting.sym_and (p_pprint a2), false)
+  | SeqA (a1, a2) -> (spf "%s;%s" (p_pprint a1) (p_pprint a2), false)
+  | StarA AnyA -> (".*", false)
+  | StarA a -> (spf "%s*" (p_pprint a), false)
+  | AnyA -> (".", true)
   (* | ComplementA (EventA se) -> spf "%sᶜ" (pprint (EventA se)) *)
-  | ComplementA a -> spf "%sᶜ" (force_paren @@ pprint a)
+  | ComplementA a -> (spf "%sᶜ" (p_pprint a), false)
+
+and p_pprint a =
+  let str, is_p = pprint_aux a in
+  if is_p then str else spf "(%s)" str
+
+and pprint a = fst (pprint_aux a)
 
 let layout = pprint
 

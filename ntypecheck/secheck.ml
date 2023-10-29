@@ -22,13 +22,13 @@ let check opctx ctx sevent =
         List.map
           (fun ({ x; ty }, ty') ->
             (* let () = *)
-            (*   Printf.printf "%s: %s ?= %s\n" op (Nt.layout ty) (Nt.layout ty') *)
+            (*   Printf.printf "%s: %s ?= %s\n" op (layout ty) (Nt.layout ty') *)
             (* in *)
-            let ty = _check_equality __FILE__ __LINE__ eq ty (Some ty') in
+            let ty = _type_unify __FILE__ __LINE__ ty (Some ty') in
             { x; ty })
           (_safe_combine __FILE__ __LINE__ vs argsty)
       in
-      let retnty = _check_equality __FILE__ __LINE__ eq v.ty (Some retnty) in
+      let retnty = _type_unify __FILE__ __LINE__ v.ty (Some retnty) in
       let v = { x = v.x; ty = retnty } in
       let bindings =
         List.map (Coersion.Aux.force __FILE__ __LINE__) (v :: vs)

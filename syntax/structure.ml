@@ -18,6 +18,14 @@ module F (L : Lit.T) = struct
   (* open Sugar *)
   open Zzdatatype.Datatype
 
+  let ltlf_to_srl_ entry =
+    match entry with
+    | LtlfRty { name; kind; rty } ->
+        Rty { name; kind; rty = R.normalize_name_rty @@ R.to_rty rty }
+    | _ -> entry
+
+  let ltlf_to_srl = List.map ltlf_to_srl_
+
   let mk_normal_top_ctx_ = function
     | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
