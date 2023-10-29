@@ -1,4 +1,5 @@
-let[@assert] rty1 ?l:(min = (true : [%v: int])) ?l:(elem = (true : [%v: int])) =
+let[@assertSRLRty] rty1 ?l:(min = (true : [%v: int]))
+    ?l:(elem = (true : [%v: int])) =
   {
     pre =
       (starA (anyA - Setinsert ((min <= v0 : [%v0: int]) : [%v: unit]));
@@ -11,7 +12,8 @@ let[@assert] rty1 ?l:(min = (true : [%v: int])) ?l:(elem = (true : [%v: int])) =
       int);
   }
 
-let[@assert] rty2 ?l:(min = (true : [%v: int])) ?l:(elem = (true : [%v: int])) =
+let[@assertSRLRty] rty2 ?l:(min = (true : [%v: int]))
+    ?l:(elem = (true : [%v: int])) =
   {
     pre =
       (starA (anyA - Setinsert ((min <= v0 : [%v0: int]) : [%v: unit]));

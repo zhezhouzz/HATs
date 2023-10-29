@@ -145,6 +145,66 @@ module Rty = struct
       if Nt.(eq unit_ty v.ty) then mk_true else mk_prop_var_eq_lit v (AVar x.x)
     in
     EffEvent { op; vs; v; phi = smart_and (phix :: props) }
+
+  (* gather lits/rtys *)
+
+  open Zzdatatype.Datatype
+
+  type gathered_lits = {
+    global_lits : lit list;
+    local_lits : (string Nt.typed list * lit list) StrMap.t;
+  }
+
+  let gathered_lits_init () = { global_lits = []; local_lits = StrMap.empty }
+
+  let gathered_rm_dup { global_lits; local_lits } =
+    let global_lits = List.slow_rm_dup eq_lit global_lits in
+    let local_lits =
+      StrMap.map
+        (fun (vs, lits) -> (vs, List.slow_rm_dup eq_lit lits))
+        local_lits
+    in
+    { global_lits; local_lits }
+
+  let gather_from_sevent { global_lits; local_lits } sevent =
+    match sevent with
+    | GuardEvent phi ->
+        { global_lits = P.get_lits phi @ global_lits; local_lits }
+    | EffEvent { op; phi; vs; v } ->
+        let lits = P.get_lits phi in
+        let vs' = List.map (fun x -> x.Nt.x) (v :: vs) in
+        let is_contain_local_free lit =
+          match List.interset ( == ) vs' @@ P.fv_lit lit with
+          | [] -> false
+          | _ -> true
+        in
+        let llits, glits = List.partition is_contain_local_free lits in
+        let local_lits =
+          StrMap.update op
+            (fun l ->
+              match l with
+              | None -> Some (v :: vs, llits)
+              | Some (_, l) -> Some (v :: vs, l @ llits))
+            local_lits
+        in
+        let global_lits = global_lits @ glits in
+        { global_lits; local_lits }
+
+  let gather_from_regex regex =
+    let rec aux regex m =
+      match regex with
+      | EmptyA -> m
+      | AnyA -> m
+      | EpsilonA -> m
+      | EventA se -> gather_from_sevent m se
+      | LorA (t1, t2) -> aux t1 @@ aux t2 m
+      | SetMinusA (t1, t2) -> aux t1 @@ aux t2 m
+      | LandA (t1, t2) -> aux t1 @@ aux t2 m
+      | SeqA (t1, t2) -> aux t1 @@ aux t2 m
+      | StarA t -> aux t m
+      | ComplementA t -> aux t m
+    in
+    aux regex (gathered_lits_init ())
 end
 
 module Structure = struct
@@ -307,12 +367,12 @@ module RTypectx = struct
            match kind with RtyLib -> Some (name, hty) | RtyToCheck -> None)
          code
 
-  (* let get_task code = *)
-  (*   filter_map_hty *)
-  (*     (fun (name, kind, hty) -> *)
-  (*       let open Structure in *)
-  (*       match kind with RtyLib -> None | RtyToCheck -> Some (name, hty)) *)
-  (*     code *)
+  let get_task code =
+    filter_map_hty
+      (fun (name, kind, hty) ->
+        let open Structure in
+        match kind with RtyLib -> None | RtyToCheck -> Some (name, hty))
+      code
 end
 
 (* module RTypectx = struct *)

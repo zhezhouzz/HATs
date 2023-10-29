@@ -18,7 +18,7 @@ module Rty = Structure.R
 (* module Qualifier = Rty.P *)
 
 (* unwrap *)
-module GMap = Minterm.GMap
+(* module GMap = Minterm.GMap *)
 module NRegex = Nregex.T
 module Const = Constant
 module Op = Op
