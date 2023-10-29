@@ -229,7 +229,9 @@ let expr_of_ocamlexpr expr =
         let () =
           match arg.ty with
           | None ->
-              failwith "Syntax error: lambda function should provide types"
+              failwith
+                (spf "Syntax error: lambda function should provide types (%s)"
+                   (To_pat.layout_ arg0))
           | Some _ -> ()
         in
         let lamarg =

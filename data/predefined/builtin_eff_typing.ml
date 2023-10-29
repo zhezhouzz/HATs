@@ -1,5 +1,35 @@
-let[@effrty] put ?l:(k = (true : [%v: nat])) ?l:(va = (true : [%v: int])) =
-  { pre = globalL topL; resrty = (true : [%v0: unit]) post = lastL }
+let[@libRty] put ?l:(k = (true : [%v: int])) ?l:(a = (true : [%v: int])) =
+  {
+    pre = _G (Any true);
+    res = (true : [%v: unit]);
+    newadding =
+      (_G (Any true);
+       lastL && Put ((k [@d]), (a [@d]), v, true));
+  }
+
+let[@libRty] exists ?l:(k = (true : [%v: int])) =
+  [|
+    {
+      pre = _F (Put ((k [@d]), x_1, v, true));
+      res = (v : [%v: bool]);
+      newadding = lastL && Exists ((k [@d]), v, v);
+    };
+    {
+      pre = not (_F (Put ((k [@d]), x_1, v, true)));
+      res = (not v : [%v: bool]);
+      newadding = lastL && Exists ((k [@d]), v, not v);
+    };
+  |]
+
+let[@libRty] get ((a : int) [@ghost]) ?l:(k = (true : [%v: int])) =
+  {
+    pre =
+      _F
+        (Put ((k [@d]), (a [@d]), v, true)
+        && _X (_G (not (Put ((k [@d]), x_1, v, true)))));
+    res = (v == a : [%v: int]);
+    newadding = lastL && Get ((k [@d]), v, v == a);
+  }
 
 (* let[@effrty] get ?l:(k = (true : [%v: nat])) = *)
 (*   let phi = (true : [%v: int -> bool]) in *)

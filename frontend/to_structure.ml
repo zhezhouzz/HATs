@@ -84,11 +84,11 @@ let layout_entry = function
   (* | EquationEntry equation -> To_algebraic.layout_equation equation *)
   | Rty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
-        (match kind with RtyLib -> "libRty" | RtyToCheck -> "assertRty")
+        (match kind with RtyLib -> "libSRLRty" | RtyToCheck -> "assertSRLRty")
         name (To_rty.pprint_rty rty)
   | LtlfRty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
-        (match kind with RtyLib -> "libSRLRty" | RtyToCheck -> "assertSRLRty")
+        (match kind with RtyLib -> "libRty" | RtyToCheck -> "assertRty")
         name
         (To_ltlf_hty.pprint_rty rty)
 

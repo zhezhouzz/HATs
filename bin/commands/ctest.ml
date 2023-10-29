@@ -10,12 +10,12 @@ let load_code_from_file qfile =
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
   code
 
-let select_effops_code topnopctx code =
+let select_effops_code opnctx code =
   List.filter
     ~f:(fun entry ->
       match entry with
       | StructureRaw.Rty { name; _ } ->
-          List.exists topnopctx ~f:(fun (op', _) ->
+          List.exists opnctx ~f:(fun (op', _) ->
               let op = Op.EffOp (String.capitalize name) in
               (* let () = *)
               (*   Printf.printf "%s == %s : %b\n" (Op.to_string op) *)
@@ -26,41 +26,34 @@ let select_effops_code topnopctx code =
       | _ -> false)
     code
 
-let load_rtys_from_file topnopctx code =
-  let code = Ntypecheck.opt_to_typed_structure topnopctx [] code in
+let load_rtys_from_file opnctx code =
+  let code = Ntypecheck.opt_to_typed_structure opnctx [] code in
   let oprctx = ROpTypectx.to_opctx @@ RTypectx.from_code code in
   oprctx
 
 let load_erased_ntys_from_file code =
-  let topnopctx =
-    NOpTypectx.to_builtin @@ StructureRaw.mk_normal_top_ctx code
-  in
-  topnopctx
-
-let init_builtinctx effopnctx =
-  let pcode = load_code_from_file @@ Env.get_builtin_pure_type () in
-  let topnopctx = load_erased_ntys_from_file pcode in
-  let topnopctx = effopnctx @ topnopctx in
-  (* let () = Printf.printf "%s\n" (NOpTypectx.layout_typed_l topnopctx) in *)
-  (* let () = failwith "end" in *)
-  let oprctx = load_rtys_from_file topnopctx pcode in
-  let effcode = load_code_from_file @@ Env.get_builtin_eff_type () in
-  let effcode = select_effops_code effopnctx effcode in
-  let effcode = Ntypecheck.opt_to_typed_structure topnopctx [] effcode in
-  let effoprctx = ROpTypectx.to_effopctx @@ RTypectx.from_code effcode in
-  (oprctx, effoprctx, topnopctx)
+  let opnctx = NOpTypectx.to_builtin @@ StructureRaw.mk_normal_top_ctx code in
+  opnctx
 
 let load_builtin_opctx () =
   let pcode = load_code_from_file @@ Env.get_builtin_normal_type () in
-  let topnopctx = StructureRaw.mk_normal_top_ctx pcode in
-  let topnopctx =
-    List.map ~f:(fun (x, ty) -> (Op.force_id_to_op x, ty)) topnopctx
-  in
-  topnopctx
+  let opnctx = StructureRaw.mk_normal_top_ctx pcode in
+  let opnctx = List.map ~f:(fun (x, ty) -> (Op.force_id_to_op x, ty)) opnctx in
+  opnctx
+
+let init_builtinctx () =
+  let opnctx = load_builtin_opctx () in
+  let pcode = load_code_from_file @@ Env.get_builtin_pure_type () in
+  let oprctx = load_rtys_from_file opnctx pcode in
+  let effcode = load_code_from_file @@ Env.get_builtin_eff_type () in
+  (* let effcode = select_effops_code effopnctx effcode in *)
+  let effcode = Ntypecheck.opt_to_typed_structure opnctx [] effcode in
+  let effoprctx = ROpTypectx.to_effopctx @@ RTypectx.from_code effcode in
+  (oprctx, effoprctx, opnctx)
 
 let print_ltlf_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
-  let topnopctx = load_builtin_opctx () in
+  let opnctx = load_builtin_opctx () in
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
   let () =
@@ -72,7 +65,7 @@ let print_ltlf_rty_ meta_config_file source_file =
 
 let print_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
-  let topnopctx = load_builtin_opctx () in
+  let opnctx = load_builtin_opctx () in
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
   let code = StructureRaw.ltlf_to_srl code in
@@ -81,7 +74,7 @@ let print_rty_ meta_config_file source_file =
   (*     ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry)) *)
   (*     code *)
   (* in *)
-  let code = Ntypecheck.opt_to_typed_structure topnopctx [] code in
+  let code = Ntypecheck.opt_to_typed_structure opnctx [] code in
   let () =
     List.iter
       ~f:(fun entry -> Printf.printf "%s\n" (Structure.layout_entry entry))
@@ -91,17 +84,15 @@ let print_rty_ meta_config_file source_file =
 
 let print_source_code_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
+  let oprctx, effoprctx, opnctx = init_builtinctx () in
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
   (* let msize = Env.get_max_printing_size () in *)
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
-  let topnctx = StructureRaw.mk_normal_top_ctx code in
-  let effopnctx = StructureRaw.mk_normal_top_opctx code in
-  let oprctx, effoprctx, opnctx = init_builtinctx effopnctx in
+  let nctx = StructureRaw.mk_normal_top_ctx code in
   let oprctx = ROpTypectx.new_to_rights effoprctx @@ oprctx in
-  let opnctx = effopnctx @ opnctx in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
-    Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout topnctx
+    Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout nctx
   in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
@@ -117,21 +108,21 @@ let print_source_code_ meta_config_file source_file =
     Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "%s\n" @@ StructureRaw.layout_structure code
   in
-  (oprctx, topnctx, opnctx, code)
+  (oprctx, nctx, opnctx, code)
 
 let print_typed_source_code_ meta_config_file source_file =
-  let oprctx, topnctx, topnopctx, code =
+  let oprctx, nctx, opnctx, code =
     print_source_code_ meta_config_file source_file
   in
-  let code = Ntypecheck.opt_to_typed_structure topnopctx topnctx code in
+  let code = Ntypecheck.opt_to_typed_structure opnctx nctx code in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "%s\n" @@ Structure.layout_structure code
   in
-  (oprctx, topnctx, topnopctx, code)
+  (oprctx, nctx, opnctx, code)
 
 let print_typed_normalized_source_code_ meta_config_file source_file =
-  let oprctx, topnctx, topnopctx, code =
+  let oprctx, nctx, opnctx, code =
     print_typed_source_code_ meta_config_file source_file
   in
   let normalized = Normalize.get_normalized_code code in
