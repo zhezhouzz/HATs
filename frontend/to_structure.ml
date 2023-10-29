@@ -20,48 +20,34 @@ let ocaml_structure_to_structure structure =
         | _ -> failwith "die"
       in
       match value_binding.pvb_attributes with
-      | [ x ] when String.equal x.attr_name.txt "libSRLRty" ->
-          Rty
-            {
-              name;
-              kind = RtyLib;
-              rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
-            }
-      | [ x ] when String.equal x.attr_name.txt "effSRLRty" ->
-          Rty
-            {
-              name = String.capitalize_ascii name;
-              kind = RtyLib;
-              rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
-            }
-      | [ x ] when String.equal x.attr_name.txt "assertSRLRty" ->
-          Rty
-            {
-              name;
-              kind = RtyToCheck;
-              rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr;
-            }
-      | [ x ] when String.equal x.attr_name.txt "libRty" ->
-          LtlfRty
-            {
-              name;
-              kind = RtyLib;
-              rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr;
-            }
-      | [ x ] when String.equal x.attr_name.txt "effRty" ->
-          LtlfRty
-            {
-              name = String.capitalize_ascii name;
-              kind = RtyLib;
-              rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr;
-            }
-      | [ x ] when String.equal x.attr_name.txt "assertRty" ->
-          LtlfRty
-            {
-              name;
-              kind = RtyToCheck;
-              rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr;
-            }
+      | [ x ] -> (
+          let () =
+            match x.attr_name.txt with
+            | "effRty" | "libRty" | "assertRty" | "libSRLRty" | "effSRLRty"
+            | "assertSRLRty" ->
+                ()
+            | _ ->
+                _failatwith __FILE__ __LINE__
+                  "syntax error: non known rty kind, not libSRLRty / effSRLRty \
+                   / effRty / assertRty / assertSRLRty / assertRty"
+          in
+          let name =
+            match x.attr_name.txt with
+            | "effSRLRty" | "effRty" -> String.capitalize_ascii name
+            | _ -> name
+          in
+          let kind =
+            match x.attr_name.txt with
+            | "assertSRLRty" | "assertRty" -> RtyToCheck
+            | _ -> RtyLib
+          in
+          match x.attr_name.txt with
+          | "libSRLRty" | "effSRLRty" | "assertSRLRty" ->
+              let rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr in
+              Rty { name; kind; rty }
+          | _ ->
+              let rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr in
+              LtlfRty { name; kind; rty })
       | _ ->
           let body = To_expr.expr_of_ocamlexpr value_binding.pvb_expr in
           FuncImp { name; if_rec = To_expr.get_if_rec flag; body })

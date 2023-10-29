@@ -5,10 +5,24 @@ type format = Raw | Typed | MonadicNormalForm
 
 open Language
 
-let load_code_from_file qfile =
+let load_raw_code_from_file qfile =
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:qfile in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
   code
+
+let load_builtin_opctx () =
+  let pcode = load_raw_code_from_file @@ Env.get_builtin_normal_type () in
+  let opnctx = StructureRaw.mk_normal_top_ctx pcode in
+  let opnctx = List.map ~f:(fun (x, ty) -> (Op.force_id_to_op x, ty)) opnctx in
+  opnctx
+
+let load_code_from_file qfile =
+  StructureRaw.ltlf_to_srl @@ load_raw_code_from_file qfile
+
+let load_typed_rtys_from_file opnctx file =
+  let code = load_code_from_file file in
+  let code = Ntypecheck.opt_to_typed_structure opnctx [] code in
+  RTypectx.from_code code
 
 let select_effops_code opnctx code =
   List.filter
@@ -26,36 +40,30 @@ let select_effops_code opnctx code =
       | _ -> false)
     code
 
-let load_rtys_from_file opnctx code =
-  let code = Ntypecheck.opt_to_typed_structure opnctx [] code in
-  let oprctx = ROpTypectx.to_opctx @@ RTypectx.from_code code in
-  oprctx
-
 let load_erased_ntys_from_file code =
   let opnctx = NOpTypectx.to_builtin @@ StructureRaw.mk_normal_top_ctx code in
   opnctx
 
-let load_builtin_opctx () =
-  let pcode = load_code_from_file @@ Env.get_builtin_normal_type () in
-  let opnctx = StructureRaw.mk_normal_top_ctx pcode in
-  let opnctx = List.map ~f:(fun (x, ty) -> (Op.force_id_to_op x, ty)) opnctx in
-  opnctx
-
 let init_builtinctx () =
   let opnctx = load_builtin_opctx () in
-  let pcode = load_code_from_file @@ Env.get_builtin_pure_type () in
-  let oprctx = load_rtys_from_file opnctx pcode in
-  let effcode = load_code_from_file @@ Env.get_builtin_eff_type () in
-  (* let effcode = select_effops_code effopnctx effcode in *)
-  let effcode = Ntypecheck.opt_to_typed_structure opnctx [] effcode in
-  let effoprctx = ROpTypectx.to_effopctx @@ RTypectx.from_code effcode in
-  (oprctx, effoprctx, opnctx)
+  (* let () = Printf.printf "opnctx: %i\n" (List.length opnctx) in *)
+  let () =
+    List.iter
+      ~f:(fun (op, ty) ->
+        Printf.printf "%s:%s\n" (Op.to_string op) (Nt.layout ty))
+      opnctx
+  in
+  let prtys =
+    load_typed_rtys_from_file opnctx @@ Env.get_builtin_pure_type ()
+  in
+  let poprctx = ROpTypectx.to_opctx prtys in
+  let ertys = load_typed_rtys_from_file opnctx @@ Env.get_builtin_eff_type () in
+  let eoprctx = ROpTypectx.to_effopctx ertys in
+  (poprctx @ eoprctx, opnctx)
 
 let print_raw_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
-  let opnctx = load_builtin_opctx () in
-  let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
-  let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
+  let code = load_code_from_file source_file in
   let () =
     List.iter
       ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry))
@@ -66,8 +74,7 @@ let print_raw_rty_ meta_config_file source_file =
 let print_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
   let opnctx = load_builtin_opctx () in
-  let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
-  let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
+  let code = load_code_from_file source_file in
   let code = StructureRaw.ltlf_to_srl code in
   (* let () = *)
   (*   List.iter *)
@@ -84,12 +91,10 @@ let print_rty_ meta_config_file source_file =
 
 let print_source_code_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
-  let oprctx, effoprctx, opnctx = init_builtinctx () in
-  let code = Ocaml5_parser.Frontend.parse ~sourcefile:source_file in
+  let oprctx, opnctx = init_builtinctx () in
+  let code = load_code_from_file source_file in
   (* let msize = Env.get_max_printing_size () in *)
-  let code = List.map ~f:To_structure.ocaml_structure_to_structure code in
   let nctx = StructureRaw.mk_normal_top_ctx code in
-  let oprctx = ROpTypectx.new_to_rights effoprctx @@ oprctx in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout nctx

@@ -95,6 +95,10 @@ and hty_of_ocamlexpr_aux expr =
              res = ...; newadding = ...}"
       (* | Pexp_array ls when List.length ls -> *)
       (* failwith "syntax error: empty intersection type" *))
+  | Pexp_record (_, _) ->
+      failwith
+        (spf "syntax error: Hoare Automata Triple %s\n"
+           (Pprintast.string_of_expression expr))
   | Pexp_array ls -> (
       let htys = List.map hty_of_ocamlexpr_aux ls in
       match htys with

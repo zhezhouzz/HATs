@@ -10,8 +10,11 @@ let to_string = function DtOp op -> op | EffOp op -> op | BuiltinOp op -> op
 let mk_eq_op = BuiltinOp "=="
 
 let force_id_to_op str =
-  let str' = String.capitalize_ascii str in
-  if String.equal str str' then BuiltinOp str else EffOp str'
+  match str with
+  | "mod" -> BuiltinOp str
+  | _ ->
+      let str' = String.capitalize_ascii str in
+      if String.equal str str' then BuiltinOp str else EffOp str'
 
 let eq a b =
   let aux = function
