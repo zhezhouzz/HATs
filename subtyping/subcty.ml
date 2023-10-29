@@ -1,18 +1,19 @@
 open Language
+module Rty = Language.Rty
 open Rty
 open Zzdatatype.Datatype
 open Sugar
 (* open Auxtyping *)
 
-let close_ptyped_to_prop x prop =
-  let open P in
+let close_rtyped_to_prop x prop =
+  (* let open P in *)
   let x, phix = cty_typed_to_prop x in
   smart_pi (x, phix) prop
 
-let close_ptypeds_to_prop l prop = List.fold_right close_ptyped_to_prop l prop
+let close_rtypeds_to_prop l prop = List.fold_right close_rtyped_to_prop l prop
 
 let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
-  let open P in
+  (* let open P in *)
   let () =
     Env.show_debug_queries @@ fun _ ->
     Printf.printf "uqvs: %s\n"
@@ -21,7 +22,7 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
          uqvs
   in
   let phi2 = subst_prop_id (v2.x, v1.x) phi2 in
-  let query = close_ptypeds_to_prop uqvs (smart_implies phi1 phi2) in
+  let query = close_rtypeds_to_prop uqvs (smart_implies phi1 phi2) in
   (* let () = Printf.printf "query: %s\n" (layout_prop query) in *)
   let query =
     match v1.ty with Nt.Ty_unit -> query | _ -> Forall (v1, query)
@@ -39,28 +40,23 @@ let aux_sub_cty uqvs { v = v1; phi = phi1 } { v = v2; phi = phi2 } =
   Smtquery.cached_check_bool query
 (* Smtquery.check_bool query *)
 
-let sub_cty (pctx : PTypectx.ctx) (cty1, cty2) =
-  let rec aux (pctx : PTypectx.ctx) uqvs cty1 cty2 =
-    match PTypectx.last_destruct_opt pctx with
+let sub_cty (pctx : RTypectx.ctx) (cty1, cty2) =
+  let rec aux (pctx : RTypectx.ctx) uqvs cty1 cty2 =
+    match RTypectx.last_destruct_opt pctx with
     | None -> aux_sub_cty uqvs cty1 cty2
-    | Some (pctx, (px, pty)) -> (
-        match pty with
-        | TuplePty _ ->
-            _failatwith __FILE__ __LINE__ "unimp: tuple type in the ctx"
-        | ArrPty _ -> aux pctx uqvs cty1 cty2
-        | BasePty { cty } -> aux pctx ({ cx = px; cty } :: uqvs) cty1 cty2)
+    | Some (pctx, (rx, rty)) -> (
+        match rty with
+        | ArrRty _ -> aux pctx uqvs cty1 cty2
+        | BaseRty { cty } -> aux pctx ({ cx = rx; cty } :: uqvs) cty1 cty2)
   in
   aux pctx [] cty1 cty2
 
-let sub_cty_bool (pctx : PTypectx.ctx) (cty1, cty2) = sub_cty pctx (cty1, cty2)
+let sub_cty_bool (pctx : RTypectx.ctx) (cty1, cty2) = sub_cty pctx (cty1, cty2)
 (* match sub_cty pctx cty1 cty2 with None -> true | Some _ -> false *)
 
 let is_bot_cty pctx cty =
-  let bot_cty = mk_bot_cty (erase_cty cty) in
+  let bot_cty = Cty.(mk_bot (erase cty)) in
   sub_cty_bool pctx (cty, bot_cty)
 
-let is_bot_pty pctx pty =
-  match pty with
-  | TuplePty _ -> _failatwith __FILE__ __LINE__ "die"
-  | BasePty { cty } -> is_bot_cty pctx cty
-  | ArrPty _ -> false
+let is_bot_rty pctx rty =
+  match rty with BaseRty { cty } -> is_bot_cty pctx cty | ArrRty _ -> false

@@ -82,7 +82,6 @@ module Rty = struct
 
   open Sugar
   open Common
-
   (* let layout_typed f { x; ty } = spf "%s: %s" (f x) (layout ty) *)
 
   (* let layout_typed_l f l = *)

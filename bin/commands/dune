@@ -2,6 +2,7 @@
  (name commands)
  (libraries utils core core_unix.sys_unix frontend env qcheck language
             ntypecheck normalization
+            subtyping
             ; typecheck
  )
  (modules
