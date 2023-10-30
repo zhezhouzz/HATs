@@ -2,7 +2,7 @@
     "mode": "debug",
     "max_printing_size": 1000,
     "debug_info": {
-        "show_preprocess": false,
+        "show_preprocess": true,
         "show_typing": false,
         "show_queries": false,
         "show_stat": false,

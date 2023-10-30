@@ -12,6 +12,10 @@ val ( - ) : int -> int -> int
 val ( mod ) : int -> int -> int
 val ( * ) : int -> int -> int
 val ( / ) : int -> int -> int
+val not : bool -> bool
+val parent : int -> int
+val isDir : int -> bool
+val addChild : int -> int -> int
 val put : int -> int -> unit
 val get : int -> int
 val exists : int -> bool

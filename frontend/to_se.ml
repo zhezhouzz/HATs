@@ -14,8 +14,7 @@ let pprint = function
   | GuardEvent phi -> tpEvent @@ To_qualifier.layout phi
   | EffEvent { op; vs; v; phi } ->
       tpEvent
-      @@ spf "%s %s = %s | %s"
-           (String.uncapitalize_ascii op)
+      @@ spf "%s %s = %s | %s" op
            (List.split_by " " (fun x -> x.x) vs)
            v.x (To_qualifier.layout phi)
 
@@ -23,7 +22,7 @@ let layout = pprint
 
 let get_opopt expr =
   match To_op.string_to_op (get_denote expr) with
-  | Some (Op.DtOp op) -> Some op
+  | Some (Op.DtOp op) -> Some (String.uncapitalize_ascii op)
   | _ -> None
 
 let get_op expr =
@@ -87,9 +86,9 @@ let of_ocamlexpr_aux expr =
   match expr.pexp_desc with
   | Pexp_construct (op, Some e) -> (
       (* symbolic operator event *)
-      let op = To_id.longid_to_id op in
+      let op = String.uncapitalize_ascii @@ To_id.longid_to_id op in
       match op with
-      | "Any" ->
+      | "any" ->
           (* symbolic global event *)
           let phi = To_qualifier.qualifier_of_ocamlexpr e in
           GuardEvent phi

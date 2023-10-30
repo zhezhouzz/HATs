@@ -48,6 +48,7 @@ let rec type_infer_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit : lit)
             ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
         | _ -> check_op opctx f
       in
+      (* let () = Printf.printf "op: %s\n" (Op.to_string f.x) in *)
       let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
       let args =
         List.map (type_check_lit opctx ctx)

@@ -255,13 +255,13 @@ module ROpTypectx = struct
   let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) rctx
 
   let to_opctx_if_cap rctx =
-    let cond x = String.equal x (String.capitalize_ascii x) in
-    let effpctx =
-      List.filter_map
-        (fun (x, ty) -> if cond x then Some (x, ty) else None)
-        rctx
-    in
-    let pctx = List.filter (fun (x, _) -> not (cond x)) rctx in
+    (* let cond x = String.equal x (String.capitalize_ascii x) in *)
+    (* let effpctx = *)
+    (*   List.filter_map *)
+    (*     (fun (x, ty) -> if cond x then Some (x, ty) else None) *)
+    (*     rctx *)
+    (* in *)
+    let pctx, effpctx = List.partition (fun (x, _) -> Op.is_pure_op x) rctx in
     (effpctx, pctx)
 
   let to_effopctx l =

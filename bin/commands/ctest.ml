@@ -47,12 +47,12 @@ let load_erased_ntys_from_file code =
 let init_builtinctx () =
   let opnctx = load_builtin_opctx () in
   (* let () = Printf.printf "opnctx: %i\n" (List.length opnctx) in *)
-  let () =
-    List.iter
-      ~f:(fun (op, ty) ->
-        Printf.printf "%s:%s\n" (Op.to_string op) (Nt.layout ty))
-      opnctx
-  in
+  (* let () = *)
+  (*   List.iter *)
+  (*     ~f:(fun (op, ty) -> *)
+  (*       Printf.printf "%s:%s\n" (Op.to_string op) (Nt.layout ty)) *)
+  (*     opnctx *)
+  (* in *)
   let prtys =
     load_typed_rtys_from_file opnctx @@ Env.get_builtin_pure_type ()
   in
@@ -146,9 +146,9 @@ let type_check_ meta_config_file source_file =
   let oprctx, code, normalized =
     print_typed_normalized_source_code_ meta_config_file source_file
   in
-  (* let ress = Typecheck.check oprctx code normalized in *)
+  let ress = Typecheck.check oprctx code normalized in
   (* let () = Stat.dump default_stat_file ress in *)
-  (* let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in *)
+  let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in
   ()
 
 let subtype_check_ meta_config_file source_file =

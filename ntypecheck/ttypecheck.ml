@@ -103,6 +103,8 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
         match f.x with
         | Var x when is_builtop opctx x ->
             check ctx (AppOp ({ x = Op.BuiltinOp x; ty = f.ty }, args)) ty
+        | Var x when is_effop opctx x ->
+            check ctx (AppOp ({ x = Op.EffOp x; ty = f.ty }, args)) ty
         | _ ->
             let f, fty = bidirect_infer ctx f in
             (* let () = Printf.printf "F: %s\n" (layout f) in *)
@@ -232,6 +234,11 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           | Var x when is_builtop opctx x ->
               let x, ty =
                 infer ctx (AppOp ({ x = Op.BuiltinOp x; ty = f.ty }, args))
+              in
+              (x.x, ty)
+          | Var x when is_effop opctx x ->
+              let x, ty =
+                infer ctx (AppOp ({ x = Op.EffOp x; ty = f.ty }, args))
               in
               (x.x, ty)
           | _ ->

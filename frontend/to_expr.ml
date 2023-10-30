@@ -95,12 +95,12 @@ and expr_to_ocamlexpr_desc expr =
         let mk_app f args =
           match op.x with
           | Op.BuiltinOp _ ->
-              let kw = typed_id_to_ocamlexpr kw_builtin #: None in
-              Pexp_apply (kw, (Asttypes.Nolabel, f) :: args)
+              (* let kw = typed_id_to_ocamlexpr kw_builtin #: None in *)
+              Pexp_apply (f, args)
           | Op.DtOp _ -> Pexp_apply (f, args)
           | Op.EffOp _ ->
-              let kw = typed_id_to_ocamlexpr kw_perform #: None in
-              Pexp_apply (kw, (Asttypes.Nolabel, f) :: args)
+              (* let kw = typed_id_to_ocamlexpr kw_perform #: None in *)
+              Pexp_apply (f, args)
         in
         let op = typed_op_to_ocamlexpr op in
         let args =

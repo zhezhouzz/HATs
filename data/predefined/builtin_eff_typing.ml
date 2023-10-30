@@ -2,9 +2,7 @@ let[@libRty] put ?l:(k = (true : [%v: int])) ?l:(a = (true : [%v: int])) =
   {
     pre = _G (Any true);
     res = (true : [%v: unit]);
-    newadding =
-      (_G (Any true);
-       lastL && Put ((k [@d]), (a [@d]), v, true));
+    newadding = lastL && Put ((k [@d]), (a [@d]), v, true);
   }
 
 let[@libRty] exists ?l:(k = (true : [%v: int])) =

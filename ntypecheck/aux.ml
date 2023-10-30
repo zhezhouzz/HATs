@@ -8,6 +8,9 @@ open Sugar
 
 let infer_id nctx x = Ctx.get_ty nctx x
 let is_builtop opctx x = OpCtx.exists opctx (Op.BuiltinOp x)
+let is_effop opctx x = OpCtx.exists opctx (Op.EffOp x)
+
+(* let is_effop opctx x = OpCtx.exists opctx (Op.EffOp (String.capitalize_ascii x)) *)
 let infer_const_ty _ = Const.infer_const_ty
 
 let infer_op opctx x =
@@ -48,9 +51,12 @@ let infer_op_may_eff opctx op =
   | Op.BuiltinOp _ ->
       let ty = OpCtx.get_ty opctx op.x in
       (op, ty)
-  | _ ->
-      _failatwith __FILE__ __LINE__
-        (spf "cannot infer the type of operator %s" (Op.to_string op.x))
+  | Op.EffOp _ ->
+      let ty = OpCtx.get_ty opctx op.x in
+      (op, ty)
+(* | _ -> *)
+(*     _failatwith __FILE__ __LINE__ *)
+(*       (spf "cannot infer the type of operator %s" (Op.to_string op.x)) *)
 
 let check_id nctx (x : string typed) : string typed * Nt.t =
   let ty = infer_id nctx x.x in
