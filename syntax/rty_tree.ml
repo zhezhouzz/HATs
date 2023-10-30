@@ -58,4 +58,8 @@ module SyntaxF (A : Sfa.SFA) (L : Lit.T) = struct
     match hty with
     | Rty rty -> { rx = hx; rty }
     | _ -> _failatwith file line "die"
+
+  let rty_destruct_arr file line = function
+    | ArrRty { arr; rethty } -> (arr, rethty)
+    | _ -> _failatwith file line "die"
 end

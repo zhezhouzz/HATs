@@ -232,7 +232,7 @@ module ROpTypectx = struct
 
   open Zzdatatype.Datatype
 
-  let _f = List.split_by_comma layout_rty
+  let _f = layout_rty
   let layout_typed = layout_typed _f
   let layout_typed_l = layout_typed_l _f
   let pretty_print = pretty_print _f
@@ -252,7 +252,7 @@ module ROpTypectx = struct
         | LtlfRty _ -> None)
       code
 
-  let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, [ ty ])) rctx
+  let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) rctx
 
   let to_opctx_if_cap rctx =
     let cond x = String.equal x (String.capitalize_ascii x) in
@@ -270,15 +270,15 @@ module ROpTypectx = struct
       List.iter
         (fun (name, rty) ->
           match Hashtbl.find_opt tab name with
-          | None -> Hashtbl.add tab name [ rty ]
-          | Some rtys -> Hashtbl.replace tab name (rty :: rtys))
+          | None -> Hashtbl.add tab name rty
+          | Some _ -> _failatwith __FILE__ __LINE__ "duplicate name")
         l
     in
     let l = List.of_seq @@ Hashtbl.to_seq tab in
     let l = List.map (fun (x, ty) -> (Op.EffOp x, ty)) l in
     l
 
-  let to_pureopctx l = List.map (fun (x, ty) -> (Op.BuiltinOp x, [ ty ])) l
+  let to_pureopctx l = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) l
 
   let from_code code =
     let opctx = NOpTypectx.from_kv_list @@ Structure.mk_normal_top_opctx code in

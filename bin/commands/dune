@@ -3,7 +3,7 @@
  (libraries utils core core_unix.sys_unix frontend env qcheck language
             ntypecheck normalization
             subtyping
-            ; typecheck
+            typecheck
  )
  (modules
    caux
