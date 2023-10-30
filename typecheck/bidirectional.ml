@@ -165,20 +165,17 @@ and multi_app_type_infer_aux typectx (f_hty : rty) (appargs : value typed list)
 and comp_type_check (typectx : typectx) (comp : comp typed) (hty : hty) :
     unit option =
   match hty with
-  | Rty _ -> failwith "unimp"
-  | Htriple { pre; resrty; post } ->
-      comp_htriple_check typectx comp (pre, resrty, post)
+  | Rty _ | Htriple _ -> comp_htriple_check typectx comp hty
   | Inter (hty1, hty2) ->
       let* () = comp_type_check typectx comp hty1 in
       let* () = comp_type_check typectx comp hty2 in
       Some ()
 
-and comp_htriple_check (typectx : typectx) (comp : comp typed)
-    (pre, resrty, post) : unit option =
+and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
+    unit option =
   let str = layout_comp comp in
   let before_info line rulename =
-    print_check_info __FUNCTION__ line rulename typectx str
-      (layout_hty (Htriple { pre; resrty; post }))
+    print_check_info __FUNCTION__ line rulename typectx str (layout_hty hty)
   in
   let end_info line rulename is_valid =
     print_typing_rule __FUNCTION__ line "Check"
@@ -186,20 +183,24 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed)
          (match is_valid with Some _ -> "✓" | None -> "𐄂"));
     is_valid
   in
-  let let_aux typectx (lhs, rhs_hty) letbody (pre, resrty, post) =
+  let let_aux typectx (lhs, rhs_hty) letbody hty =
     let rec aux rhs_hty =
-      match rhs_hty with
-      | Rty rty ->
+      match (rhs_hty, hty) with
+      | Rty rty, _ ->
           let typectx' = typectx_new_to_right typectx { rx = lhs.x; rty } in
-          comp_htriple_check typectx' letbody (pre, resrty, post)
-      | Htriple { resrty = rty; post = post'; _ } ->
+          comp_htriple_check typectx' letbody hty
+      | Htriple { resrty = rty; post = post'; _ }, Htriple { pre; resrty; post }
+        ->
           let typectx' = typectx_new_to_right typectx { rx = lhs.x; rty } in
           comp_htriple_check typectx' letbody
-            (LandA (SeqA (pre, StarA AnyA), post'), resrty, post)
-      | Inter (hty1, hty2) ->
+            (Htriple
+               { pre = LandA (SeqA (pre, StarA AnyA), post'); resrty; post })
+      | Htriple _, Rty _ -> _failatwith __FILE__ __LINE__ "eff to pure?"
+      | Inter (hty1, hty2), _ ->
           let* () = aux hty1 in
           let* () = aux hty2 in
           Some ()
+      | _, _ -> _failatwith __FILE__ __LINE__ "die"
     in
     aux rhs_hty
   in
@@ -258,10 +259,15 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed)
       res
   in
   match comp.x with
-  | CVal v ->
-      let* () = value_type_check typectx v #: comp.ty resrty in
-      if subtyping_srl_bool __FILE__ __LINE__ typectx (pre, post) then Some ()
-      else None
+  | CVal v -> (
+      match hty with
+      | Rty rty -> value_type_check typectx v #: comp.ty rty
+      | Htriple { pre; resrty; post } ->
+          let* () = value_type_check typectx v #: comp.ty resrty in
+          if subtyping_srl_bool __FILE__ __LINE__ typectx (pre, post) then
+            Some ()
+          else None
+      | _ -> _failatwith __FILE__ __LINE__ "die")
   | CLetE { lhs; rhs; letbody } -> (
       match rhs.x with
       | CVal v ->
@@ -269,25 +275,23 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed)
           let () = before_info __LINE__ rulename in
           let* rty = value_type_infer typectx v #: comp.ty in
           let typectx' = typectx_new_to_right typectx lhs.x #:: rty in
-          let res = comp_htriple_check typectx' letbody (pre, resrty, post) in
+          let res = comp_htriple_check typectx' letbody hty in
           end_info __LINE__ rulename res
       | CApp { appf; apparg } ->
-          comp_htriple_check_letapp typectx
-            (lhs, appf, apparg, letbody)
-            (pre, resrty, post)
+          comp_htriple_check_letapp typectx (lhs, appf, apparg, letbody) hty
       | CAppOp { op; appopargs } -> (
           match op.x with
           | Op.BuiltinOp _ ->
               comp_htriple_check_letapppop typectx
                 (lhs, op, appopargs, letbody)
-                (pre, resrty, post)
+                hty
           | Op.DtOp _ -> _failatwith __FILE__ __LINE__ "die"
           | Op.EffOp _ ->
               let runtime, res =
                 Sugar.clock (fun () ->
                     comp_htriple_check_letappeop typectx
                       (lhs, op, appopargs, letbody)
-                      (pre, resrty, post))
+                      hty)
               in
               let () =
                 Env.show_debug_debug @@ fun _ ->
@@ -304,7 +308,7 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed)
         List.fold_left
           (fun res case ->
             let* () = res in
-            handle_match_case typectx (matched, case) (pre, resrty, post))
+            handle_match_case typectx (matched, case) hty)
           (Some ()) match_cases
       in
       end_info __LINE__ "Match" res
