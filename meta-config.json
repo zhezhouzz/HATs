@@ -2,13 +2,15 @@
   "mode": "debug",
   "max_printing_size": 1000,
   "debug_tags": [
-    "preprocess",
+    // "preprocess",
+    // "ntyping",
     // "typing",
     "minterms",
-    "queries",
+    "desymbolic",
+    // "queries",
     // "solving",
     // "stat",
-    "info",
+    // "info",
     "debug",
     "never-use"
   ],

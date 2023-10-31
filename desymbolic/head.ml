@@ -156,7 +156,7 @@ let mk_mts { global_tab; local_tab } =
 
 let ctx_init regex =
   let tab = make_tab regex in
-  let () = Env.show_debug_debug @@ fun _ -> pprint_head tab in
+  let () = Env.show_log "desymbolic" @@ fun _ -> pprint_head tab in
   let mts = mk_mts tab in
-  let () = Env.show_debug_debug @@ fun _ -> NRegex.pprint_mts mts in
+  let () = Env.show_log "desymbolic" @@ fun _ -> NRegex.pprint_mts mts in
   (tab, mts)

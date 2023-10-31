@@ -17,7 +17,7 @@ let infer_op opctx x =
   match x with
   | Op.BuiltinOp op ->
       let () =
-        Env.show_debug_debug @@ fun _ ->
+        Env.show_log "ntyping" @@ fun _ ->
         Printf.printf "infer op %s: %s\n" "BuiltinOp" op
       in
       (* let () = *)
@@ -26,7 +26,7 @@ let infer_op opctx x =
       OpCtx.get_ty opctx x
   | Op.EffOp op ->
       let () =
-        Env.show_debug_debug @@ fun _ ->
+        Env.show_log "ntyping" @@ fun _ ->
         Printf.printf "infer op %s: %s\n" "EffOp" op
       in
       OpCtx.get_ty opctx x
