@@ -13,6 +13,9 @@ let opt_to_typed_rty opctx ctx hty : Rty.rty =
 let opt_to_typed_cty opctx ctx cty : Rty.cty =
   Coersion.Cty.force (Ctycheck.check opctx ctx cty)
 
+let opt_to_typed_qualifier opctx ctx cty : Rty.prop =
+  Coersion.Qualifier.force (Qualifiercheck.type_check_qualifier opctx ctx cty)
+
 open Ttypecheck
 open Coersion.TermLang
 
@@ -44,4 +47,5 @@ let opt_to_typed_structure opctx ctx l =
   let () = NOpTypectx.pretty_print_lines opctx in
   let l = map_imps (struc_infer_one opctx ctx) l in
   let l = map_rtys (rty_check opctx []) l in
+  let l = map_aximos (Qualifiercheck.type_check_qualifier opctx []) l in
   Coersion.Structure.force_structure l

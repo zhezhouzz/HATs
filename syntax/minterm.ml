@@ -78,8 +78,8 @@ module T = struct
   let s_il_is_empty s_il =
     StrMap.exists (fun _ l -> match l with [] -> true | _ -> false) s_il
 
-  (* let mts_to_global_m i_s_il = *)
-  (*   IntMap.to_key_list @@ IntMap.map (fun m -> not (s_il_is_empty m)) i_s_il *)
+  let mts_to_global_m i_s_il =
+    IntMap.to_key_list @@ IntMap.map (fun m -> not (s_il_is_empty m)) i_s_il
 
   let rec pow a = function
     | 0 -> 1

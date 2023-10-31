@@ -21,18 +21,21 @@ module T = struct
   let reg_to_string reg =
     let rec aux reg =
       match reg with
-      | Empt -> "∅"
-      | Epsilon -> "ϵ"
-      | Any -> "."
-      | Minterm mt -> mt_to_string mt
-      | Union rs -> spf "∪(%s)" @@ List.split_by_comma aux rs
-      | Diff (t1, t2) -> spf "(%s \\ %s)" (aux t1) (aux t2)
-      | Intersect rs -> spf "⊓(%s)" @@ List.split_by_comma aux rs
-      | Concat rs -> List.split_by ";" aux rs
-      | Star r -> spf "(%s)*" @@ aux r
-      | Complement r -> spf "(%s)ᶜ" @@ aux r
+      | Empt -> ("∅", true)
+      | Epsilon -> ("ϵ", true)
+      | Any -> (".", true)
+      | Minterm mt -> (mt_to_string mt, true)
+      | Union rs -> (List.split_by " ∪ " paux rs, false)
+      | Intersect rs -> (List.split_by " ∩ " paux rs, false)
+      | Diff (t1, t2) -> (spf "%s \\ %s" (paux t1) (paux t2), false)
+      | Concat rs -> (List.split_by " ; " paux rs, false)
+      | Star r -> (spf "%s*" (paux r), true)
+      | Complement r -> (spf "%sᶜ" (paux r), true)
+    and paux reg =
+      let res, b = aux reg in
+      if b then res else spf "(%s)" res
     in
-    aux reg
+    fst (aux reg)
 
   let simp reg =
     let rec aux reg =
@@ -63,6 +66,8 @@ module T = struct
                 rs
             in
             match rs with [] -> Epsilon | [ x ] -> x | _ -> Concat rs)
+      | Star Empt -> Empt
+      | Star Epsilon -> Epsilon
       | Star r -> Star (aux r)
       | Complement r -> Complement (aux r)
     in

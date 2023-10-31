@@ -28,6 +28,11 @@ let load_typed_rtys_from_file opnctx file =
   let code = Ntypecheck.opt_to_typed_structure opnctx [] code in
   RTypectx.from_code code
 
+let load_axioms_from_file opnctx file =
+  let code = load_code_from_file file in
+  let code = Ntypecheck.opt_to_typed_structure opnctx [] code in
+  Structure.mk_axioms code
+
 let select_effops_code opnctx code =
   List.filter
     ~f:(fun entry ->
@@ -69,6 +74,8 @@ let init_builtinctx () =
   let libfnctx =
     List.map ~f:(fun (x, rty) -> (x, Rty.erase_rty rty)) libfrctx
   in
+  let axs = load_axioms_from_file opnctx @@ Env.get_axioms () in
+  let () = Rty.Ax.init_builtin_axs axs in
   ((poprctx @ eoprctx, opnctx), (libfrctx, libfnctx))
 
 let print_raw_rty_ meta_config_file source_file =

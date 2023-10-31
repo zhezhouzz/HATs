@@ -20,6 +20,7 @@ type prim_path = {
   eff_p : string;
   libfunc_p : string;
   automata_pred_p : string;
+  axioms_p : string;
   under_randomp : string;
   underp_dir : string;
   rev_underp_dir : string;
@@ -30,7 +31,7 @@ type prim_path = {
 [@@deriving sexp]
 
 type meta_config = {
-  pureops : string list;
+  uninterops : string list;
   mode : mode;
   max_printing_size : int;
   logfile : string;
@@ -88,7 +89,7 @@ let show_debug_debug (f : unit -> unit) =
 
 let get_resfile () = (get_meta ()).resfile
 let get_prim_path () = (get_meta ()).prim_path
-let get_pureops () = (get_meta ()).pureops
+let get_uninterops () = (get_meta ()).uninterops
 
 let get_measure () =
   match !config with
@@ -102,6 +103,7 @@ let get_builtin_pure_type () = (get_prim_path ()).pure_p
 let get_builtin_eff_type () = (get_prim_path ()).eff_p
 let get_builtin_libfunc_type () = (get_prim_path ()).libfunc_p
 let get_builtin_automata_pred_type () = (get_prim_path ()).automata_pred_p
+let get_axioms () = (get_prim_path ()).axioms_p
 let known_mp : string list option ref = ref None
 
 let get_known_mp () =
@@ -139,13 +141,16 @@ let load_meta meta_fname =
   let resfile = metaj |> member "resfile" |> to_string in
   let logfile = metaj |> member "logfile" |> to_string in
   let p = metaj |> member "prim_path" in
-  let pureops = metaj |> member "pureops" |> to_list |> List.map to_string in
+  let uninterops =
+    metaj |> member "uninterops" |> to_list |> List.map to_string
+  in
   let prim_path =
     {
       qualifier_builtin_type = p |> member "qualifier_builtin_type" |> to_string;
       normal_p = p |> member "builtin_normal_typing" |> to_string;
       pure_p = p |> member "builtin_pure_typing" |> to_string;
       eff_p = p |> member "builtin_eff_typing" |> to_string;
+      axioms_p = p |> member "builtin_axioms" |> to_string;
       libfunc_p = p |> member "builtin_libfunc_typing" |> to_string;
       automata_pred_p = p |> member "builtin_automata_pred_typing" |> to_string;
       under_randomp =
@@ -159,4 +164,4 @@ let load_meta meta_fname =
     }
   in
   meta_config :=
-    Some { mode; max_printing_size; prim_path; logfile; resfile; pureops }
+    Some { mode; max_printing_size; prim_path; logfile; resfile; uninterops }

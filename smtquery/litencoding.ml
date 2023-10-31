@@ -32,4 +32,13 @@ let rec typed_lit_to_z3 ctx lit =
       | Op.BuiltinOp "mod", [ a; b ] -> Arithmetic.Integer.mk_mod ctx a b
       | Op.BuiltinOp "*", [ a; b ] -> Arithmetic.mk_mul ctx [ a; b ]
       | Op.BuiltinOp "/", [ a; b ] -> Arithmetic.mk_div ctx a b
+      | Op.BuiltinOp opname, args ->
+          let () =
+            if List.exists (String.equal opname) (Env.get_uninterops ()) then ()
+            else failwith (spf "unknown operator: %s" opname)
+          in
+          (* let () = Printf.printf ">>>> op(%s): %s\n" opname (Nt.layout op.ty) in *)
+          let argsty, retty = Nt.destruct_arr_tp op.ty in
+          let func = z3func ctx opname argsty retty in
+          Z3.FuncDecl.apply func args
       | _ -> failwith @@ spf "unknown operator: %s" (Op.to_string op.x))

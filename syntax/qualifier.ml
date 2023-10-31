@@ -155,4 +155,21 @@ module F (L : Lit.T) = struct
     | [] -> _failatwith __FILE__ __LINE__ "die"
     | [ s ] -> s
     | _ -> _failatwith __FILE__ __LINE__ "die"
+
+  open Zzdatatype.Datatype
+
+  let get_uninterops prop =
+    let rec aux e =
+      match e with
+      | Lit lit -> get_uninterops_from_lit lit
+      | Implies (e1, e2) -> aux e1 @ aux e2
+      | Ite (e1, e2, e3) -> aux e1 @ aux e2 @ aux e3
+      | Not e -> aux e
+      | And es -> List.concat_map aux es
+      | Or es -> List.concat_map aux es
+      | Iff (e1, e2) -> aux e1 @ aux e2
+      | Forall (_, body) -> aux body
+      | Exists (_, body) -> aux body
+    in
+    List.slow_rm_dup String.equal @@ aux prop
 end

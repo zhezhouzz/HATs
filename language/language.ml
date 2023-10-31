@@ -246,11 +246,10 @@ module ROpTypectx = struct
       (fun code ->
         let open Structure in
         match code with
-        (* | EquationEntry _ *)
-        | FuncImp _ | Func_dec _ | Type_dec _ -> None
         | Rty { name; kind; rty } -> f (name, kind, rty)
-        | LtlfRty _ -> None
-        | LtlfPred _ | SrlPred _ -> None)
+        | LtlfRty _ | FuncImp _ | Func_dec _ | Type_dec _ | LtlfPred _
+        | SrlPred _ | Axiom _ ->
+            None)
       code
 
   let to_opctx rctx = List.map (fun (x, ty) -> (Op.BuiltinOp x, ty)) rctx
@@ -355,7 +354,7 @@ module RTypectx = struct
         | FuncImp _ | Func_dec _ | Type_dec _ -> None
         | Rty { name; kind; rty } -> f (name, kind, rty)
         | LtlfRty _ -> None
-        | LtlfPred _ | SrlPred _ -> None)
+        | LtlfPred _ | SrlPred _ | Axiom _ -> None)
       code
 
   (* let get_rtys_from_code code = filter_map_hty (fun x -> x) code *)

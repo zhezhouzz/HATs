@@ -18,11 +18,11 @@ let rec pprint_aux = function
   | LandA (a1, a2) ->
       (spf "%s%s%s" (p_pprint a1) psetting.sym_and (p_pprint a2), false)
   | SeqA (a1, a2) -> (spf "%s;%s" (p_pprint a1) (p_pprint a2), false)
-  | StarA AnyA -> (".*", false)
-  | StarA a -> (spf "%s*" (p_pprint a), false)
+  (* | StarA AnyA -> (".*", true) *)
+  | StarA a -> (spf "%s*" (p_pprint a), true)
   | AnyA -> (".", true)
   (* | ComplementA (EventA se) -> spf "%sᶜ" (pprint (EventA se)) *)
-  | ComplementA a -> (spf "%sᶜ" (p_pprint a), false)
+  | ComplementA a -> (spf "%sᶜ" (p_pprint a), true)
 
 and p_pprint a =
   let str, is_p = pprint_aux a in

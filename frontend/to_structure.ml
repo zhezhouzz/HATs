@@ -57,6 +57,11 @@ let ocaml_structure_to_structure structure =
       | [ x ] -> (
           let label = x.attr_name.txt in
           match label with
+          | "axiom" ->
+              let body =
+                To_qualifier.qualifier_of_ocamlexpr value_binding.pvb_expr
+              in
+              Axiom (R.Ax.mk_ax (name, body))
           | "pred" ->
               let args, body = mk_pred_args value_binding.pvb_expr in
               LtlfPred { name; args; ltlf_body = To_ltlf.of_ocamlexpr body }
@@ -70,7 +75,7 @@ let ocaml_structure_to_structure structure =
               _failatwith __FILE__ __LINE__
                 "syntax error: non known rty kind, not libSRLRty / effSRLRty / \
                  effRty / assertRty / assertSRLRty / assertRty / pred / \
-                 SRLpred")
+                 SRLpred / axiom")
       | [] ->
           let body = To_expr.expr_of_ocamlexpr value_binding.pvb_expr in
           FuncImp { name; if_rec = To_expr.get_if_rec flag; body }
@@ -88,6 +93,8 @@ let layout_entry = function
       spf "let %s%s = %s"
         (if if_rec then "rec " else "")
         name (To_expr.layout body)
+  | Axiom { name; body; _ } ->
+      spf "let[@axiom] %s = %s" name (To_qualifier.layout body)
   | Rty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
         (match kind with RtyLib -> "libSRLRty" | RtyToCheck -> "assertSRLRty")

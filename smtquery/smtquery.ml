@@ -7,15 +7,11 @@ let ctx =
   Z3.mk_context
     [ ("model", "true"); ("proof", "false"); ("timeout", "9999999") ]
 
-let _check pre q =
-  Check.(handle_check_res (fun () -> smt_neg_and_solve ctx pre q))
+let _check q = Check.(handle_check_res (fun () -> smt_neg_and_solve ctx q))
+(* let check_with_pre pres vc = _check pres vc *)
 
-let check_with_pre pres vc = _check pres vc
-
-let check_implies_with_pre pres a b =
-  _check pres Language.Rty.P.(Implies (a, b))
-
-let check vc = check_with_pre [] vc
+let check_implies_with_pre a b = _check Language.Rty.P.(Implies (a, b))
+let check vc = _check vc
 let cache_size = 600
 let check_bool_cache = Hashtbl.create cache_size
 
@@ -52,7 +48,7 @@ let check_bool vc =
       false
 
 let cached_check_bool vc = cached check_bool_cache check_bool vc
-let check_implies a b = check_implies_with_pre [] a b
+let check_implies a b = check_implies_with_pre a b
 
 let check_implies_bool (a, b) =
   match check_implies a b with None -> true | Some _ -> false

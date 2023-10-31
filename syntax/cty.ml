@@ -1,8 +1,7 @@
 module F (L : Lit.T) = struct
   open Sexplib.Std
-  module Nt = Lit.Ty
-  module P = Qualifier.F (L)
-  include P
+  module Ax = Axiom.F (L)
+  include Ax
 
   type cty = { v : string Nt.typed; phi : prop } [@@deriving sexp]
   type 'a ctyped = { cx : 'a; cty : cty }

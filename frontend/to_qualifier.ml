@@ -109,18 +109,21 @@ and qualifier_to_ocamlexpr_desc expr =
 
 let quantifier_of_ocamlexpr arg =
   match arg.ppat_desc with
-  | Ppat_constraint (arg, ct) -> (
+  | Ppat_constraint (arg, ct) ->
+      let q =
+        match get_pat_denoteopt arg with
+        | None ->
+            _failatwith __FILE__ __LINE__
+              "quantifier needs be [@forall] or [@exists]"
+        | Some q -> Qn.of_string q
+      in
       let arg =
         match arg.ppat_desc with
         | Ppat_var arg -> arg.txt
         | _ -> failwith "parsing: prop function"
       in
-      match ct.ptyp_desc with
-      | Ptyp_extension (name, PTyp ty) ->
-          let q = Qn.of_string name.txt in
-          let ty = Type.core_type_to_t ty in
-          (q, Nt.(arg #: ty))
-      | _ -> _failatwith __FILE__ __LINE__ "quantifier needs type extension")
+      let ty = Type.core_type_to_t ct in
+      (q, Nt.(arg #: ty))
   | _ -> _failatwith __FILE__ __LINE__ "quantifier needs type notation"
 
 let qualifier_of_ocamlexpr expr =

@@ -21,6 +21,7 @@ module F (L : Lit.T) = struct
     | FuncImp of { name : string; if_rec : bool; body : term typed }
     | Rty of { name : string; kind : rty_kind; rty : R.rty }
     | LtlfRty of { name : string; kind : rty_kind; rty : LR.rty }
+    | Axiom of R.Ax.ax
 
   type structure = entry list
 
@@ -78,7 +79,7 @@ module F (L : Lit.T) = struct
         | RtyLib -> [ (name, LR.erase_rty rty) ]
         | RtyToCheck -> [])
     | Func_dec x -> [ (x.x, x.ty) ]
-    | FuncImp _ | Type_dec _ | LtlfPred _ | SrlPred _ -> []
+    | FuncImp _ | Type_dec _ | LtlfPred _ | SrlPred _ | Axiom _ -> []
 
   let mk_normal_top_opctx_ = function
     | Type_dec d ->
@@ -87,6 +88,11 @@ module F (L : Lit.T) = struct
 
   let mk_normal_top_ctx es = List.concat @@ List.map mk_normal_top_ctx_ es
   let mk_normal_top_opctx es = List.concat @@ List.map mk_normal_top_opctx_ es
+
+  let mk_axioms es =
+    List.filter_map
+      (fun entry -> match entry with Axiom ax -> Some ax | _ -> None)
+      es
 
   let map_imps f codes =
     List.map
@@ -102,6 +108,15 @@ module F (L : Lit.T) = struct
       (fun code ->
         match code with
         | Rty { name; kind; rty } -> Rty { name; kind; rty = f rty }
+        | _ -> code)
+      codes
+
+  let map_aximos f codes =
+    List.map
+      (fun code ->
+        match code with
+        | Axiom { name; uninterops; body } ->
+            Axiom { name; uninterops; body = f body }
         | _ -> code)
       codes
 

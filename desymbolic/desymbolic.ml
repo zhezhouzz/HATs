@@ -124,11 +124,9 @@ let op_models m prop =
 open Rty
 
 let models_event ctx mt = function
-  | GuardEvent _ ->
-      _failatwith __FILE__ __LINE__ "die"
-      (* | GuardEvent phi -> *)
-      (* let global_m, _ = minterm_to_op_model ctx mt in *)
-      (* op_models global_m phi *)
+  | GuardEvent phi ->
+      let global_m, _ = minterm_to_op_model ctx mt in
+      op_models global_m phi
   | EffEvent { op; phi; _ } ->
       if String.equal mt.NRegex.op op then
         let global_m, local_m = minterm_to_op_model ctx mt in
@@ -147,17 +145,16 @@ let se_force_op = function
 let desymbolic_sevent ctx mts se =
   let open NRegex in
   match se with
-  | GuardEvent _ ->
-      _failatwith __FILE__ __LINE__ "die"
-      (* let l = mts_to_global_m mts in *)
-      (* let l = *)
-      (*   List.filter *)
-      (*     (fun global_embedding -> *)
-      (*       let m = tab_i_to_b ctx.global_tab global_embedding in *)
-      (*       op_models m phi) *)
-      (*     l *)
-      (* in *)
-      (* if List.length l > 0 then Epsilon else Empt *)
+  | GuardEvent phi ->
+      let l = mts_to_global_m mts in
+      let l =
+        List.filter
+          (fun global_embedding ->
+            let m = tab_i_to_b ctx.global_tab global_embedding in
+            op_models m phi)
+          l
+      in
+      if List.length l > 0 then Epsilon else Empt
   | _ ->
       let op = se_get_op se in
       let mts =

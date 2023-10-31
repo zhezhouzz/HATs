@@ -24,6 +24,8 @@ module type T = sig
   val eq_lit : lit -> lit -> bool
   val mk_int_l1_eq_l2 : lit -> lit -> lit
   val find_assignment_of_intvar : lit -> string -> lit option
+  val get_uninterops_from_lit : lit -> string list
+  val get_uninterops_from_tlit : lit typed -> string list
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -87,6 +89,27 @@ struct
     | _ -> None
 
   open Sugar
+
+  let rec get_uninterops_from_lit_ lit =
+    match lit with
+    | AC _ | AVar _ -> []
+    | ATu lits -> List.concat @@ List.map get_uninterops_from_tlit_ lits
+    | AProj (lit, _) -> get_uninterops_from_tlit_ lit
+    | AAppOp (op, lits) -> (
+        let res = List.concat @@ List.map get_uninterops_from_tlit_ lits in
+        match op.x with
+        | Op.BuiltinOp opname when Op.is_uninterop opname -> opname :: res
+        | _ -> res)
+
+  and get_uninterops_from_tlit_ lit = get_uninterops_from_lit_ lit.x
+
+  open Zzdatatype.Datatype
+
+  let get_uninterops_from_lit lit =
+    List.slow_rm_dup String.equal @@ get_uninterops_from_lit_ lit
+
+  let get_uninterops_from_tlit lit =
+    List.slow_rm_dup String.equal @@ get_uninterops_from_tlit_ lit
 
   let get_eqlit_by_name lit x =
     let res =

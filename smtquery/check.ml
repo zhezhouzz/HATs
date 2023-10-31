@@ -93,13 +93,15 @@ let smt_solve ctx assertions =
   in
   res
 
-let smt_neg_and_solve ctx pre vc =
+let smt_neg_and_solve ctx vc =
   (* let () = *)
   (*   Env.show_debug_queries @@ fun _ -> *)
   (*   Printf.printf "Query: %s\n" @@ Language.Rty.layout_prop vc *)
   (* in *)
+  let uninterops = Language.Rty.get_uninterops vc in
+  let pre = Language.Rty.Ax.get_related_assumption uninterops in
   let assertions =
-    List.map (Propencoding.to_z3 ctx) (pre @ [ Language.Rty.Not vc ])
+    List.map (Propencoding.to_z3 ctx) [ pre; Language.Rty.Not vc ]
   in
   (* let () = *)
   (*   List.iter (fun q -> Printf.printf "SMT: %s\n" (Expr.to_string q)) assertions *)
