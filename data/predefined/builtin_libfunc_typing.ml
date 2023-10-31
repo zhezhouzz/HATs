@@ -1,15 +1,15 @@
 let[@libRty] parent ?l:(a = (true : [%v: int]) [@over]) : [%v: int] =
-  v == a / 10
+  v == parent a
 
 let[@libRty] addChild ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (true : [%v: int]) [@over]) : [%v: int] =
-  v == a + 2
+  v == add_child a b
 
 let[@libRty] isRoot ?l:(a = (true : [%v: int]) [@over]) : [%v: bool] =
-  iff v (a == 0)
+  v == is_root a
 
 let[@libRty] isDeleted ?l:(a = (true : [%v: int]) [@over]) : [%v: bool] =
-  iff v (a < 0)
+  v == is_deleted a
 
 let[@libRty] isDir ?l:(a = (true : [%v: int]) [@over]) : [%v: bool] =
-  iff v (a mod 2 == 0 && a >= 0)
+  v == is_dir a

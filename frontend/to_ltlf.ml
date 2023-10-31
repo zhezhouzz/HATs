@@ -44,7 +44,7 @@ let pprint ltlf =
     | NextL a -> (spf "◯%s" (p_pprint a), true)
     | UntilL (a1, a2) -> (spf "%s𝒰 %s" (p_pprint a1) (p_pprint a2), false)
     | SFAPred { name; args } ->
-        (spf "%s(%s)" name (List.split_by_comma (fun x -> x) args), true)
+        (spf "%s(%s)" name (List.split_by_comma To_lit.layout args), true)
   and p_pprint a =
     let str, is_p = aux a in
     if is_p then str else spf "(%s)" str
@@ -78,7 +78,7 @@ let of_ocamlexpr_aux expr =
             (* let () = Printf.printf "2\n" in *)
             LandL (aux a, aux b)
         | name, args ->
-            let args = List.map To_expr.id_of_ocamlexpr args in
+            let args = List.map To_lit.lit_of_ocamlexpr args in
             SFAPred { name; args }
         (* _failatwith __FILE__ __LINE__ @@ spf "unknown regular op %s" f *))
     | Pexp_sequence (a, b) -> SeqL (aux a, aux b)

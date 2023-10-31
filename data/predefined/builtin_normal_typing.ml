@@ -18,6 +18,7 @@ val is_root : int -> bool
 val is_deleted : int -> bool
 val is_dir : int -> bool
 val add_child : int -> int -> int
+val del_child : int -> int -> int
 
 (* eff operator **)
 

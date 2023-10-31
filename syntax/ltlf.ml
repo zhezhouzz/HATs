@@ -14,7 +14,7 @@ module F (L : Lit.T) = struct
     | LastL
     | FinalL of ltlf
     | GlobalL of ltlf
-    | SFAPred of { name : string; args : string list }
+    | SFAPred of { name : string; args : lit list }
   [@@deriving sexp]
 
   type sfa = ltlf [@@deriving sexp]
@@ -26,10 +26,10 @@ module F (L : Lit.T) = struct
 
   (* subst *)
 
-  let subst_id (y, z) regex =
+  let subst (y, z) regex =
     let rec aux regex =
       match regex with
-      | EventL se -> EventL (SE.subst_id (y, z) se)
+      | EventL se -> EventL (SE.subst (y, z) se)
       | LorL (t1, t2) -> LorL (aux t1, aux t2)
       | LandL (t1, t2) -> LandL (aux t1, aux t2)
       | SeqL (t1, t2) -> SeqL (aux t1, aux t2)
@@ -40,11 +40,7 @@ module F (L : Lit.T) = struct
       | GlobalL t -> GlobalL (aux t)
       | FinalL t -> FinalL (aux t)
       | SFAPred { name; args } ->
-          SFAPred
-            {
-              name;
-              args = List.map (fun x -> if String.equal x y then z else x) args;
-            }
+          SFAPred { name; args = List.map (L.subst_lit (y, z)) args }
     in
     aux regex
 
@@ -58,7 +54,7 @@ module F (L : Lit.T) = struct
       | SFAPred { name; args } when String.equal name name' ->
           let body =
             List.fold_left
-              (fun res (x, x') -> subst_id (x.Nt.x, x') res)
+              (fun res (x, x') -> subst (x.Nt.x, x') res)
               body
               (_safe_combine __FILE__ __LINE__ args' args)
           in
