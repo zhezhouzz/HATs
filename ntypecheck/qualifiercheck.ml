@@ -59,9 +59,7 @@ let rec type_infer_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit : lit)
 and type_check_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit, ty) :
     lit typed =
   (* let () = *)
-  (*   Printf.printf "Check %s <<= %s\n" *)
-  (*     (To_qualifier.layout_lit lit) *)
-  (*     (Nt.layout ty) *)
+  (*   Printf.printf "Check %s <<= %s\n" (To_lit.layout lit) (Nt.layout ty) *)
   (* in *)
   match lit with
   | AC _ | AVar _ ->

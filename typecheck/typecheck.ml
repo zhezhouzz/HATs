@@ -19,12 +19,13 @@ open Sugar
 (*   let () = Desymbolic.stat_init () in *)
 (*   () *)
 
-let check opctx' structure normalized_structure =
+let check (opctx', rctx') structure normalized_structure =
   (* let () = *)
   (*   Printf.printf "Structure:\n%s\n" @@ Structure.layout_structure structure *)
   (* in *)
   let opctx, rctx = ROpCtx.from_code structure in
-  let opctx = opctx @ opctx' in
+  let opctx = opctx' @ opctx in
+  let rctx = rctx' @ rctx in
   (* let num_effects = List.length opctx in *)
   (* let eqctx = Eqctx.from_code structure in *)
   (* let () = Printf.printf "!!! %s\n" @@ Eqctx.layout_equations eqctx in *)

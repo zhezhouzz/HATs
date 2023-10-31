@@ -8,10 +8,10 @@ let id_eq_op = function BuiltinOp "==" -> true | _ -> false
 let id_is_dt name = String.(equal name @@ capitalize_ascii name)
 let to_string = function DtOp op -> op | EffOp op -> op | BuiltinOp op -> op
 let mk_eq_op = BuiltinOp "=="
-let known_pure_operators = [ "not"; "mod"; "parent"; "isDir"; "addChild" ]
+(* let known_pure_operators = [ "not"; "mod"; "parent"; "isDir"; "addChild" ] *)
 
 let is_pure_op str =
-  if List.exists (String.equal str) known_pure_operators then true
+  if List.exists (String.equal str) (Env.get_pureops ()) then true
   else
     let str' = String.capitalize_ascii str in
     if String.equal str str' then true else false

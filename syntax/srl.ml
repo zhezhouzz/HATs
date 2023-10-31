@@ -1,5 +1,5 @@
 module F (L : Lit.T) = struct
-  (* open Sexplib.Std *)
+  open Sexplib.Std
   module SE = Sevent.F (L)
   include SE
 
@@ -43,7 +43,12 @@ module F (L : Lit.T) = struct
     | ComplementA _ -> false
     | SetMinusA (a1, a2) -> eq a1 a2
 
-  type sfa_len = EmptySet | HasUniqLen of int | MayNoUniqLen
+  type sfa_len = EmptySet | HasUniqLen of int | MayNoUniqLen [@@deriving sexp]
+
+  let compare_sfa_len l1 l2 =
+    Sexplib.Sexp.compare (sexp_of_sfa_len l1) (sexp_of_sfa_len l2)
+
+  let eq_sfa_len l1 l2 = 0 == compare_sfa_len l1 l2
 
   (* if the traces accpected by th SFA as the same length, return it; otherwise none. *)
   let rec has_len_aux a =
@@ -105,6 +110,8 @@ module F (L : Lit.T) = struct
 
   open Sugar
 
+  let is_aligned (r1, r2) = eq_sfa_len (has_len_aux r1) (has_len_aux r2)
+
   let rec simpl r =
     match r with
     | EventA (GuardEvent phi) when is_true phi -> AnyA
@@ -112,19 +119,30 @@ module F (L : Lit.T) = struct
     | EmptyA | EpsilonA | AnyA | EventA _ -> r
     | LorA (r1, r2) -> (
         let r1, r2 = map2 simpl (r1, r2) in
-        match (has_len_aux r1, has_len_aux r2) with
-        | EmptySet, _ -> r2
-        | _, EmptySet -> r1
-        | _ -> LorA (r1, r2))
+        match (r1, r2) with
+        | StarA AnyA, _ | _, StarA AnyA -> StarA AnyA
+        | SeqA (r11, r12), SeqA (r21, r22) when is_aligned (r11, r21) ->
+            SeqA (simpl (LorA (r11, r21)), simpl (LorA (r12, r22)))
+        | _, _ -> (
+            match (has_len_aux r1, has_len_aux r2) with
+            | EmptySet, _ -> r2
+            | _, EmptySet -> r1
+            | _ -> LorA (r1, r2)))
     | LandA (r1, r2) -> (
         let r1, r2 = map2 simpl (r1, r2) in
-        match (has_len_aux r1, has_len_aux r2) with
-        | EmptySet, _ | _, EmptySet -> EmptyA
-        | _ -> (
-            match (r1, r2) with
-            | AnyA, _ -> be_singleton r2
-            | _, AnyA -> be_singleton r1
-            | _, _ -> LandA (r1, r2)))
+        match (r1, r2) with
+        | StarA AnyA, r2 -> r2
+        | r1, StarA AnyA -> r1
+        | SeqA (r11, r12), SeqA (r21, r22) when is_aligned (r11, r21) ->
+            SeqA (simpl (LandA (r11, r21)), simpl (LandA (r12, r22)))
+        | _, _ -> (
+            match (has_len_aux r1, has_len_aux r2) with
+            | EmptySet, _ | _, EmptySet -> EmptyA
+            | _ -> (
+                match (r1, r2) with
+                | AnyA, _ -> be_singleton r2
+                | _, AnyA -> be_singleton r1
+                | _, _ -> LandA (r1, r2))))
     | SeqA (r1, r2) -> (
         let r1, r2 = map2 simpl (r1, r2) in
         match (has_len_aux r1, has_len_aux r2) with
@@ -148,34 +166,6 @@ module F (L : Lit.T) = struct
         | EmptySet, _ -> EmptyA
         | _, EmptySet -> r1
         | _ -> SetMinusA (r1, r2))
-
-  (* let rec is_one_len a = *)
-  (*   match a with *)
-  (*   | EmptyA -> false *)
-  (*   | EpsilonA -> true *)
-  (*   | AnyA | EventA _ -> Some a *)
-  (*   | LorA (a1, a2) -> *)
-  (*     (is_zero_len a1) && (is_zero_len a2) *)
-  (*   | LandA (a1, a2) -> *)
-  (*     (is_zero_len a1) || (is_zero_len a2) *)
-  (*   | SeqA (a1, a2) -> *)
-  (*     (is_zero_len a1) && (is_zero_len a2) *)
-  (*   | StarA a -> is_zero_len a *)
-  (*   | ComplementA _ -> false *)
-  (*   | SetMinusA (a1, a2) -> is_empty a1 && is_empty a2 *)
-
-  (* let rec to_singleton a = *)
-  (*   match a with *)
-  (*   | EmptyA | EpsilonA | AnyA | EventA _ -> Some a *)
-  (*   | LorA (a1, a2) -> *)
-  (*     let* a1 = to_singleton a1 in *)
-  (*     let* a2 = to_singleton a2 in *)
-  (*     Some (LorA (a1, a2)) *)
-  (*   | LandA (a1, a2) -> *)
-  (*     let* a1 = to_singleton a1 in *)
-  (*     let* a2 = to_singleton a2 in *)
-  (*     Some (LandA (a1, a2)) *)
-  (*   | SeqA (a1, ) *)
 
   (* subst *)
 

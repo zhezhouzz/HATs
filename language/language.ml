@@ -345,6 +345,7 @@ module RTypectx = struct
   let pretty_print_lines = pretty_print_lines _f
   let pretty_print_infer = pretty_print_infer _f
   let pretty_print_judge = pretty_print_judge _f
+  let pretty_layout = pretty_layout _f
 
   let filter_map_hty f code =
     List.filter_map

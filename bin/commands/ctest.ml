@@ -63,7 +63,13 @@ let init_builtinctx () =
   let poprctx = ROpTypectx.to_opctx prtys in
   let ertys = load_typed_rtys_from_file opnctx @@ Env.get_builtin_eff_type () in
   let eoprctx = ROpTypectx.to_effopctx ertys in
-  (poprctx @ eoprctx, opnctx)
+  let libfrctx =
+    load_typed_rtys_from_file opnctx @@ Env.get_builtin_libfunc_type ()
+  in
+  let libfnctx =
+    List.map ~f:(fun (x, rty) -> (x, Rty.erase_rty rty)) libfrctx
+  in
+  ((poprctx @ eoprctx, opnctx), (libfrctx, libfnctx))
 
 let print_raw_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
@@ -120,32 +126,41 @@ let print_rty_ meta_config_file source_file =
 
 let print_source_code_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
-  let oprctx, opnctx = init_builtinctx () in
+  let (oprctx, opnctx), (rctx, nctx) = init_builtinctx () in
   let code = load_code_from_file source_file in
   (* let msize = Env.get_max_printing_size () in *)
-  let nctx = StructureRaw.mk_normal_top_ctx code in
+  let nctx = nctx @ StructureRaw.mk_normal_top_ctx code in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
-    Printf.printf "Top Type Context:\n%s\n\n" @@ NTypectx.pretty_layout nctx
+    Printf.printf "Top Function Normal Type Context:\n%s\n\n"
+    @@ NTypectx.pretty_layout nctx
   in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
-    Printf.printf "Top Operation Type Context:\n%s\n\n"
+    Printf.printf "Top Operation Normal Type Context:\n%s\n\n"
     @@ NOpTypectx.pretty_layout opnctx
   in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
-    Printf.printf "Top Operation Ptype Context:\n%s\n\n"
+    Printf.printf "Top Function Rty Context:\n%s\n\n"
+    @@ RTypectx.pretty_layout rctx
+  in
+  let () =
+    Env.show_debug_preprocess @@ fun _ ->
+    Printf.printf "Top Operation Rty Context:\n%s\n\n"
     @@ ROpTypectx.pretty_layout oprctx
   in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "%s\n" @@ StructureRaw.layout_structure code
   in
-  (oprctx, nctx, opnctx, code)
+  (oprctx, opnctx, rctx, nctx, code)
 
 let print_typed_source_code_ meta_config_file source_file =
-  let oprctx, nctx, opnctx, code =
+  (* let oprctx, nctx, opnctx, code = *)
+  (*   print_source_code_ meta_config_file source_file *)
+  (* in *)
+  let oprctx, opnctx, rctx, nctx, code =
     print_source_code_ meta_config_file source_file
   in
   let code = Ntypecheck.opt_to_typed_structure opnctx nctx code in
@@ -153,10 +168,10 @@ let print_typed_source_code_ meta_config_file source_file =
     Env.show_debug_preprocess @@ fun _ ->
     Printf.printf "%s\n" @@ Structure.layout_structure code
   in
-  (oprctx, nctx, opnctx, code)
+  (oprctx, opnctx, rctx, nctx, code)
 
 let print_typed_normalized_source_code_ meta_config_file source_file =
-  let oprctx, nctx, opnctx, code =
+  let oprctx, opnctx, rctx, nctx, code =
     print_typed_source_code_ meta_config_file source_file
   in
   let normalized = Normalize.get_normalized_code code in
@@ -167,25 +182,26 @@ let print_typed_normalized_source_code_ meta_config_file source_file =
         Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp_omit_type e))
       normalized
   in
-  (oprctx, code, normalized)
+  (oprctx, rctx, code, normalized)
 
 let default_stat_file = ".stat.json"
 
 let type_check_ meta_config_file source_file =
-  let oprctx, code, normalized =
+  let oprctx, rctx, code, normalized =
     print_typed_normalized_source_code_ meta_config_file source_file
   in
-  let ress = Typecheck.check oprctx code normalized in
+  let ress = Typecheck.check (oprctx, rctx) code normalized in
   (* let () = Stat.dump default_stat_file ress in *)
   let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in
   ()
 
 let subtype_check_ meta_config_file source_file =
-  let opctx', code, normalized =
+  let opctx', rctx', code, normalized =
     print_typed_normalized_source_code_ meta_config_file source_file
   in
   let opctx, rctx = ROpTypectx.from_code code in
   let opctx = opctx @ opctx' in
+  let rctx = rctx @ rctx' in
   let assertions = RTypectx.get_task code in
   let get x =
     snd @@ List.find_exn ~f:(fun (name, _) -> String.equal x name) assertions

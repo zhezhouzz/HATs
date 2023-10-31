@@ -15,14 +15,20 @@ let infer_const_ty _ = Const.infer_const_ty
 
 let infer_op opctx x =
   match x with
-  | Op.BuiltinOp _ ->
-      (* let () = Printf.printf "infer op %s: %s\n" "BuiltinOp" op in *)
+  | Op.BuiltinOp op ->
+      let () =
+        Env.show_debug_debug @@ fun _ ->
+        Printf.printf "infer op %s: %s\n" "BuiltinOp" op
+      in
       (* let () = *)
       (*   Printf.printf "%s\n" (NOpTypectx.layout_typed_l Op.to_string opctx) *)
       (* in *)
       OpCtx.get_ty opctx x
-  | Op.EffOp _ ->
-      (* let () = Printf.printf "infer op %s: %s\n" "EffOp" op in *)
+  | Op.EffOp op ->
+      let () =
+        Env.show_debug_debug @@ fun _ ->
+        Printf.printf "infer op %s: %s\n" "EffOp" op
+      in
       OpCtx.get_ty opctx x
   | Op.DtOp x -> (
       match x with

@@ -91,6 +91,22 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
     let is_valid = if b then Some () else None in
     end_info line rulename is_valid
   in
+  let rec handle_ghost typectx (rty : rty) =
+    match rty with
+    | ArrRty { arr = GhostArr Nt.{ x; ty }; rethty } ->
+        let rulename = "TGhost" in
+        let () = before_info __LINE__ rulename in
+        let typectx' = typectx_new_to_right typectx x #:: (mk_top ty) in
+        let rty =
+          match rethty with
+          | Rty rty -> rty
+          | _ -> _failatwith __FILE__ __LINE__ "die"
+        in
+        let _ = end_info_b __LINE__ rulename true in
+        handle_ghost typectx' rty
+    | _ -> (typectx, rty)
+  in
+  let typectx, hty = handle_ghost typectx hty in
   match value.x with
   | VConst _ ->
       let rulename = "Const" in

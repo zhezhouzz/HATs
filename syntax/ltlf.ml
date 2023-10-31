@@ -142,9 +142,11 @@ module F (L : Lit.T) = struct
     | LandL (a1, a2) -> LandA (to_srl_aux a1, to_srl_aux a2)
     | SeqL (a1, a2) -> SeqA (to_srl_aux a1, to_srl_aux a2)
     | NextL a -> SeqA (AnyA, to_srl_aux a)
+    | UntilL (EventL sevent, a2) -> SeqA (StarA (EventA sevent), to_srl_aux a2)
+    | UntilL (NegL (EventL sevent), a2) ->
+        SeqA (StarA (SetMinusA (AnyA, EventA sevent)), to_srl_aux a2)
     | UntilL (a, a2) ->
-        let a = to_srl_aux a in
-        let a2 = to_srl_aux a2 in
+        let a, a2 = map2 to_srl_aux (a, a2) in
         if has_len a 0 then a2
         else if has_len a 1 then SeqA (StarA a, a2)
         else _failatwith __FILE__ __LINE__ "unimp until"

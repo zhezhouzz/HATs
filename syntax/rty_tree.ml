@@ -29,12 +29,16 @@ module SyntaxF (A : Sfa.SFA) (L : Lit.T) = struct
     let open Nt in
     match rty with
     | BaseRty { cty; _ } -> Cty.erase cty
-    | ArrRty { arr; rethty } -> mk_arr (erase_arr arr) (erase_hty rethty)
+    | ArrRty { arr; rethty } -> (
+        let retnty = erase_hty rethty in
+        match erase_arr arr with
+        | None -> retnty
+        | Some paranty -> mk_arr paranty retnty)
 
   and erase_arr = function
-    | NormalArr { rty; _ } -> erase_rty rty
-    | GhostArr Nt.{ ty; _ } -> ty
-    | ArrArr rty -> erase_rty rty
+    | NormalArr { rty; _ } -> Some (erase_rty rty)
+    | GhostArr _ -> None
+    | ArrArr rty -> Some (erase_rty rty)
 
   and erase_hty rty =
     (* let open Nt in *)
