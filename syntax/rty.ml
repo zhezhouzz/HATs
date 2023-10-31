@@ -2,9 +2,38 @@ module F (L : Lit.T) = struct
   (* open Sexplib.Std *)
   module LTLf = Ltlf.F (L)
   module LRty = Rty_tree.SyntaxF (LTLf) (L)
-  include Rty_tree.SyntaxF (LTLf.SRL) (L)
   module SRL = LTLf.SRL
+  include Rty_tree.SyntaxF (SRL) (L)
   include SRL
+
+  let rec apply_pred_rty pred rty =
+    let open LRty in
+    match rty with
+    | BaseRty _ -> rty
+    | ArrRty { arr; rethty } ->
+        ArrRty
+          { arr = apply_pred_arr pred arr; rethty = apply_pred_hty pred rethty }
+
+  and apply_pred_arr pred arr =
+    let open LRty in
+    match arr with
+    | NormalArr { rx; rty } -> NormalArr { rx; rty = apply_pred_rty pred rty }
+    | GhostArr _ -> arr
+    | ArrArr rty -> ArrArr (apply_pred_rty pred rty)
+
+  and apply_pred_hty pred hty =
+    let open LRty in
+    match hty with
+    | Rty rty -> Rty (apply_pred_rty pred rty)
+    | Htriple { pre; resrty; post } ->
+        Htriple
+          {
+            pre = LTLf.apply_pred pred pre;
+            resrty = apply_pred_rty pred resrty;
+            post = LTLf.apply_pred pred post;
+          }
+    | Inter (hty1, hty2) ->
+        Inter (apply_pred_hty pred hty1, apply_pred_hty pred hty2)
 
   let rec to_hty = function
     | LRty.Rty rty -> Rty (to_rty rty)

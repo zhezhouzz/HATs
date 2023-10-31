@@ -38,4 +38,30 @@ module F (L : Lit.T) = struct
     | BaseRty { cty } -> R.BaseRty { cty }
     | ArrRty { arr; rethty } ->
         R.ArrRty { arr = to_arr arr; rethty = to_hty rethty }
+
+  let rec apply_pred_rty pred rty =
+    match rty with
+    | BaseRty _ -> rty
+    | ArrRty { arr; rethty } ->
+        ArrRty
+          { arr = apply_pred_arr pred arr; rethty = apply_pred_hty pred rethty }
+
+  and apply_pred_arr pred arr =
+    match arr with
+    | NormalArr { rx; rty } -> NormalArr { rx; rty = apply_pred_rty pred rty }
+    | GhostArr _ -> arr
+    | ArrArr rty -> ArrArr (apply_pred_rty pred rty)
+
+  and apply_pred_hty pred hty =
+    match hty with
+    | Rty rty -> Rty (apply_pred_rty pred rty)
+    | Htriple { pre; resrty; post } ->
+        Htriple
+          {
+            pre = apply_pred pred pre;
+            resrty = apply_pred_rty predresrty;
+            post = apply_pred pred post;
+          }
+    | Inter (hty1, hty2) ->
+        Inter (apply_pred_hty pred hty1, apply_pred_hty pred hty2)
 end

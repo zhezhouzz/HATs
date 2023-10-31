@@ -1,5 +1,5 @@
 module F (L : Lit.T) = struct
-  (* open Sexplib.Std *)
+  open Sexplib.Std
   module SRL = Srl.F (L)
   include SRL
 
@@ -14,6 +14,7 @@ module F (L : Lit.T) = struct
     | LastL
     | FinalL of ltlf
     | GlobalL of ltlf
+    | SFAPred of { name : string; args : string list }
   [@@deriving sexp]
 
   type sfa = ltlf [@@deriving sexp]
@@ -23,9 +24,58 @@ module F (L : Lit.T) = struct
   let compare l1 l2 = Sexplib.Sexp.compare (sexp_of_ltlf l1) (sexp_of_ltlf l2)
   let eq l1 l2 = 0 == compare l1 l2
 
+  (* subst *)
+
+  let subst_id (y, z) regex =
+    let rec aux regex =
+      match regex with
+      | EventL se -> EventL (SE.subst_id (y, z) se)
+      | LorL (t1, t2) -> LorL (aux t1, aux t2)
+      | LandL (t1, t2) -> LandL (aux t1, aux t2)
+      | SeqL (t1, t2) -> SeqL (aux t1, aux t2)
+      | NegL t -> NegL (aux t)
+      | NextL t -> NextL (aux t)
+      | UntilL (t1, t2) -> UntilL (aux t1, aux t2)
+      | LastL -> LastL
+      | GlobalL t -> GlobalL (aux t)
+      | FinalL t -> FinalL (aux t)
+      | SFAPred { name; args } ->
+          SFAPred
+            {
+              name;
+              args = List.map (fun x -> if String.equal x y then z else x) args;
+            }
+    in
+    aux regex
+
   (* syntax sugar *)
   let _topL = EventL (GuardEvent mk_true)
   let _lastL = NegL (NextL _topL)
+
+  let apply_pred (name', args', body) ltlf =
+    let rec aux ltlf =
+      match ltlf with
+      | SFAPred { name; args } when String.equal name name' ->
+          let body =
+            List.fold_left
+              (fun res (x, x') -> subst_id (x.Nt.x, x') res)
+              body
+              (_safe_combine __FILE__ __LINE__ args' args)
+          in
+          body
+      | SFAPred _ -> ltlf
+      | EventL _ -> ltlf
+      | LorL (t1, t2) -> LorL (aux t1, aux t2)
+      | LandL (t1, t2) -> LandL (aux t1, aux t2)
+      | SeqL (t1, t2) -> SeqL (aux t1, aux t2)
+      | NegL t -> NegL (aux t)
+      | NextL t -> NextL (aux t)
+      | UntilL (t1, t2) -> UntilL (aux t1, aux t2)
+      | LastL -> LastL
+      | GlobalL t -> GlobalL (aux t)
+      | FinalL t -> FinalL (aux t)
+    in
+    aux ltlf
 
   let to_final_opt = function
     | UntilL (a1, a2) -> if eq _topL a1 then Some a2 else None
@@ -54,6 +104,7 @@ module F (L : Lit.T) = struct
     | SeqL (a1, a2) -> SeqL (desugar a1, desugar a2)
     | NextL a -> NextL (desugar a)
     | UntilL (a1, a2) -> UntilL (desugar a1, desugar a2)
+    | SFAPred _ -> ltlf
 
   let rec ensugar (ltlf : ltlf) =
     match ltlf with
@@ -67,6 +118,7 @@ module F (L : Lit.T) = struct
     | SeqL (a1, a2) -> SeqL (ensugar a1, ensugar a2)
     | NextL a -> NextL (ensugar a)
     | UntilL (a1, a2) -> UntilL (ensugar a1, ensugar a2)
+    | SFAPred _ -> ltlf
 
   let rec to_srl_aux (a : ltlf) : regex =
     match a with
@@ -96,6 +148,7 @@ module F (L : Lit.T) = struct
         if has_len a 0 then a2
         else if has_len a 1 then SeqA (StarA a, a2)
         else _failatwith __FILE__ __LINE__ "unimp until"
+    | SFAPred _ -> _failatwith __FILE__ __LINE__ "die"
 
   let to_srl (a : ltlf) : regex = simpl @@ to_srl_aux a
 end

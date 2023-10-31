@@ -14,8 +14,13 @@ val ( * ) : int -> int -> int
 val ( / ) : int -> int -> int
 val not : bool -> bool
 val parent : int -> int
-val isDir : int -> bool
-val addChild : int -> int -> int
+val is_root : int -> bool
+val is_deleted : int -> bool
+val is_dir : int -> bool
+val add_child : int -> int -> int
+
+(* eff operator **)
+
 val put : int -> int -> unit
 val get : int -> int
 val exists : int -> bool

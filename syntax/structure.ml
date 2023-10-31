@@ -6,7 +6,16 @@ module F (L : Lit.T) = struct
   type rty_kind = RtyLib | RtyToCheck
 
   type entry =
-    (* | Mps of string list *)
+    | SrlPred of {
+        name : string;
+        args : string Normalty.Ntyped.typed list;
+        srl_body : R.regex;
+      }
+    | LtlfPred of {
+        name : string;
+        args : string Normalty.Ntyped.typed list;
+        ltlf_body : R.LTLf.ltlf;
+      }
     | Type_dec of Type_dec.t
     | Func_dec of string Normalty.Ntyped.typed
     | FuncImp of { name : string; if_rec : bool; body : term typed }
@@ -18,8 +27,41 @@ module F (L : Lit.T) = struct
   (* open Sugar *)
   open Zzdatatype.Datatype
 
+  let inline_ltlf_pred_one pred entry =
+    match entry with
+    | LtlfPred { name; args; ltlf_body } ->
+        (* let () = *)
+        (*   if String.equal name name' then _failatwith __FILE__ __LINE__ "die" *)
+        (*   else () *)
+        (* in *)
+        let ltlf_body = R.LTLf.apply_pred pred ltlf_body in
+        LtlfPred { name; args; ltlf_body }
+    | LtlfRty { name; kind; rty } ->
+        LtlfRty { name; kind; rty = R.apply_pred_rty pred rty }
+    | _ -> entry
+
+  let inline_ltlf_pred entrys =
+    let rec aux res entrys =
+      match entrys with
+      | [] -> res
+      | LtlfPred { name; args; ltlf_body } :: entrys ->
+          let entrys =
+            List.map (inline_ltlf_pred_one (name, args, ltlf_body)) entrys
+          in
+          aux res entrys
+      | entry :: entrys -> aux (res @ [ entry ]) entrys
+    in
+    aux [] entrys
+
   let ltlf_to_srl_ entry =
     match entry with
+    | LtlfPred { name; args; ltlf_body } ->
+        SrlPred
+          {
+            name;
+            args;
+            srl_body = R.SRL.normalize_name @@ R.LTLf.to_srl ltlf_body;
+          }
     | LtlfRty { name; kind; rty } ->
         Rty { name; kind; rty = R.normalize_name_rty @@ R.to_rty rty }
     | _ -> entry
@@ -27,7 +69,6 @@ module F (L : Lit.T) = struct
   let ltlf_to_srl = List.map ltlf_to_srl_
 
   let mk_normal_top_ctx_ = function
-    | FuncImp _ -> []
     | Rty { name; kind; rty } -> (
         match kind with
         | RtyLib -> [ (name, R.erase_rty rty) ]
@@ -37,15 +78,12 @@ module F (L : Lit.T) = struct
         | RtyLib -> [ (name, LR.erase_rty rty) ]
         | RtyToCheck -> [])
     | Func_dec x -> [ (x.x, x.ty) ]
-    | Type_dec _ -> []
+    | FuncImp _ | Type_dec _ | LtlfPred _ | SrlPred _ -> []
 
   let mk_normal_top_opctx_ = function
-    | FuncImp _ -> []
-    | Rty _ -> []
-    | LtlfRty _ -> []
-    | Func_dec _ -> []
     | Type_dec d ->
         List.map (fun R.Nt.{ x; ty } -> (x, ty)) @@ Type_dec.mk_ctx_ d
+    | _ -> []
 
   let mk_normal_top_ctx es = List.concat @@ List.map mk_normal_top_ctx_ es
   let mk_normal_top_opctx es = List.concat @@ List.map mk_normal_top_opctx_ es

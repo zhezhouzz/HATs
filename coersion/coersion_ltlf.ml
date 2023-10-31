@@ -15,6 +15,7 @@ let rec force ltlf =
   | Raw.FinalL a -> FinalL (force a)
   | Raw.GlobalL a -> GlobalL (force a)
   | Raw.LastL -> LastL
+  | Raw.SFAPred { name; args } -> SFAPred { name; args }
 
 let rec besome ltlf =
   match ltlf with
@@ -28,5 +29,6 @@ let rec besome ltlf =
   | FinalL a -> Raw.FinalL (besome a)
   | GlobalL a -> Raw.GlobalL (besome a)
   | LastL -> Raw.LastL
+  | SFAPred { name; args } -> Raw.SFAPred { name; args }
 
 (* let f = if is_even x then if is_odd y then 42 else z else z *)

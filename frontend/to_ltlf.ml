@@ -42,7 +42,9 @@ let pprint ltlf =
         (spf "%s%s%s" (p_pprint a1) psetting.sym_or (p_pprint a2), false)
     | SeqL (a1, a2) -> (spf "%s;%s" (p_pprint a1) (p_pprint a2), false)
     | NextL a -> (spf "◯%s" (p_pprint a), true)
-    | UntilL (a1, a2) -> (spf "%s𝒰%s" (p_pprint a1) (p_pprint a2), false)
+    | UntilL (a1, a2) -> (spf "%s𝒰 %s" (p_pprint a1) (p_pprint a2), false)
+    | SFAPred { name; args } ->
+        (spf "%s(%s)" name (List.split_by_comma (fun x -> x) args), true)
   and p_pprint a =
     let str, is_p = aux a in
     if is_p then str else spf "(%s)" str
@@ -75,8 +77,10 @@ let of_ocamlexpr_aux expr =
         | "&&", [ a; b ] ->
             (* let () = Printf.printf "2\n" in *)
             LandL (aux a, aux b)
-        | _, _ -> _failatwith __FILE__ __LINE__ @@ spf "unknown regular op %s" f
-        )
+        | name, args ->
+            let args = List.map To_expr.id_of_ocamlexpr args in
+            SFAPred { name; args }
+        (* _failatwith __FILE__ __LINE__ @@ spf "unknown regular op %s" f *))
     | Pexp_sequence (a, b) -> SeqL (aux a, aux b)
     | Pexp_construct _ -> EventL (To_se.of_ocamlexpr expr)
     | _ -> _failatwith __FILE__ __LINE__ "die"

@@ -19,6 +19,7 @@
         "axioms_of_query_encoding": "data/predefined/axioms_of_query_encoding.ml",
         "builtin_pure_typing": "data/predefined/builtin_pure_typing.ml",
         "builtin_eff_typing": "data/predefined/builtin_eff_typing.ml",
+        "builtin_automata_pred_typing": "data/predefined/builtin_automata_pred_typing.ml",
         "builtin_normal_typing": "data/predefined/builtin_normal_typing.ml",
         "builtin_randomness_coverage_typing": "data/predefined/builtin_randomness_coverage_typing.ml",
         "builtin_datatype_coverage_typing": "data/predefined/builtin_datatype_coverage_typing",

@@ -1,8 +1,42 @@
 open Ocaml5_parser
 open Parsetree
 module Type = Normalty.Frontend
+module Nt = Normalty.Ntyped
 open Syntax.StructureRaw
 open Sugar
+
+let mk_rty_entry (x, name, pvb_expr) =
+  let name =
+    match x with
+    | "effSRLRty" | "effRty" -> String.capitalize_ascii name
+    | _ -> name
+  in
+  let kind =
+    match x with "assertSRLRty" | "assertRty" -> RtyToCheck | _ -> RtyLib
+  in
+  match x with
+  | "libSRLRty" | "effSRLRty" | "assertSRLRty" ->
+      let rty = To_rty.rty_of_ocamlexpr pvb_expr in
+      Rty { name; kind; rty }
+  | _ ->
+      let rty = To_ltlf_hty.rty_of_ocamlexpr pvb_expr in
+      LtlfRty { name; kind; rty }
+
+let mk_pred_args expr =
+  let rec aux expr =
+    match expr.pexp_desc with
+    | Pexp_fun (_, _, arg0, body) ->
+        let args, body = aux body in
+        let arg =
+          match To_pat.patten_to_typed_ids arg0 with
+          | [ { x; ty = Some ty } ] -> Nt.{ x; ty }
+          | _ -> _failatwith __FILE__ __LINE__ "die"
+        in
+        (arg :: args, body)
+    | _ -> ([], expr)
+  in
+  let args, body = aux expr in
+  (args, body)
 
 let ocaml_structure_to_structure structure =
   match structure.pstr_desc with
@@ -21,44 +55,31 @@ let ocaml_structure_to_structure structure =
       in
       match value_binding.pvb_attributes with
       | [ x ] -> (
-          let () =
-            match x.attr_name.txt with
-            | "effRty" | "libRty" | "assertRty" | "libSRLRty" | "effSRLRty"
-            | "assertSRLRty" ->
-                ()
-            | _ ->
-                _failatwith __FILE__ __LINE__
-                  "syntax error: non known rty kind, not libSRLRty / effSRLRty \
-                   / effRty / assertRty / assertSRLRty / assertRty"
-          in
-          let name =
-            match x.attr_name.txt with
-            | "effSRLRty" | "effRty" -> String.capitalize_ascii name
-            | _ -> name
-          in
-          let kind =
-            match x.attr_name.txt with
-            | "assertSRLRty" | "assertRty" -> RtyToCheck
-            | _ -> RtyLib
-          in
-          match x.attr_name.txt with
-          | "libSRLRty" | "effSRLRty" | "assertSRLRty" ->
-              let rty = To_rty.rty_of_ocamlexpr value_binding.pvb_expr in
-              Rty { name; kind; rty }
+          let label = x.attr_name.txt in
+          match label with
+          | "pred" ->
+              let args, body = mk_pred_args value_binding.pvb_expr in
+              LtlfPred { name; args; ltlf_body = To_ltlf.of_ocamlexpr body }
+          | "SRLpred" ->
+              let args, body = mk_pred_args value_binding.pvb_expr in
+              SrlPred { name; args; srl_body = To_srl.of_ocamlexpr body }
+          | "effRty" | "libRty" | "assertRty" | "libSRLRty" | "effSRLRty"
+          | "assertSRLRty" ->
+              mk_rty_entry (label, name, value_binding.pvb_expr)
           | _ ->
-              let rty = To_ltlf_hty.rty_of_ocamlexpr value_binding.pvb_expr in
-              LtlfRty { name; kind; rty })
-      | _ ->
+              _failatwith __FILE__ __LINE__
+                "syntax error: non known rty kind, not libSRLRty / effSRLRty / \
+                 effRty / assertRty / assertSRLRty / assertRty / pred / \
+                 SRLpred")
+      | [] ->
           let body = To_expr.expr_of_ocamlexpr value_binding.pvb_expr in
-          FuncImp { name; if_rec = To_expr.get_if_rec flag; body })
-  | _ -> raise @@ failwith "translate not a func_decl"
+          FuncImp { name; if_rec = To_expr.get_if_rec flag; body }
+      | _ -> _failatwith __FILE__ __LINE__ "wrong syntax")
+  | _ -> _failatwith __FILE__ __LINE__ "translate not a func_decl"
 
 open Zzdatatype.Datatype
 
 let layout_entry = function
-  (* | Mps mps -> *)
-  (*     spf "external method_predicates : t = %s" *)
-  (*       (List.split_by " " (fun x -> x) mps) *)
   | Type_dec d -> To_type_dec.layout [ d ]
   | Func_dec x ->
       let open Normalty.Ntyped in
@@ -67,7 +88,6 @@ let layout_entry = function
       spf "let %s%s = %s"
         (if if_rec then "rec " else "")
         name (To_expr.layout body)
-  (* | EquationEntry equation -> To_algebraic.layout_equation equation *)
   | Rty { name; kind; rty } ->
       spf "val[@%s] %s: %s"
         (match kind with RtyLib -> "libSRLRty" | RtyToCheck -> "assertSRLRty")
@@ -77,5 +97,15 @@ let layout_entry = function
         (match kind with RtyLib -> "libRty" | RtyToCheck -> "assertRty")
         name
         (To_ltlf_hty.pprint_rty rty)
+  | LtlfPred { name; args; ltlf_body } ->
+      spf "val[@pred] %s: %s = %s" name
+        (List.split_by " "
+           Nt.(fun x -> spf "(%s : %s)" x.x (layout x.Nt.ty))
+           args)
+        (To_ltlf.layout ltlf_body)
+  | SrlPred { name; args; srl_body } ->
+      spf "val[@SRLpred] %s: %s = %s" name
+        (List.split_by " " Nt.(fun x -> spf "(%s : %s)" x.x (layout x.ty)) args)
+        (To_srl.layout srl_body)
 
 let layout l = spf "%s\n" (List.split_by "\n" layout_entry l)

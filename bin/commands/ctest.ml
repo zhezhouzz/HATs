@@ -17,7 +17,11 @@ let load_builtin_opctx () =
   opnctx
 
 let load_code_from_file qfile =
-  StructureRaw.ltlf_to_srl @@ load_raw_code_from_file qfile
+  let preds =
+    load_raw_code_from_file @@ Env.get_builtin_automata_pred_type ()
+  in
+  StructureRaw.ltlf_to_srl @@ StructureRaw.inline_ltlf_pred @@ preds
+  @ load_raw_code_from_file qfile
 
 let load_typed_rtys_from_file opnctx file =
   let code = load_code_from_file file in
@@ -63,7 +67,32 @@ let init_builtinctx () =
 
 let print_raw_rty_ meta_config_file source_file =
   let () = Env.load_meta meta_config_file in
-  let code = load_code_from_file source_file in
+  let code = load_raw_code_from_file source_file in
+  let () =
+    List.iter
+      ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry))
+      code
+  in
+  ()
+
+let print_raw_rty_to_srl_ meta_config_file source_file =
+  let () = Env.load_meta meta_config_file in
+  let code = load_raw_code_from_file source_file in
+  let code = StructureRaw.ltlf_to_srl code in
+  let () =
+    List.iter
+      ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry))
+      code
+  in
+  ()
+
+let print_raw_rty_without_pred_ meta_config_file source_file =
+  let () = Env.load_meta meta_config_file in
+  let code = load_raw_code_from_file source_file in
+  let preds =
+    load_raw_code_from_file @@ Env.get_builtin_automata_pred_type ()
+  in
+  let code = StructureRaw.inline_ltlf_pred (preds @ code) in
   let () =
     List.iter
       ~f:(fun entry -> Printf.printf "%s\n" (StructureRaw.layout_entry entry))
@@ -188,6 +217,16 @@ let test =
         cmd_config_source "print raw rty (before desugar LTLf into SRL)"
           (fun meta_config_file source_file () ->
             let x = print_raw_rty_ meta_config_file source_file in
+            ()) );
+      ( "print-raw-rty-to-srl",
+        cmd_config_source "print raw rty (before desugar LTLf into SRL)"
+          (fun meta_config_file source_file () ->
+            let x = print_raw_rty_to_srl_ meta_config_file source_file in
+            ()) );
+      ( "print-raw-rty-without-pred",
+        cmd_config_source "print raw rty (before desugar LTLf into SRL)"
+          (fun meta_config_file source_file () ->
+            let x = print_raw_rty_without_pred_ meta_config_file source_file in
             ()) );
       ( "print-source-code",
         cmd_config_source "print raw source code"
