@@ -1,32 +1,15 @@
 open Sexplib.Std
 
-type mode =
-  | Debug of {
-      show_preprocess : bool;
-      show_typing : bool;
-      show_queries : bool;
-      show_solving : bool;
-      show_stat : bool;
-      show_info : bool;
-      show_debug : bool;
-    }
-  | Release
-[@@deriving sexp]
+type mode = DebugTags of string list | Release [@@deriving sexp]
 
 type prim_path = {
-  qualifier_builtin_type : string;
   normal_p : string;
   pure_p : string;
   eff_p : string;
   libfunc_p : string;
   automata_pred_p : string;
   axioms_p : string;
-  under_randomp : string;
-  underp_dir : string;
-  rev_underp_dir : string;
   type_decls : string;
-  lemmas : string;
-  functional_lemmas : string;
 }
 [@@deriving sexp]
 
@@ -52,41 +35,19 @@ let get_meta () =
 let get_mode () = (get_meta ()).mode
 let get_max_printing_size () = (get_meta ()).max_printing_size
 
-let show_debug_preprocess (f : unit -> unit) =
+let show_log kw (f : unit -> unit) =
   match get_mode () with
-  | Debug { show_preprocess; _ } when show_preprocess -> f ()
+  | DebugTags l when List.exists (String.equal kw) l -> f ()
   | _ -> ()
 
-let show_debug_typing (f : unit -> unit) =
-  match get_mode () with
-  | Debug { show_typing; _ } when show_typing -> f ()
-  | _ -> ()
-
-let show_debug_queries (f : unit -> unit) =
-  match get_mode () with
-  | Debug { show_queries; _ } when show_queries -> f ()
-  | _ -> ()
-
-let show_debug_solving (f : unit -> unit) =
-  match get_mode () with
-  | Debug { show_solving; _ } when show_solving -> f ()
-  | _ -> ()
-
-let show_debug_stat (f : unit -> unit) =
-  match get_mode () with
-  | Debug { show_stat; _ } when show_stat -> f ()
-  | _ -> ()
-
-let show_debug_info (f : unit -> unit) =
-  match get_mode () with
-  | Debug { show_info; _ } when show_info -> f ()
-  | _ -> ()
-
-let show_debug_debug (f : unit -> unit) =
-  match get_mode () with
-  | Debug { show_debug; _ } when show_debug -> f ()
-  | _ -> ()
-
+let show_debug_preprocess = show_log "preprocess"
+let show_debug_typing = show_log "typing"
+let show_debug_queries = show_log "queries"
+let show_debug_minterms = show_log "minterms"
+let show_debug_solving = show_log "solving"
+let show_debug_stat = show_log "stat"
+let show_debug_info = show_log "info"
+let show_debug_debug = show_log "debug"
 let get_resfile () = (get_meta ()).resfile
 let get_prim_path () = (get_meta ()).prim_path
 let get_uninterops () = (get_meta ()).uninterops
@@ -96,18 +57,12 @@ let get_measure () =
   | None -> failwith "uninited prim path"
   | Some config -> config.measure
 
-let get_randomp_path () = (get_prim_path ()).under_randomp
-let get_qualifier_builtin_type () = (get_prim_path ()).qualifier_builtin_type
 let get_builtin_normal_type () = (get_prim_path ()).normal_p
 let get_builtin_pure_type () = (get_prim_path ()).pure_p
 let get_builtin_eff_type () = (get_prim_path ()).eff_p
 let get_builtin_libfunc_type () = (get_prim_path ()).libfunc_p
 let get_builtin_automata_pred_type () = (get_prim_path ()).automata_pred_p
 let get_axioms () = (get_prim_path ()).axioms_p
-let known_mp : string list option ref = ref None
-
-let get_known_mp () =
-  match !known_mp with None -> failwith "uninit mps" | Some mps -> mps
 
 open Yojson.Basic.Util
 
@@ -120,20 +75,10 @@ let load_meta meta_fname =
     match metaj |> member "mode" |> to_string with
     | "debug" ->
         (* let () = Pp.printf "@{<green>Verbose mode@}\n" in *)
-        let get_bool field =
-          metaj |> member "debug_info" |> member field |> to_bool
-        in
-        Debug
-          {
-            show_preprocess = get_bool "show_preprocess";
-            show_typing = get_bool "show_typing";
-            show_queries = get_bool "show_queries";
-            (* we don't need this field *)
-            show_solving = false;
-            show_stat = get_bool "show_stat";
-            show_info = get_bool "show_info";
-            show_debug = (try get_bool "show_debug" with _ -> false);
-          }
+        (* let get_bool field = *)
+        (*   metaj |> member "debug_tags" |> member field |> to_bool *)
+        (* in *)
+        DebugTags (metaj |> member "debug_tags" |> to_list |> List.map to_string)
     | "release" -> Release
     | _ -> failwith "config: unknown mode"
   in
@@ -146,21 +91,13 @@ let load_meta meta_fname =
   in
   let prim_path =
     {
-      qualifier_builtin_type = p |> member "qualifier_builtin_type" |> to_string;
       normal_p = p |> member "builtin_normal_typing" |> to_string;
       pure_p = p |> member "builtin_pure_typing" |> to_string;
       eff_p = p |> member "builtin_eff_typing" |> to_string;
       axioms_p = p |> member "builtin_axioms" |> to_string;
       libfunc_p = p |> member "builtin_libfunc_typing" |> to_string;
       automata_pred_p = p |> member "builtin_automata_pred_typing" |> to_string;
-      under_randomp =
-        p |> member "builtin_randomness_coverage_typing" |> to_string;
-      underp_dir = p |> member "builtin_datatype_coverage_typing" |> to_string;
-      rev_underp_dir =
-        p |> member "rev_builtin_datatype_coverage_typing" |> to_string;
       type_decls = p |> member "data_type_decls" |> to_string;
-      lemmas = p |> member "axioms_of_predicates" |> to_string;
-      functional_lemmas = p |> member "axioms_of_query_encoding" |> to_string;
     }
   in
   meta_config :=

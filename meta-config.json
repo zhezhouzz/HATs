@@ -1,14 +1,17 @@
 {
   "mode": "debug",
   "max_printing_size": 1000,
-  "debug_info": {
-    "show_preprocess": true,
-    "show_typing": false,
-    "show_queries": true,
-    "show_stat": false,
-    "show_info": true,
-    "show_debug": false
-  },
+  "debug_tags": [
+    "preprocess",
+    // "typing",
+    "minterms",
+    "queries",
+    // "solving",
+    // "stat",
+    "info",
+    "debug",
+    "never-use"
+  ],
   "logfile": ".log",
   "resfile": ".result",
   "benchmark_table_file": "data/benchmark.json",
@@ -24,16 +27,11 @@
   "prim_path": {
     "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",
     "data_type_decls": "data/predefined/data_type_decls.ml",
-    "axioms_of_predicates": "data/predefined/axioms_of_predicates.ml",
-    "axioms_of_query_encoding": "data/predefined/axioms_of_query_encoding.ml",
     "builtin_libfunc_typing": "data/predefined/builtin_libfunc_typing.ml",
     "builtin_pure_typing": "data/predefined/builtin_pure_typing.ml",
     "builtin_eff_typing": "data/predefined/builtin_eff_typing.ml",
     "builtin_automata_pred_typing": "data/predefined/builtin_automata_pred_typing.ml",
     "builtin_normal_typing": "data/predefined/builtin_normal_typing.ml",
-    "builtin_axioms": "data/predefined/builtin_axioms.ml",
-    "builtin_randomness_coverage_typing": "data/predefined/builtin_randomness_coverage_typing.ml",
-    "builtin_datatype_coverage_typing": "data/predefined/builtin_datatype_coverage_typing",
-    "rev_builtin_datatype_coverage_typing": "data/predefined/rev_builtin_datatype_coverage_typing"
+    "builtin_axioms": "data/predefined/builtin_axioms.ml"
   }
 }
