@@ -16,10 +16,6 @@ let add (path : int) (content : int) : bool =
         true)
       else false
 
-(* let[@assertRty] add ?l:(path = (true : [%v: int])) *)
-(*     ?l:(content = (true : [%v: int])) = *)
-(*   { pre = _G (Any true); res = (true : [%v: bool]); newadding = _G (Any true) } *)
-
 let[@assertRty] add ((p : int) [@ghost]) ?l:(path = (true : [%v: int]))
     ?l:(content = (true : [%v: int])) =
   { pre = rI p; res = (true : [%v: bool]); post = rI p }
