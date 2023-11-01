@@ -23,6 +23,7 @@
     "parent",
     "is_dir",
     "add_child",
+    "del_child",
     "is_root",
     "is_deleted"
   ],

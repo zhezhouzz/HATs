@@ -180,8 +180,10 @@ and multi_app_type_infer_aux typectx (f_hty : rty) (appargs : value typed list)
               (Some (typectx, snd @@ unify_arr_ret apparg (arr, rethty)))
               appargs
         | GhostArr { x; ty } ->
+            let x' = Rename.unique x in
+            let rethty = subst_hty_id (x, x') rethty in
             let typectx' =
-              typectx_new_to_right typectx { rx = x; rty = mk_top ty }
+              typectx_new_to_right typectx { rx = x'; rty = mk_top ty }
             in
             aux (Some (typectx', rethty)) (apparg :: appargs)
         | ArrArr rty ->
