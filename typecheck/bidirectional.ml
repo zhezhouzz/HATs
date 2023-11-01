@@ -149,27 +149,54 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
       end_info __LINE__ rulename res
   | VTu _ -> _failatwith __FILE__ __LINE__ "die"
 
-and app_type_infer_aux typectx (hty : rty) (apparg : value typed) : hty option =
-  let arr, rethty = rty_destruct_arr __FILE__ __LINE__ hty in
-  match arr with
-  | NormalArr x ->
-      let* () = value_type_check typectx apparg x.rty in
-      Some (snd @@ unify_arr_ret apparg (arr, rethty))
-  | GhostArr _ ->
-      _failatwith __FILE__ __LINE__ "unimp"
-      (* Some (snd @@ unify_arr_ret apparg (arr, rethty)) *)
-  | ArrArr rty ->
-      let* () = value_type_check typectx apparg rty in
-      Some rethty
+(* and app_type_infer_aux typectx (hty : rty) (apparg : value typed) : *)
+(*     (typectx option * hty) option = *)
+(*   let arr, rethty = rty_destruct_arr __FILE__ __LINE__ hty in *)
+(*   match arr with *)
+(*   | NormalArr x -> *)
+(*       let* () = value_type_check typectx apparg x.rty in *)
+(*       Some (None, snd @@ unify_arr_ret apparg (arr, rethty)) *)
+(*   | GhostArr { x; ty } -> *)
+(*       let typectx' = typectx_new_to_right typectx { rx = x; rty = mk_top ty } in *)
+(*       (\* _failatwith __FILE__ __LINE__ "unimp" *\) *)
+(*       Some (Some typectx', rethty) *)
+(*   | ArrArr rty -> *)
+(*       let* () = value_type_check typectx apparg rty in *)
+(*       Some (None, rethty) *)
 
 and multi_app_type_infer_aux typectx (f_hty : rty) (appargs : value typed list)
-    : hty option =
-  List.fold_left
-    (fun f_hty apparg ->
-      let* f_hty = f_hty in
-      let rty = hty_force_rty f_hty in
-      app_type_infer_aux typectx rty apparg)
-    (Some (Rty f_hty)) appargs
+    : (typectx * hty) option =
+  let rec aux res appargs =
+    match appargs with
+    | [] -> res
+    | apparg :: appargs -> (
+        let* typectx, hty = res in
+        let rty = hty_force_rty hty in
+        let arr, rethty = rty_destruct_arr __FILE__ __LINE__ rty in
+        match arr with
+        | NormalArr x ->
+            let* () = value_type_check typectx apparg x.rty in
+            aux
+              (Some (typectx, snd @@ unify_arr_ret apparg (arr, rethty)))
+              appargs
+        | GhostArr { x; ty } ->
+            let typectx' =
+              typectx_new_to_right typectx { rx = x; rty = mk_top ty }
+            in
+            aux (Some (typectx', rethty)) (apparg :: appargs)
+        | ArrArr rty ->
+            let* () = value_type_check typectx apparg rty in
+            aux (Some (typectx, rethty)) appargs)
+  in
+  aux (Some (typectx, Rty f_hty)) appargs
+
+(* List.fold_left *)
+(*   (fun x apparg -> *)
+(*     let* typectx, f_hty = x in *)
+(*     let rty = hty_force_rty f_hty in *)
+(*     app_type_infer_aux typectx rty apparg) *)
+(*   (Some (typectx, Rty f_hty)) *)
+(*   appargs *)
 
 (* and comp_type_check (typectx : typectx) (comp : comp typed) (hty : hty) *)
 (*   : bool = *)
@@ -252,8 +279,8 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
       hty =
     let () = before_info __LINE__ rulename in
     let f_hty = ROpCtx.get_ty typectx.opctx op.x in
-    let* rhs_hty = multi_app_type_infer_aux typectx f_hty appopargs in
-    let res = let_aux typectx (lhs, rhs_hty) letbody hty in
+    let* typectx', rhs_hty = multi_app_type_infer_aux typectx f_hty appopargs in
+    let res = let_aux typectx' (lhs, rhs_hty) letbody hty in
     end_info __LINE__ rulename res
   in
   let comp_htriple_check_letapppop = comp_htriple_check_letappop "TPOpApp" in
@@ -262,8 +289,10 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
     let rulename = "LetApp" in
     let () = before_info __LINE__ rulename in
     let* appf_rty = value_type_infer typectx appf in
-    let* rhs_hty = app_type_infer_aux typectx appf_rty apparg in
-    let res = let_aux typectx (lhs, rhs_hty) letbody hty in
+    let* typectx', rhs_hty =
+      multi_app_type_infer_aux typectx appf_rty [ apparg ]
+    in
+    let res = let_aux typectx' (lhs, rhs_hty) letbody hty in
     end_info __LINE__ rulename res
   in
   let handle_match_case typectx (matched, { constructor; args; exp }) hty =
