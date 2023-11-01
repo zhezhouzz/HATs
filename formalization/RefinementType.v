@@ -20,74 +20,59 @@ Import List.
 (** * We define the refinement type in locally nameless style. *)
 
 Inductive am : Type :=
-| aemp
-| aϵ
+(** bvar 1 is argument, bvar 0 is result value *)
+| aevent (op: effop) (ϕ: qualifier)
+(* □⟨⊤⟩ in the paper, directly encoded as a primitive operator here for
+convenience. *)
 | aany
-| aevent (op: effop) (ϕ: qualifier) (** bvar 1 is argument, bvar 0 is result value *)
 | aconcat (a: am) (b: am)
+(* We only need the operations above for metatheory. Other connectives or
+modality can be added, but not interesting. *)
 | aunion (a: am) (b: am)
-| adiff (a: am) (b : am)
-| astar (a: am)
 .
 
 Notation "'⟨' op '|' ϕ '⟩'" := (aevent op ϕ) (at level 5, format "⟨ op | ϕ ⟩", op constr, ϕ constr).
 Notation " a ';+' b " := (aconcat a b) (at level 5, format "a ;+ b", b constr, a constr, right associativity).
-Notation " a ';||' b " := (aunion a b) (at level 5, format "a ;|| b", b constr, a constr, right associativity).
-Notation " a ';∖' b " := (adiff a b) (at level 5, format "a ;∖ b", b constr, a constr, right associativity).
-Notation "∘" := aany (at level 5).
-Notation "a∅" := aemp (at level 80, right associativity).
+Notation "∘*" := aany (at level 5).
 
 Inductive pty : Type :=
 | basepty (B: base_ty) (ϕ: qualifier)
-| arrpty (ρ: pty) (T: ty) (pre: am) (post: list (am * pty)).
+| arrpty (ρ: pty) (τ: hty)
+| ghostpty (B: base_ty) (ρ: pty)
 
-Lemma pty_ind'
-  (P : pty → Prop)
-  (f0 : ∀ (B : base_ty) (ϕ : qualifier), P (basepty B ϕ))
-  (f1 : ∀ ρ : pty,
-      P ρ →
-      ∀ (T : ty) (pre : am) (post : list (am * pty)),
-        Forall (fun '(_, ρ') => P ρ') post ->
-        P (arrpty ρ T pre post))
-  : forall (p : pty), P p.
-Proof.
-  fix F 1. intros.
-  refine (
-    match p return (P p) with
-    | basepty B ϕ => f0 B ϕ
-    | arrpty ρ T pre post => _
-    end).
-  apply f1; eauto.
-  induction post; intuition.
-Defined.
+with hty : Type :=
+| hoarehty (ρ: pty) (pre post: am)
+| interhty (τ1 τ2: hty).
 
-Definition postam: Type := list (am * pty).
-
-(* Print pty_ind. *)
-
-Inductive hty : Type :=
-| hty_ (T: ty) (pre: am) (post: list (am * pty)).
+Scheme pty_hty_rect := Induction for pty Sort Type
+    with hty_pty_rect := Induction for hty Sort Type.
+Combined Scheme pty_hty_mutrect from pty_hty_rect, hty_pty_rect.
 
 Global Hint Constructors hty: core.
 Global Hint Constructors pty: core.
 Global Hint Constructors am: core.
 
 Notation "'{:' B '|' ϕ '}'" := (basepty B ϕ) (at level 5, format "{: B | ϕ }", B constr, ϕ constr).
-Notation "'[:' T '|' a '▶' b ']'" := (hty_ T a b) (at level 5, format "[: T | a ▶ b ]", T constr, a constr, b constr).
-Notation "'-:' ρ '⤑[:' T '|' a '▶' b ']' " :=
-  (arrpty ρ T a b) (at level 80, format "-: ρ ⤑[: T | a ▶ b ]", right associativity, ρ constr, T constr, a constr, b constr).
+Notation "ρ '⇨' τ " :=
+ (arrpty ρ τ) (at level 80, format "ρ ⇨ τ", right associativity, ρ constr, τ constr).
+Notation "B '⇢' ρ " :=
+ (ghostpty B ρ) (at level 80, format "B ⇢ ρ", right associativity, B constr, ρ constr).
+Notation "'[:' ρ '|' a '▶' b ']'" := (hoarehty ρ a b) (at level 5, format "[: ρ | a ▶ b ]", ρ constr, a constr, b constr).
+Notation "τ1 '⊓' τ2" := (interhty τ1 τ2).
 
 (** Erase *)
 
 Fixpoint pty_erase ρ : ty :=
   match ρ with
   | {: B | _} => B
-  | (-: ρ ⤑[: T | _ ▶ _ ]) => (pty_erase ρ) ⤍ T
-  end.
+  | ρ ⇨ τ => (pty_erase ρ) ⤍ (hty_erase τ)
+  | B ⇢ ρ => pty_erase ρ
+  end
 
-Definition hty_erase ρ : ty :=
-  match ρ with
-  | [: T | _ ▶ _ ] => T
+with hty_erase τ : ty :=
+  match τ with
+  | [: ρ | _ ▶ _ ] => pty_erase ρ
+  | τ1 ⊓ τ2 => hty_erase τ1
   end.
 
 Class Erase A := erase : A -> ty.
@@ -98,33 +83,26 @@ Class Erase A := erase : A -> ty.
 
 Notation " '⌊' ty '⌋' " := (erase ty) (at level 5, format "⌊ ty ⌋", ty constr).
 
-Definition pty_to_rty (ρ: pty) := [: ⌊ ρ ⌋ | astar ∘ ▶ [(aϵ, ρ)] ].
-
 (** free variables *)
 
 Fixpoint am_fv a : aset :=
   match a with
-  | aemp => ∅
-  | aϵ => ∅
-  | aany => ∅
   | aevent _ ϕ => qualifier_fv ϕ
-  | aconcat a b => (am_fv a) ∪ (am_fv b)
-  | aunion a b => (am_fv a) ∪ (am_fv b)
-  | astar a => am_fv a
-  | adiff a b => am_fv a ∪ am_fv b
+  | aany => ∅
+  | aconcat a b | aunion a b => am_fv a ∪ am_fv b
   end.
 
 Fixpoint pty_fv ρ : aset :=
   match ρ with
   | {: _ | ϕ } => qualifier_fv ϕ
-  | -: ρ ⤑[: _ | a ▶ b ] => (pty_fv ρ) ∪ (am_fv a) ∪ (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) b))
-  end.
+  | ρ ⇨ τ => pty_fv ρ ∪ hty_fv τ
+  | _ ⇢ ρ => pty_fv ρ
+  end
 
-Definition postam_fv (B : (list (am * pty))) := (⋃ (List.map (fun e => am_fv e.1 ∪ pty_fv e.2) B)).
-
-Definition hty_fv ρ : aset :=
-  match ρ with
-  | [: _ | a ▶ b ] => (am_fv a) ∪ postam_fv b
+with hty_fv τ : aset :=
+  match τ with
+  | [: ρ | a ▶ b ] => pty_fv ρ ∪ am_fv a ∪ am_fv b
+  | τ1 ⊓ τ2 => hty_fv τ1 ∪ hty_fv τ2
   end.
 
 #[global]
@@ -134,140 +112,110 @@ Arguments pty_stale /.
   Instance am_stale : @Stale aset am := am_fv.
 Arguments am_stale /.
 #[global]
-  Instance postam_stale : @Stale aset (list (am * pty)) := postam_fv.
-Arguments postam_stale /.
-#[global]
   Instance hty_stale : @Stale aset hty := hty_fv.
 Arguments hty_stale /.
 
 (* The effect operator always has 2 bound variables *)
 Fixpoint am_open (k: nat) (s: value) (a : am): am :=
   match a with
-  | aemp => aemp
-  | aϵ => aϵ
-  | aany => aany
   | aevent op ϕ => aevent op (qualifier_open (S (S k)) s ϕ)
+  | aany => aany
   | aconcat a b => aconcat (am_open k s a) (am_open k s b)
   | aunion a b => aunion (am_open k s a) (am_open k s b)
-  | astar a => astar (am_open k s a)
-  | adiff a b => adiff (am_open k s a) (am_open k s b)
   end.
 
 Fixpoint pty_open (k: nat) (s: value) (ρ: pty) : pty :=
   match ρ with
   | {: B | ϕ } => {: B | qualifier_open (S k) s ϕ }
-  | -: ρ ⤑[: T | a ▶ b ] =>
-      -: pty_open k s ρ ⤑[: T | am_open (S k) s a ▶ (List.map (fun e => (am_open (S k) s e.1, pty_open (S k) s e.2)) b) ]
-  end.
+  | ρ ⇨ τ => (pty_open k s ρ) ⇨ (hty_open (S k) s τ)
+  | B ⇢ ρ => B ⇢ (pty_open (S k) s ρ)
+  end
 
-Definition pam_open (k: nat) (s: value) (l: list (am * pty)) : list (am * pty) :=
-  (List.map (fun e => (am_open k s e.1, pty_open k s e.2)) l).
-
-Definition hty_open (k: nat) (s: value) (a : hty): hty :=
-  match a with
-  | [: T | a ▶ b ] => [: T | am_open k s a ▶ pam_open k s b ]
+with hty_open (k: nat) (s: value) (τ : hty): hty :=
+  match τ with
+  | [: ρ | a ▶ b ] => [: (pty_open k s ρ) | (am_open k s a) ▶ (am_open k s b)]
+  | τ1 ⊓ τ2 => (hty_open k s τ1) ⊓ (hty_open k s τ2)
   end.
 
 Notation "'{' k '~p>' s '}' e" := (pty_open k s e) (at level 20, k constr).
 Notation "'{' k '~a>' s '}' e" := (am_open k s e) (at level 20, k constr).
-Notation "'{' k '~pa>' s '}' e" := (pam_open k s e) (at level 20, k constr).
 Notation "'{' k '~h>' s '}' e" := (hty_open k s e) (at level 20, k constr).
 Notation "e '^p^' s" := (pty_open 0 s e) (at level 20).
 Notation "e '^a^' s" := (am_open 0 s e) (at level 20).
-Notation "e '^pa^' s" := (pam_open 0 s e) (at level 20).
 Notation "e '^h^' s" := (hty_open 0 s e) (at level 20).
 
 Fixpoint am_subst (k: atom) (s: value) (a : am): am :=
   match a with
-  | aemp => aemp
-  | aϵ => aϵ
-  | aany => aany
   | aevent op ϕ => aevent op (qualifier_subst k s ϕ)
+  | aany => aany
   | aconcat a b => aconcat (am_subst k s a) (am_subst k s b)
   | aunion a b => aunion (am_subst k s a) (am_subst k s b)
-  | astar a => astar (am_subst k s a)
-  | adiff a b => adiff (am_subst k s a) (am_subst k s b)
   end.
 
 Fixpoint pty_subst (k: atom) (s: value) (ρ: pty) : pty :=
   match ρ with
   | {: B | ϕ } => {: B | qualifier_subst k s ϕ }
-  | -: ρ ⤑[: T | a ▶ b ] =>
-      -: pty_subst k s ρ ⤑[: T | am_subst k s a ▶ (List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) b)]
-  end.
+  | ρ ⇨ τ => (pty_subst k s ρ) ⇨ (hty_subst k s τ)
+  | B ⇢ ρ => B ⇢ (pty_subst k s ρ)
+  end
 
-Definition postam_subst (k: atom) (s: value) (B: list (am * pty)): list (am * pty) :=
-  List.map (fun e => (am_subst k s e.1, pty_subst k s e.2)) B.
-
-
-Definition hty_subst (k: atom) (s: value) (a : hty): hty :=
-  match a with
-  | [: T | a ▶ B ] => [: T | am_subst k s a ▶ (postam_subst k s B)]
+with hty_subst (k: atom) (s: value) (τ : hty): hty :=
+  match τ with
+  | [: ρ | a ▶ b ] => [: (pty_subst k s ρ) | am_subst k s a ▶ (am_subst k s b)]
+  | τ1 ⊓ τ2 => (hty_subst k s τ1) ⊓ (hty_subst k s τ2)
   end.
 
 Notation "'{' x ':=' s '}p'" := (pty_subst x s) (at level 20, format "{ x := s }p", x constr).
 Notation "'{' x ':=' s '}a'" := (am_subst x s) (at level 20, format "{ x := s }a", x constr).
-Notation "'{' x ':=' s '}pa'" := (postam_subst x s) (at level 20, format "{ x := s }pa", x constr).
 Notation "'{' x ':=' s '}h'" := (hty_subst x s) (at level 20, format "{ x := s }h", x constr).
 
 (** well formed, locally closed, closed with state *)
 
-Definition amlist_typed (B: list (am * pty)) (T: ty) :=
-  (forall Bi ρi, In (Bi, ρi) B -> ⌊ ρi ⌋ = T).
-
-Inductive valid_pty: pty -> Prop :=
-| valid_pty_base: forall B ϕ, valid_pty {: B | ϕ }
-| valid_pty_arr: forall ρ T A B (L : aset),
-    valid_pty ρ ->
-    amlist_typed B T ->
-    (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> valid_pty (ρi ^p^ x)) ->
-    valid_pty (-: ρ ⤑[: T | A ▶ B ]).
-
-Inductive valid_hty: hty -> Prop :=
-| valid_hty_: forall T A B,
-    amlist_typed B T -> (forall Bi ρi, In (Bi, ρi) B -> valid_pty ρi) ->
-    valid_hty [: T | A ▶ B ].
-
 Inductive lc_am : am -> Prop :=
-| lc_aemp : lc_am aemp
-| lc_aϵ : lc_am aϵ
-| lc_aany : lc_am aany
 | lc_aevent: forall op ϕ (L : aset),
     (* This is quite annoying. *)
     (forall (x : atom), x ∉ L -> forall (y : atom), y ∉ L -> lc_qualifier ({0 ~q> y} ({1 ~q> x} ϕ))) ->
     lc_am (aevent op ϕ)
+| lc_aany : lc_am aany
 | lc_aconcat : forall a b, lc_am a -> lc_am b -> lc_am (aconcat a b)
 | lc_aunion : forall a b, lc_am a -> lc_am b -> lc_am (aunion a b)
-| lc_astar: forall a, lc_am a -> lc_am (astar a)
-| lc_adiff : forall a b, lc_am a -> lc_am b -> lc_am (adiff a b)
 .
 
 Inductive lc_pty : pty -> Prop :=
 | lc_pty_base: forall B ϕ (L : aset),
     (forall x : atom, x ∉ L -> lc_qualifier (ϕ ^q^ x)) ->
     lc_pty {: B | ϕ }
-| lc_pty_arr: forall ρ T A B (L : aset),
+| lc_pty_arr: forall ρ τ (L : aset),
     lc_pty ρ ->
-    (forall x : atom, x ∉ L -> lc_am (A ^a^ x)) ->
-    (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> lc_am (Bi ^a^ x)) ->
-    (forall x : atom, x ∉ L -> forall Bi ρi, In (Bi, ρi) B -> lc_pty (ρi ^p^ x)) ->
-    lc_pty (-: ρ ⤑[: T | A ▶ B ]).
+    (forall x : atom, x ∉ L -> lc_hty (τ ^h^ x)) ->
+    lc_pty (ρ ⇨ τ)
+| lc_pty_ghost: forall B ρ (L : aset),
+    (forall x : atom, x ∉ L -> lc_pty (ρ ^p^ x)) ->
+    lc_pty (B ⇢ ρ)
 
-Inductive lc_hty : hty -> Prop :=
-| lc_hty_ : forall T A B,
-    lc_am A ->
-    (forall Bi ρi, In (Bi, ρi) B -> lc_am Bi) ->
-    (forall Bi ρi, In (Bi, ρi) B -> lc_pty ρi) ->
-    lc_hty [: T | A ▶ B ].
+with lc_hty : hty -> Prop :=
+| lc_hty_hoare : forall ρ a b,
+    lc_pty ρ ->
+    lc_am a ->
+    lc_am b ->
+    lc_hty [: ρ | a ▶ b ]
+| lc_hty_inter : forall τ1 τ2,
+    lc_hty τ1 ->
+    lc_hty τ2 ->
+    lc_hty (τ1 ⊓ τ2).
 
-Inductive closed_pty (d : aset) (ρ: pty): Prop :=
-| closed_pty_: valid_pty ρ -> lc_pty ρ -> pty_fv ρ ⊆ d -> closed_pty d ρ.
+Scheme lc_pty_hty_ind := Minimality for lc_pty Sort Prop
+    with lc_hty_pty_ind := Minimality for lc_hty Sort Prop.
+Combined Scheme lc_pty_hty_mutind from lc_pty_hty_ind, lc_hty_pty_ind.
 
 Inductive closed_am (d: aset) (a: am): Prop :=
 | closed_am_: lc_am a -> am_fv a ⊆ d -> closed_am d a.
 
+Inductive closed_pty (d : aset) (ρ: pty): Prop :=
+| closed_pty_: lc_pty ρ -> pty_fv ρ ⊆ d -> closed_pty d ρ.
+
 Inductive closed_hty (d: aset) (ρ: hty): Prop :=
-| closed_hty_: valid_hty ρ -> lc_hty ρ -> hty_fv ρ ⊆ d -> closed_hty d ρ.
+| closed_hty_: lc_hty ρ -> hty_fv ρ ⊆ d -> closed_hty d ρ.
 
 (* Type context *)
 
@@ -307,6 +255,8 @@ Definition mk_eq_constant c := {: ty_of_const c | b0:c= c }.
 Definition mk_bot ty := {: ty | mk_q_under_bot }.
 Definition mk_top ty := {: ty | mk_q_under_top }.
 Definition mk_eq_var ty (x: atom) := {: ty | b0:x= x }.
+
+(*
 
 Lemma pty_erase_open_eq ρ k s :
   pty_erase ρ = pty_erase ({k ~p> s} ρ).
@@ -1077,3 +1027,5 @@ Proof.
   eapply Forall_impl; eauto.
   simpl. eauto using open_lc_respect_value.
 Qed.
+
+*)

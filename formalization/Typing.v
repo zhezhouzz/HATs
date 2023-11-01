@@ -22,143 +22,175 @@ Import Qualifier.
 (** Well-formedness *)
 Definition wf_am (Γ: listctx pty) (A: am): Prop := closed_am (ctxdom ⦑ Γ ⦒) A.
 
+Definition prefix_am (Γ: listctx pty) (A B: am) : Prop :=
+  forall Γv, ctxRst Γ Γv ->
+        forall α, a⟦m{ Γv }a B⟧ α →
+             a⟦m{ Γv }a A ;+ ∘*⟧ α.
+
 Inductive wf_pty: listctx pty -> pty -> Prop :=
 | wf_pty_base: forall Γ b ϕ,
     closed_pty (ctxdom ⦑ Γ ⦒) {: b | ϕ } -> wf_pty Γ {: b | ϕ }
-| wf_pty_arr: forall Γ ρ T A B (L: aset),
+| wf_pty_arr: forall Γ ρ τ (L: aset),
     wf_pty Γ ρ ->
-    amlist_typed B T ->
-    (* NOTE: we do not allow empty union here; it does not affect
-    expressiveness, as we can always use [aemp] instead. *)
-    B <> [] ->
-    (forall x, x ∉ L ->
-          wf_am (Γ ++ [(x, ρ)]) (A ^a^ x) /\
-          (forall Bi ρi, In (Bi, ρi) B ->
-                    wf_am (Γ ++ [(x, ρ)]) (Bi ^a^ x)
-          )
-    ) ->
-    (forall x, x ∉ L ->
-          (forall Bi ρi, In (Bi, ρi) B ->
-                    wf_pty (Γ ++ [(x, ρ)]) (ρi ^p^ x)
-          )
-    ) ->
-    wf_pty Γ (-: ρ ⤑[: T | A ▶ B ]).
+    (forall x, x ∉ L -> wf_hty (Γ ++ [(x, ρ)]) (τ ^h^ x)) ->
+    wf_pty Γ (ρ ⇨ τ)
+| wf_pty_ghost: forall Γ b ρ (L: aset),
+    (forall x, x ∉ L -> wf_pty (Γ ++ [(x, mk_top b)]) (ρ ^p^ x)) ->
+    wf_pty Γ (b ⇢ ρ)
 
-Inductive wf_hty: listctx pty -> hty -> Prop :=
-| wf_hty_: forall Γ T A B,
-    amlist_typed B T ->
-    B <> [] ->
+with wf_hty: listctx pty -> hty -> Prop :=
+| wf_hty_hoare: forall Γ ρ A B,
+    wf_pty Γ ρ ->
     wf_am Γ A ->
-    (forall Bi ρi, In (Bi, ρi) B -> wf_am Γ Bi /\ wf_pty Γ ρi) ->
-    wf_hty Γ [: T | A ▶ B ].
+    wf_am Γ B ->
+    prefix_am Γ A B ->
+    wf_hty Γ [: ρ | A ▶ B ]
+| wf_hty_inter: forall Γ τ1 τ2,
+    wf_hty Γ τ1 ->
+    wf_hty Γ τ2 ->
+    ⌊ τ1 ⌋ = ⌊ τ2 ⌋ ->
+    wf_hty Γ (τ1 ⊓ τ2)
+.
 
 Notation " Γ '⊢WF' τ " := (wf_hty Γ τ) (at level 20, τ constr, Γ constr).
 Notation " Γ '⊢WFp' τ " := (wf_pty Γ τ) (at level 20, τ constr, Γ constr).
 Notation " Γ '⊢WFa' a " := (wf_am Γ a) (at level 20, a constr, Γ constr).
 
-Definition subtyping (Γ: listctx pty) (τ1 τ2: hty) : Prop :=
-  (* Assume [τ1] and [τ2] are valid [hty]s. *)
-  ⌊ τ1 ⌋ = ⌊ τ2 ⌋ /\
-  forall Γv, ctxRst Γ Γv -> forall e, ⟦(m{ Γv }h) τ1⟧ (m{ Γv }t e) → ⟦(m{ Γv }h) τ2⟧ (m{ Γv }t e).
-
-Notation " Γ '⊢' τ1 '<⋮' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
-
 Reserved Notation "Γ '⊢' e '⋮t' τ" (at level 20).
 Reserved Notation "Γ '⊢' e '⋮v' τ"  (at level 20).
 
+(** Subtyping *)
+Definition pty_subtyping (Γ: listctx pty) (ρ1 ρ2: pty) : Prop :=
+  (* Assume [ρ1] and [ρ2] are valid [pty]s. *)
+  ⌊ ρ1 ⌋ = ⌊ ρ2 ⌋ /\
+  forall Γv, ctxRst Γ Γv ->
+        forall e, p⟦m{ Γv }p ρ1⟧ e →
+             p⟦m{ Γv }p ρ2⟧ e.
+
+Definition subtyping (Γ: listctx pty) (τ1 τ2: hty) : Prop :=
+  (* Assume [τ1] and [τ2] are valid [hty]s. *)
+  ⌊ τ1 ⌋ = ⌊ τ2 ⌋ /\
+  forall Γv, ctxRst Γ Γv ->
+        forall e, ⟦m{ Γv }h τ1⟧ e →
+             ⟦m{ Γv }h τ2⟧ e.
+
+Notation " Γ '⊢' ρ1 '<⋮p' ρ2 " := (pty_subtyping Γ ρ1 ρ2) (at level 20, ρ1 constr, ρ2 constr, Γ constr).
+Notation " Γ '⊢' τ1 '<⋮' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
+
 (* The parameterized builtin typing relation (Δ). *)
-Parameter builtin_typing_relation : listctx pty -> effop -> pty -> Prop.
+Parameter builtin_typing_relation : effop -> pty -> Prop.
+
+Reserved Notation "Γ '⊢' op '⋮o' ρ"  (at level 20).
+Reserved Notation "Γ '⊢' e '⋮t' τ" (at level 20).
+Reserved Notation "Γ '⊢' e '⋮v' ρ"  (at level 20).
 
 (** Typing *)
+Inductive effop_type_check : listctx pty -> effop -> pty -> Prop :=
+| TEOp : forall Γ op ρ,
+    Γ ⊢WFp ρ ->
+    builtin_typing_relation op ρ ->
+    Γ ⊢ op ⋮o ρ
+| TESub : forall Γ op ρ1 ρ2,
+    Γ ⊢WFp ρ2 ->
+    Γ ⊢ op ⋮o ρ1 ->
+    Γ ⊢ ρ1 <⋮p ρ2 ->
+    Γ ⊢ op ⋮o ρ2
+where
+"Γ '⊢' op '⋮o' ρ" := (effop_type_check Γ op ρ).
+
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
-| TValue: forall Γ v ρ,
+| TValue: forall Γ v ρ A,
     Γ ⊢ v ⋮v ρ ->
-    Γ ⊢ v ⋮t (pty_to_rty ρ)
+    Γ ⊢ v ⋮t [: ρ | A ▶ A]
 | TSub: forall Γ e (τ1 τ2: hty),
     Γ ⊢WF τ2 ->
     Γ ⊢ e ⋮t τ1 ->
     Γ ⊢ τ1 <⋮ τ2 ->
     Γ ⊢ e ⋮t τ2
-| TLetE: forall Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
-    Γ ⊢WF [: T | A ▶ BxB_ρ ] ->
-    Γ ⊢ e_x ⋮t [: Tx | A ▶ Bx_ρx ] ->
-    Forall2 (fun '(Bx, ρx) '(Bx', ρx', _, _) =>
-               Bx = Bx' /\ ρx = ρx') Bx_ρx Bx_ρx_B_ρ ->
-    Forall2 (fun '(BxB, ρ) '(Bx, _, B, ρ') =>
-               BxB = aconcat Bx B /\ ρ = ρ') BxB_ρ Bx_ρx_B_ρ ->
+| TInter: forall Γ e (τ1 τ2: hty),
+    Γ ⊢WF (τ1 ⊓ τ2) ->
+    Γ ⊢ e ⋮t τ1 ->
+    Γ ⊢ e ⋮t τ2 ->
+    Γ ⊢ e ⋮t (τ1 ⊓ τ2)
+| TLetE: forall Γ e_x e ρx ρ A A' B (L: aset),
+    Γ ⊢WF [: ρ | A ▶ B ] ->
+    Γ ⊢ e_x ⋮t [: ρx | A ▶ A' ] ->
     (forall x, x ∉ L ->
-          forall Bxi ρxi Bi ρi,
-            In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
-            (Γ ++ [(x, ρxi)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat A Bxi ▶ [(Bi, ρi)]]) ->
-    Γ ⊢ (tlete e_x e) ⋮t [: T | A ▶ BxB_ρ ]
-| TApp: forall Γ (v1 v2: value) e ρ Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ (L: aset),
-    Γ ⊢WF [: T | A ^a^ v2 ▶ BxB_ρ ] ->
-    Γ ⊢ v2 ⋮v ρ ->
-    Γ ⊢ v1 ⋮v (-: ρ ⤑[: Tx | A ▶ Bx_ρx ]) ->
-    Forall2 (fun '(Bx, ρx) '(Bx', ρx', _, _) =>
-               Bx = Bx' /\ ρx = ρx') Bx_ρx Bx_ρx_B_ρ ->
-    Forall2 (fun '(BxB, ρ) '(Bx, _, B, ρ') =>
-               BxB = aconcat (Bx ^a^ v2) B /\ ρ = ρ') BxB_ρ Bx_ρx_B_ρ ->
+          (Γ ++ [(x, ρx)]) ⊢ (e ^t^ x) ⋮t [: ρ | A' ▶ B]) ->
+    Γ ⊢ (tlete e_x e) ⋮t [: ρ | A ▶ B ]
+| TApp: forall Γ (v1 v2: value) e ρ ρx ρ2 τ A A' B (L: aset),
+    Γ ⊢WF [: ρ | A ▶ B ] ->
+    Γ ⊢ v2 ⋮v ρ2 ->
+    Γ ⊢ v1 ⋮v (ρ2 ⇨ τ) ->
+    τ ^h^ v2 = [: ρx | A ▶ A' ] ->
     (forall x, x ∉ L ->
-          forall Bxi ρxi Bi ρi,
-            In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ ->
-            (Γ ++ [(x, ρxi ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat (A ^a^ v2) (Bxi ^a^ v2) ▶ [(Bi, ρi)]]) ->
-    Γ ⊢ (tletapp v1 v2 e) ⋮t [: T | A ^a^ v2 ▶ BxB_ρ ]
-| TEffOp: forall Γ (op: effop) (v2: value) e ϕx A T Bx_ρx opϕB_ρ ϕ_B_ρ (L: aset),
-    Γ ⊢WF [: T | A ^a^ v2 ▶ opϕB_ρ ] ->
-    Γ ⊢ v2 ⋮v {:TNat | ϕx} ->
-    Γ ⊢WFp (-: {:TNat | ϕx} ⤑[: ret_ty_of_op op | A ▶ Bx_ρx ]) ->
-    builtin_typing_relation Γ op (-: {:TNat | ϕx} ⤑[: ret_ty_of_op op | A ▶ Bx_ρx ]) ->
-    Forall2 (fun '(Bx, ρx) '(ϕ, _, _) =>
-               Bx = aϵ /\ ρx = {: ret_ty_of_op op | ϕ}) Bx_ρx ϕ_B_ρ ->
-    Forall2 (fun '(opϕB, ρ) '(ϕ, B, ρ') =>
-               opϕB = aconcat (⟨ op | b1:v= v2 & ϕ ⟩) B /\ ρ = ρ') opϕB_ρ ϕ_B_ρ ->
+          (Γ ++ [(x, ρx)]) ⊢ (e ^t^ x) ⋮t [: ρ | A' ▶ B]) ->
+    Γ ⊢ (tletapp v1 v2 e) ⋮t [: ρ | A ▶ B ]
+| TEffOp: forall Γ (op: effop) (v2: value) e ρ ρx ρ2 τ A A' B (L: aset),
+    Γ ⊢WF [: ρ | A ▶ B ] ->
+    Γ ⊢ v2 ⋮v ρ2 ->
+    Γ ⊢ op ⋮o (ρ2 ⇨ τ) ->
+    τ ^h^ v2 = [: ρx | A ▶ A' ] ->
     (forall x, x ∉ L ->
-          forall ϕi Bi ρi,
-            In (ϕi, Bi, ρi) ϕ_B_ρ ->
-            (Γ ++ [(x, {: ret_ty_of_op op | ϕi} ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: T | aconcat (A ^a^ v2) (⟨ op | b1:v= v2 & b0:x= x ⟩) ▶ [(Bi, ρi)]]) ->
-    Γ ⊢ (tleteffop op v2 e) ⋮t [: T | A ^a^ v2 ▶ opϕB_ρ ]
+          (Γ ++ [(x, ρx)]) ⊢ (e ^t^ x) ⋮t [: ρ | A' ▶ B]) ->
+    Γ ⊢ (tleteffop op v2 e) ⋮t [: ρ | A ▶ B ]
 | TMatchb: forall Γ (v: value) e1 e2 ϕ τ (L : aset),
     Γ ⊢WF τ ->
     Γ ⊢ v ⋮v {:TBool | ϕ} ->
     (* We can also directly encode the path condition without mentioning [x]:
-       {: TNat | (qual [# v] (fun V => V !!! 0 = (cbool true))%fin) & ϕ ^q^ v}
-     *)
+    {: TNat | (qual [# v] (fun V => V !!! 0 = (cbool true))%fin) & ϕ ^q^ v} *)
     (forall x, x ∉ L -> (Γ ++ [(x, {: TBool | b0:c=true & b0:v= v & ϕ})]) ⊢ e1 ⋮t τ) ->
     (forall x, x ∉ L -> (Γ ++ [(x, {: TBool | b0:c=false & b0:v= v & ϕ})]) ⊢ e2 ⋮t τ) ->
     Γ ⊢ (tmatchb v e1 e2) ⋮t τ
 with value_type_check : listctx pty -> value -> pty -> Prop :=
+| TVSub: forall Γ (v: value) (ρ1 ρ2: pty),
+    Γ ⊢WFp ρ2 ->
+    Γ ⊢ v ⋮v ρ1 ->
+    Γ ⊢ ρ1 <⋮p ρ2 ->
+    Γ ⊢ v ⋮v ρ2
+| TGhost: forall Γ v b ρ (L: aset),
+    Γ ⊢WFp (b ⇢ ρ) ->
+    (forall (x: atom), x ∉ L -> (Γ ++ [(x, mk_top b)]) ⊢ v ⋮v (ρ ^p^ x)) ->
+    Γ ⊢ v ⋮v (b ⇢ ρ)
 | TConstant: forall Γ (c: constant),
     Γ ⊢WFp (mk_eq_constant c) ->
     Γ ⊢ c ⋮v (mk_eq_constant c)
-| TVar: forall Γ (x: atom) ρ,
-    Γ ⊢WFp ρ ->
-    ctxfind Γ x = Some ρ ->
-    Γ ⊢ x ⋮v ρ
-| TLam: forall Γ Tx ρ e T A B (L: aset),
-    Γ ⊢WFp (-: ρ ⤑[: T | A ▶ B ] ) ->
-    (forall x, x ∉ L -> (Γ ++ [(x, ρ)]) ⊢ (e ^t^ x) ⋮t ([: T | A ▶ B ] ^h^ x)) ->
+| TBaseVar: forall Γ (x: atom) b ϕ,
+    Γ ⊢WFp (mk_eq_var b x) ->
+    ctxfind Γ x = Some {: b | ϕ} ->
+    Γ ⊢ x ⋮v (mk_eq_var b x)
+| TFuncVar: forall Γ (x: atom) ρ τ,
+    Γ ⊢WFp (ρ ⇨ τ) ->
+    ctxfind Γ x = Some (ρ ⇨ τ) ->
+    Γ ⊢ x ⋮v (ρ ⇨ τ)
+| TLam: forall Γ Tx ρ e τ (L: aset),
+    Γ ⊢WFp (ρ ⇨ τ) ->
+    (forall x, x ∉ L -> (Γ ++ [(x, ρ)]) ⊢ (e ^t^ x) ⋮t (τ ^h^ x)) ->
     Tx = ⌊ ρ ⌋ ->
-    Γ ⊢ (vlam Tx e) ⋮v (-: ρ ⤑[: T | A ▶ B ])
-| TLamFix: forall Γ (Tx : base_ty) ϕ e T A B (L: aset),
-    Γ ⊢WFp (-: {: Tx | ϕ} ⤑[: T | A ▶ B ]) ->
+    Γ ⊢ (vlam Tx e) ⋮v (ρ ⇨ τ)
+| TLamFix: forall Γ (Tx : base_ty) ϕ e τ T (L: aset),
+    Γ ⊢WFp ({: Tx | ϕ} ⇨ τ) ->
     (* NOTE: should not open the whole type, because the first argument (bound
     variable 0) of the return type is not the fixed point function but [{: Tx |
     ϕ}]. The return type should be opened by [x]. *)
-    (forall x, x ∉ L -> (Γ ++ [(x, {: Tx | ϕ})]) ⊢ (vlam (Tx ⤍ T) e) ^v^ x ⋮v (-: (-: {: Tx | b0:x≺ x & ϕ} ⤑[: T | A ▶ B ]) ⤑[: T | A ^a^ x ▶ B ^pa^ x])) ->
-    Γ ⊢ (vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e)) ⋮v (-: {: Tx | ϕ} ⤑[: T | A ▶ B ])
+    (forall x, x ∉ L ->
+          (Γ ++ [(x, {: Tx | ϕ})]) ⊢ (vlam (Tx ⤍ T) e) ^v^ x ⋮v (({: Tx | b0:x≺ x & ϕ} ⇨ τ) ⇨ (τ ^h^ x))) ->
+    T = ⌊ τ ⌋ ->
+    Γ ⊢ (vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e)) ⋮v ({: Tx | ϕ} ⇨ τ)
 where
-"Γ '⊢' e '⋮t' τ" := (term_type_check Γ e τ) and "Γ '⊢' e '⋮v' τ" := (value_type_check Γ e τ).
+"Γ '⊢' e '⋮t' τ" := (term_type_check Γ e τ) and "Γ '⊢' e '⋮v' ρ" := (value_type_check Γ e ρ).
 
 
 Scheme value_type_check_rec := Induction for value_type_check Sort Prop
     with term_type_check_rec := Induction for term_type_check Sort Prop.
 
-Lemma pty_to_rty_wf Γ ρ :
+(*
+
+Lemma pty_to_hty_wf Γ ρ :
   wf_pty Γ ρ ->
-  wf_hty Γ (pty_to_rty ρ).
+  wf_hty Γ (pty_to_hty ρ).
 Proof.
-  unfold pty_to_rty.
+  unfold pty_to_hty.
   induction 1.
   - cbn. econstructor.
     hnf. intros. qauto. eauto.
@@ -182,7 +214,7 @@ Lemma value_typing_regular_wf : forall (Γ: listctx pty) (v: value) (ρ: pty),
 with tm_typing_regular_wf : forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ -> wf_hty Γ τ.
 Proof.
-  all: destruct 1; eauto using pty_to_rty_wf.
+  all: destruct 1; eauto using pty_to_hty_wf.
 Qed.
 
 (* Maybe move these lemmas to other files. *)
@@ -420,7 +452,7 @@ Qed.
 
 Lemma msubst_arrty: forall Γv ρ T A B,
     closed_env Γv ->
-    (m{Γv}p) (-:ρ⤑[:T|A▶B]) = (-:(m{Γv}p ρ)⤑[:T| (m{Γv}a A) ▶ (m{Γv}pa B) ]).
+    (m{Γv}p) (-:ρ⇨[:T|A▶B]) = (-:(m{Γv}p ρ)⇨[:T| (m{Γv}a A) ▶ (m{Γv}pa B) ]).
 Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
@@ -558,12 +590,12 @@ Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Lemma msubst_pty_to_rty: forall Γv ρ,
+Lemma msubst_pty_to_hty: forall Γv ρ,
     closed_env Γv ->
-    (m{Γv}h) (pty_to_rty ρ) = pty_to_rty (m{Γv}p ρ).
+    (m{Γv}h) (pty_to_hty ρ) = pty_to_hty (m{Γv}p ρ).
 Proof.
   msubst_tac.
-  unfold pty_to_rty.
+  unfold pty_to_hty.
   simpl. f_equal.
   - rewrite_msubst_insert.
     rewrite <- pty_erase_subst_eq. reflexivity.
@@ -572,14 +604,14 @@ Qed.
 
 Ltac msubst_simp :=
   match goal with
-  | H: context [ m{ _ }h (pty_to_rty _) ] |- _ => rewrite msubst_pty_to_rty in H
-  | |- context [ m{ _ }h (pty_to_rty _) ] => rewrite msubst_pty_to_rty
+  | H: context [ m{ _ }h (pty_to_hty _) ] |- _ => rewrite msubst_pty_to_hty in H
+  | |- context [ m{ _ }h (pty_to_hty _) ] => rewrite msubst_pty_to_hty
   | H: context [ m{ _ }h _ ] |- _ => rewrite msubst_hty in H
   | |- context [ m{ _ }h _ ] => rewrite msubst_hty
   | H: context [ m{ _ }p {: _ | _ } ] |- _ => rewrite msubst_bty in H
   | |- context [ m{ _ }p {: _ | _ } ] => rewrite msubst_bty
-  | H: context [ m{ _ }p (-: _ ⤑[: _ | _ ▶ _ ]) ] |- _ => rewrite msubst_arrty in H
-  | |- context [ m{ _ }p (-: _ ⤑[: _ | _ ▶ _ ]) ] => rewrite msubst_arrty
+  | H: context [ m{ _ }p (-: _ ⇨[: _ | _ ▶ _ ]) ] |- _ => rewrite msubst_arrty in H
+  | |- context [ m{ _ }p (-: _ ⇨[: _ | _ ▶ _ ]) ] => rewrite msubst_arrty
   | H: context [ m{ _ }a (aϵ) ] |- _ => rewrite msubst_aϵ in H
   | |- context [ m{ _ }a (aϵ) ] => rewrite msubst_aϵ
   | H: context [ m{ _ }a (aconcat _ _) ] |- _ => rewrite msubst_concat in H
@@ -1224,7 +1256,7 @@ Qed.
 Lemma msubst_preserves_basic_typing_tm_empty Γ Γv :
   ctxRst Γ Γv ->
   forall e T,
-    (⌊Γ⌋*) ⊢t e ⋮t T ->
+    ( ⌊Γ⌋* ) ⊢t e ⋮t T ->
     ∅ ⊢t m{Γv}t e ⋮t T.
 Proof.
   intros. eapply msubst_preserves_basic_typing_tm; eauto.
@@ -1257,7 +1289,7 @@ Qed.
 Lemma msubst_preserves_basic_typing_value_empty Γ Γv :
   ctxRst Γ Γv ->
   forall v T,
-    (⌊Γ⌋*) ⊢t v ⋮v T ->
+    ( ⌊Γ⌋* ) ⊢t v ⋮v T ->
     ∅ ⊢t m{Γv}v v ⋮v T.
 Proof.
   intros. eapply msubst_preserves_basic_typing_value; eauto.
@@ -1323,7 +1355,7 @@ Proof.
 Qed.
 
 Lemma wf_pty_arr_not_in Γ ρ T' A' B' T A B :
-  Γ ⊢WFp (-:-:ρ⤑[:T'|A'▶B']⤑[:T|A▶B]) ->
+  Γ ⊢WFp (-:-:ρ⇨[:T'|A'▶B']⇨[:T|A▶B]) ->
   exists (L : aset), forall (x : atom), x ∉ L -> x # [:T|A▶B] ^h^ x.
 Proof.
   intros H. sinvert H.
@@ -1532,9 +1564,9 @@ Lemma denotation_application_base_arg:
   forall (b: base_ty) ϕ T A B (Tb: ty) e,
     Tb = b ->
     ∅ ⊢t vlam Tb e ⋮t Tb ⤍ T ->
-    closed_pty ∅ (-:{:b|ϕ}⤑[:T|A▶B]) ->
+    closed_pty ∅ (-:{:b|ϕ}⇨[:T|A▶B]) ->
     (forall(v: value), p⟦ {:b|ϕ} ⟧ v -> ⟦ [:T | A ^a^ v ▶ B ^pa^ v ] ⟧ (e ^t^ v)) ->
-    p⟦ -: {:b|ϕ} ⤑[:T|A▶B] ⟧ (vlam Tb e).
+    p⟦ -: {:b|ϕ} ⇨[:T|A▶B] ⟧ (vlam Tb e).
 Proof.
   intros.
   subst.
@@ -1557,9 +1589,9 @@ Lemma denotation_application_arr_arg:
   forall ρx (Tx: ty) Ax Bx T A B Te e,
     Te = (⌊ ρx ⌋ ⤍ Tx) ->
     ∅ ⊢t vlam Te e ⋮t Te ⤍ T ->
-    closed_pty ∅ (-: -: ρx ⤑[:Tx|Ax▶Bx] ⤑[:T|A▶B]) ->
-    (forall (v: value), p⟦ -: ρx ⤑[:Tx|Ax▶Bx] ⟧ v -> ⟦ [:T | A ▶ B ] ⟧ (e ^t^ v)) ->
-    p⟦ -: -: ρx ⤑[:Tx|Ax▶Bx] ⤑[:T|A▶B] ⟧ (vlam Te e).
+    closed_pty ∅ (-: -: ρx ⇨[:Tx|Ax▶Bx] ⇨[:T|A▶B]) ->
+    (forall (v: value), p⟦ -: ρx ⇨[:Tx|Ax▶Bx] ⟧ v -> ⟦ [:T | A ▶ B ] ⟧ (e ^t^ v)) ->
+    p⟦ -: -: ρx ⇨[:Tx|Ax▶Bx] ⇨[:T|A▶B] ⟧ (vlam Te e).
 Proof.
   intros.
   subst.
@@ -1580,12 +1612,12 @@ Qed.
 Lemma denotation_application_fixed:
   forall (b: base_ty) ϕ T A B e,
     ∅ ⊢t vfix (b ⤍ T) (vlam (b ⤍ T) e) ⋮t b ⤍ T ->
-    closed_pty ∅ (-:{:b|ϕ}⤑[:T|A▶B]) ->
+    closed_pty ∅ (-:{:b|ϕ}⇨[:T|A▶B]) ->
     (forall(v: value),
         p⟦ {:b|ϕ} ⟧ v ->
-        p⟦ (-:-:({:b|(b0:v≺ v) & ϕ})⤑[:T|A▶B]⤑[:T|A ^a^ v▶B ^pa^ v]) ⟧
+        p⟦ (-:-:({:b|(b0:v≺ v) & ϕ})⇨[:T|A▶B]⇨[:T|A ^a^ v▶B ^pa^ v]) ⟧
           ((vlam (b ⤍ T) e) ^t^ v)) ->
-    p⟦ -: {:b|ϕ} ⤑[:T|A▶B] ⟧ (vfix (b ⤍ T) (vlam (b ⤍ T) e)).
+    p⟦ -: {:b|ϕ} ⇨[:T|A▶B] ⟧ (vfix (b ⤍ T) (vlam (b ⤍ T) e)).
 Proof.
   intros * Ht Hc H.
   repeat (split; eauto).
@@ -1646,20 +1678,20 @@ Proof.
   simp_hyps. subst. eauto.
 Qed.
 
-Lemma pty_to_rty_preserves_closed: forall (ρ: pty) d,
-    closed_pty d ρ -> closed_hty d (pty_to_rty ρ).
+Lemma pty_to_hty_preserves_closed: forall (ρ: pty) d,
+    closed_pty d ρ -> closed_hty d (pty_to_hty ρ).
 Proof.
   inversion 1.
   repeat econstructor; try solve [hnf; qauto]. qsimpl.
   cbn. repeat my_set_solver.
 Qed.
 
-Lemma denotation_value_pure: forall (ρ: pty) (v: value), p⟦ ρ ⟧ v <-> ⟦pty_to_rty ρ ⟧ v.
+Lemma denotation_value_pure: forall (ρ: pty) (v: value), p⟦ ρ ⟧ v <-> ⟦pty_to_hty ρ ⟧ v.
 Proof.
   split; simpl; intros.
   - dup_hyp H (fun H => apply ptyR_typed_closed in H).
     simp_hyps.
-    split; simpl; eauto. split; eauto using pty_to_rty_preserves_closed.
+    split; simpl; eauto. split; eauto using pty_to_hty_preserves_closed.
     intros Hamlist α β v' Hα Hstepv. reduction_simp.
     exists aϵ, ρ. split. unfold In. left; auto. split; auto. repeat constructor; auto.
   - destruct H as (Ht & Hclose & H).
@@ -1758,7 +1790,7 @@ Definition builtinR op ρx A B :=
                      p⟦ ρi ^p^ v_x ⟧ c).
 
 Definition well_formed_builtin_typing := forall Γ op ρx A B,
-    builtin_typing_relation Γ op (-: ρx ⤑[: ret_ty_of_op op | A ▶ B ]) ->
+    builtin_typing_relation Γ op (-: ρx ⇨[: ret_ty_of_op op | A ▶ B ]) ->
     forall Γv,
       ctxRst Γ Γv ->
       builtinR op (m{Γv}p ρx) (m{Γv}a A) (m{Γv}pa B).
@@ -1772,12 +1804,19 @@ Ltac simpl_fv :=
 (* At some point the proof is very slow without marking [msubst] opaque. *)
 Opaque msubst.
 
+
+*)
+
+Definition well_formed_builtin_typing : Prop. Admitted.
+
 Theorem fundamental:
   well_formed_builtin_typing ->
   forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ ->
-    forall Γv, ctxRst Γ Γv -> ⟦ msubst hty_subst Γv τ ⟧ (msubst tm_subst Γv e).
+    forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }h τ ⟧ (m{ Γv }t e).
 Proof.
+Admitted.
+(*
   intros HWFbuiltin.
   apply (term_type_check_rec
            (fun Γ (v: value) ρ _ =>
@@ -1820,7 +1859,7 @@ Proof.
       rewrite ctx_erase_app. f_equal. cbn.
       rewrite map_union_empty. eauto.
     }
-    assert (closed_pty ∅ (m{Γv}p (-:ρ⤑[:T|A▶B]))). {
+    assert (closed_pty ∅ (m{Γv}p (-:ρ⇨[:T|A▶B]))). {
       eapply_eq msubst_preserves_closed_pty_empty; eauto using wf_pty_closed.
     }
     destruct ρ.
@@ -1847,7 +1886,7 @@ Proof.
       dup_hyp HWF (fun H => apply wf_pty_arr_not_in in H; destruct H as (L'&?)).
       auto_pose_fv x. repeat specialize_with x.
       intros v_x Hv_x.
-      assert (ctxRst (Γ ++ [(x, -:ρ⤑[:T0|pre▶post] )]) (<[x := v_x]> Γv)) as HΓv'. {
+      assert (ctxRst (Γ ++ [(x, -:ρ⇨[:T0|pre▶post] )]) (<[x := v_x]> Γv)) as HΓv'. {
         econstructor; eauto.
         econstructor; eauto using ctxRst_ok_ctx.
         sinvert HWF.
@@ -2491,54 +2530,8 @@ Proof.
         msubst_insert_fresh_tm in HDe2;
         eauto using ctxRst_closed_env; simpl_fv; my_set_solver.
 Qed.
+*)
 
 Transparent msubst.
 
-Definition valid_evop '(evop_ op argv retv) :=
-  ∅ ⊢t argv ⋮v TNat /\ ∅ ⊢t retv ⋮v ret_ty_of_op op.
-
-Definition valid_trace := Forall valid_evop.
-
-Lemma valid_evop_any ev :
-  valid_evop ev ->
-  a⟦ ∘ ⟧ [ev].
-Proof.
-  intros H. split. repeat econstructor. my_set_solver.
-  destruct ev. repeat esplit; qauto.
-Qed.
-
-Lemma valid_trace_any_star α :
-  valid_trace α ->
-  a⟦ astar ∘ ⟧ α.
-Proof.
-  intros H.
-  split. repeat econstructor. my_set_solver.
-  induction α. constructor.
-  rewrite <- app_one_is_cons.
-  sinvert H.
-  econstructor; eauto using valid_evop_any.
-Qed.
-
-Corollary soundness :
-  well_formed_builtin_typing ->
-  forall (e : tm) T B,
-    [] ⊢ e ⋮t [: T | astar ∘ ▶ B] ->
-    forall α β (v : value),
-      (* Alternatively, we can simply say [a⟦ astar ∘ ⟧ α]. *)
-      valid_trace α ->
-      α ⊧ e ↪*{ β } v ->
-      exists Bi ρi, In (Bi, ρi) B /\
-                 a⟦ Bi ⟧ β /\
-                 p⟦ ρi ⟧ v.
-Proof.
-  intros HWFbuiltin **.
-  apply fundamental with (Γv := ∅) in H; eauto using ctxRst.
-  unfold msubst in *.
-  rewrite !map_fold_empty in *.
-  destruct H as (Ht & Hc & H).
-  eapply H; eauto.
-  sinvert Hc. sinvert H2. eauto.
-  eauto using valid_trace_any_star.
-Qed.
-
-Print Assumptions soundness.
+Print Assumptions fundamental.
