@@ -44,8 +44,10 @@ let rec type_infer_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit : lit)
       in
       let f, fty =
         match (f.x, argsty) with
-        | Op.BuiltinOp "==", [ t1; t2 ] when Nt.eq t1 t2 ->
-            ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
+        | Op.BuiltinOp "==", [ t1; t2 ] ->
+            if Nt.eq t1 t2 then
+              ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
+            else _failatwith __FILE__ __LINE__ "ntyping error: =="
         | _ -> check_op opctx f
       in
       (* let () = Printf.printf "op: %s\n" (Op.to_string f.x) in *)
@@ -58,9 +60,10 @@ let rec type_infer_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit : lit)
 
 and type_check_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit, ty) :
     lit typed =
-  (* let () = *)
-  (*   Printf.printf "Check %s <<= %s\n" (To_lit.layout lit) (Nt.layout ty) *)
-  (* in *)
+  let () =
+    Env.show_log "ntyping" @@ fun _ ->
+    Printf.printf "Check %s <<= %s\n" (To_lit.layout lit) (Nt.layout ty)
+  in
   match lit with
   | AC _ | AVar _ ->
       let x, ty' = type_infer_lit opctx ctx lit in
@@ -86,17 +89,23 @@ and type_check_lit (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx) (lit, ty) :
       let args, argsty =
         List.split @@ List.map (fun x -> type_infer_lit opctx ctx x.x) args
       in
-      (* let () = *)
-      (*   Printf.printf ">> %s(%s)\n" (Op.to_string f.x) *)
-      (*     (List.split_by_comma Nt.layout argsty) *)
-      (* in *)
+      let () =
+        Env.show_log "ntyping" @@ fun _ ->
+        Printf.printf ">> %s(%s)\n" (Op.to_string f.x)
+          (List.split_by_comma Nt.layout argsty)
+      in
       let f, fty =
         match (f.x, argsty) with
-        | Op.BuiltinOp "==", [ t1; t2 ] when Nt.eq t1 t2 ->
-            ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
+        | Op.BuiltinOp "==", [ t1; t2 ] ->
+            if Nt.eq t1 t2 then
+              ({ x = f.x; ty = Some t1 }, Nt.(mk_arr t1 @@ mk_arr t1 Ty_bool))
+            else _failatwith __FILE__ __LINE__ "ntyping error: =="
         | _ -> check_op opctx f
       in
-      (* let () = Printf.printf ">> %s:%s\n" (Op.to_string f.x) (Nt.layout fty) in *)
+      let () =
+        Env.show_log "ntyping" @@ fun _ ->
+        Printf.printf ">> %s:%s\n" (Op.to_string f.x) (Nt.layout fty)
+      in
       let argsty, retty = _solve_by_argsty __FILE__ __LINE__ fty argsty in
       let argsty, retty =
         _solve_by_retty __FILE__ __LINE__
@@ -114,6 +123,10 @@ let type_check_qualifier (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx)
     (qualifier : prop) : prop =
   let ty = Nt.bool_ty in
   let rec aux ctx qualifier =
+    let () =
+      Env.show_log "ntyping" @@ fun _ ->
+      Printf.printf "Qualifier Check %s\n" (To_qualifier.layout qualifier)
+    in
     match qualifier with
     | Lit lit -> Lit (type_check_lit opctx ctx (lit, ty)).x
     | Implies (e1, e2) -> Implies (aux ctx e1, aux ctx e2)

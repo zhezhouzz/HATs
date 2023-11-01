@@ -1,11 +1,12 @@
-let[@libRty] put ?l:(k = (true : [%v: int])) ?l:(a = (true : [%v: int])) =
+let[@libRty] put ?l:(k = (true : [%v: Path.t])) ?l:(a = (true : [%v: Bytes.t]))
+    =
   {
     pre = _G (Any true);
     res = (true : [%v: unit]);
     newadding = lastL && Put ((k [@d]), (a [@d]), v, true);
   }
 
-let[@libRty] exists ?l:(k = (true : [%v: int])) =
+let[@libRty] exists ?l:(k = (true : [%v: Path.t])) =
   [|
     {
       pre = existsP k;
@@ -19,9 +20,9 @@ let[@libRty] exists ?l:(k = (true : [%v: int])) =
     };
   |]
 
-let[@libRty] get ((a : int) [@ghost]) ?l:(k = (true : [%v: int])) =
+let[@libRty] get ((a : Bytes.t) [@ghost]) ?l:(k = (true : [%v: Path.t])) =
   {
     pre = storedP k a;
-    res = (v == a : [%v: int]);
+    res = (v == a : [%v: Bytes.t]);
     newadding = lastL && Get ((k [@d]), v, v == a);
   }

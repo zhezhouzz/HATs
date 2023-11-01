@@ -13,17 +13,17 @@ val ( mod ) : int -> int -> int
 val ( * ) : int -> int -> int
 val ( / ) : int -> int -> int
 val not : bool -> bool
-val parent : int -> int
-val is_root : int -> bool
-val is_deleted : int -> bool
-val is_dir : int -> bool
-val add_child : int -> int -> int
-val del_child : int -> int -> int
+val parent : Path.t -> Path.t
+val is_root : Path.t -> bool
+val is_deleted : Bytes.t -> bool
+val is_dir : Bytes.t -> bool
+val add_child : Bytes.t -> Path.t -> Bytes.t
+val del_child : Bytes.t -> Path.t -> Bytes.t
 
 (* eff operator **)
 
-val put : int -> int -> unit
-val get : int -> int
-val exists : int -> bool
+val put : Path.t -> Bytes.t -> unit
+val get : Path.t -> Bytes.t
+val exists : Path.t -> bool
 val setinsert : int -> unit
 val setmem : int -> bool
