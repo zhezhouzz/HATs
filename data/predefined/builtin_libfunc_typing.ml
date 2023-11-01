@@ -1,4 +1,4 @@
-let[@libRty] parent ?l:(a = (true : [%v: int]) [@over]) : [%v: int] =
+let[@libRty] getParent ?l:(a = (true : [%v: int]) [@over]) : [%v: int] =
   v == parent a
 
 let[@libRty] addChild ?l:(a = (true : [%v: int]) [@over])

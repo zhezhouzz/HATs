@@ -35,30 +35,32 @@ let case_cond_mapping =
 
 (* NOTE: The value term can only have pure refinement type (or a type error). *)
 let rec value_type_infer typectx (value : value typed) : rty option =
-  let str = layout_value value in
-  let before_info line rulename =
-    print_infer_info1 __FUNCTION__ line rulename typectx str
-  in
-  let end_info line rulename hty =
-    let hty_str =
-      let* hty' = hty in
-      Some (layout_rty hty')
-    in
-    print_infer_info2 __FUNCTION__ line rulename typectx str hty_str;
-    hty
-  in
+  (* let str = layout_value value in *)
+  (* let before_info line rulename = *)
+  (*   print_infer_info1 __FUNCTION__ line rulename typectx str *)
+  (* in *)
+  (* let end_info line rulename hty = *)
+  (*   let hty_str = *)
+  (*     let* hty' = hty in *)
+  (*     Some (layout_rty hty') *)
+  (*   in *)
+  (*   print_infer_info2 __FUNCTION__ line rulename typectx str hty_str; *)
+  (*   hty *)
+  (* in *)
   let hty =
     match value.x with
     | VConst c ->
-        let () = before_info __LINE__ "Const" in
+        (* let () = before_info __LINE__ "Const" in *)
         let hty =
           match c with
           | Const.U -> unit_rty
           | _ -> mk_rty_var_eq_c value.Nt.ty c
         in
-        end_info __LINE__ "Const" (Some hty)
+        let res = Some hty in
+        res
+        (* end_info __LINE__ "Const" res *)
     | VVar x ->
-        let () = before_info __LINE__ "Var" in
+        (* let () = before_info __LINE__ "Var" in *)
         let* rty = RCtx.get_ty_opt typectx.rctx x in
         let res =
           match rty with
@@ -68,7 +70,8 @@ let rec value_type_infer typectx (value : value typed) : rty option =
               | Nt.Ty_unit -> rty
               | _ -> mk_rty_var_eq_var Nt.(x #: (erase_rty rty)))
         in
-        end_info __LINE__ "Var" (Some res)
+        Some res
+        (* end_info __LINE__ "Var" (Some res) *)
     | VTu _ -> _failatwith __FILE__ __LINE__ "unimp"
     | VLam _ | VFix _ ->
         _failatwith __FILE__ __LINE__
@@ -109,23 +112,27 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
   let typectx, hty = handle_ghost typectx hty in
   match value.x with
   | VConst _ ->
-      let rulename = "Const" in
-      let () = before_info __LINE__ rulename in
+      (* let rulename = "Const" in *)
+      (* let () = before_info __LINE__ rulename in *)
       let b =
         match value_type_infer typectx value with
         | None -> false
         | Some hty' -> subtyping_rty_bool __FILE__ __LINE__ typectx (hty', hty)
       in
-      end_info_b __LINE__ rulename b
+      let res = if b then Some () else None in
+      res
+      (* end_info_b __LINE__ rulename b *)
   | VVar _ ->
-      let rulename = "Var" in
-      let () = before_info __LINE__ rulename in
+      (* let rulename = "Var" in *)
+      (* let () = before_info __LINE__ rulename in *)
       let b =
         match value_type_infer typectx value with
         | None -> false
         | Some hty' -> subtyping_rty_bool __FILE__ __LINE__ typectx (hty', hty)
       in
-      end_info_b __LINE__ rulename b
+      let res = if b then Some () else None in
+      res
+      (* end_info_b __LINE__ rulename b *)
   | VFix { fixname; fixarg; fixbody } ->
       let rulename = "Fix" in
       let () = before_info __LINE__ rulename in
@@ -199,18 +206,39 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
          (match is_valid with Some _ -> "✓" | None -> "𐄂"));
     is_valid
   in
+  let is_new_adding (pre, post) =
+    match post with
+    | SeqA (post1, post2) -> if eq pre post1 then Some post2 else None
+    | _ -> None
+  in
   let let_aux typectx (lhs, rhs_hty) letbody hty =
     let rec aux rhs_hty =
       match (rhs_hty, hty) with
       | Rty rty, _ ->
           let typectx' = typectx_new_to_right typectx { rx = lhs.x; rty } in
           comp_htriple_check typectx' letbody hty
-      | Htriple { resrty = rty; post = post'; _ }, Htriple { pre; resrty; post }
-        ->
+      | ( Htriple { pre = pre'; resrty = rty; post = post' },
+          Htriple { pre; resrty; post } ) ->
           let typectx' = typectx_new_to_right typectx { rx = lhs.x; rty } in
-          comp_htriple_check typectx' letbody
-            (Htriple
-               { pre = LandA (SeqA (pre, StarA AnyA), post'); resrty; post })
+          let pre =
+            match is_new_adding (pre', post') with
+            | Some newadding ->
+                let () =
+                  Env.show_debug_typing @@ fun _ ->
+                  Pp.printf "@{<bold>@{<orange>newadding:@}@} %s\n"
+                    (layout_regex newadding)
+                in
+                SeqA (LandA (pre, pre'), newadding)
+            | None ->
+                let res = LandA (SeqA (pre, StarA AnyA), post') in
+                let () =
+                  Env.show_debug_typing @@ fun _ ->
+                  Pp.printf "@{<bold>@{<orange>with pre:@}@} %s\n"
+                    (layout_regex res)
+                in
+                res
+          in
+          comp_htriple_check typectx' letbody (Htriple { pre; resrty; post })
       | Htriple _, Rty _ -> _failatwith __FILE__ __LINE__ "eff to pure?"
       | Inter (hty1, hty2), _ ->
           let* () = aux hty1 in
@@ -263,7 +291,7 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
         Pp.printf "@{<bold>@{<orange>matched case (%s) is unreachable@}@}\n"
           constructor.x
       in
-      None
+      Some ()
     else
       let a = (Rename.unique "a") #:: a_rty in
       let typectx' = typectx_new_to_rights typectx (xs @ [ a ]) in

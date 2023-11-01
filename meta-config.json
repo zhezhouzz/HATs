@@ -11,7 +11,7 @@
     // "solving",
     // "stat",
     // "info",
-    "debug",
+    // "debug",
     "never-use"
   ],
   "logfile": ".log",
