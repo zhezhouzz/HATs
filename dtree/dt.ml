@@ -36,7 +36,7 @@ module F (P : Predictable) = struct
       | false :: fv -> Some (true :: fv)
       | true :: fv ->
           let* fv = next fv in
-          Some (true :: fv)
+          Some (false :: fv)
     in
     let fvtab = Hashtbl.create (pow 2 (Array.length features)) in
     let rec loop fv =
@@ -119,6 +119,14 @@ module F (P : Predictable) = struct
           Array.set samples !iter (is_pos v, Array.of_list f);
           iter := !iter + 1)
         htab
+    in
+    let () =
+      Array.iter
+        (fun (tf, barr) ->
+          Printf.printf "%b: %s\n" tf
+            (List.split_by ";" (fun x -> if x then "T" else "F")
+            @@ Array.to_list barr))
+        samples
     in
     let dt = FastDT.make_dt ~samples ~max_d:500 in
     of_fastdt dt

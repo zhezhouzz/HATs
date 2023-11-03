@@ -35,6 +35,11 @@ let elrond verifier features fvtab =
             (DT.layout_raw_fv fv)
         in
         let () = DT.label_as fvtab fv DT.Neg in
+        let () =
+          Env.show_log "elim_ghost" @@ fun _ ->
+          Pp.printf "@{<bold>@{<yellow> fvtab@}@}\n";
+          DT.pprint_fvtab features fvtab
+        in
         let dt = DT.classify_hash_is_not_neg (Array.length features) fvtab in
         let prop = P.simpl @@ DT.to_prop features dt in
         let () =
@@ -106,6 +111,7 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
   let gathered = SRL.gather lpre in
   let lits = gathered_lit_to_atom_lit gathered in
   let () =
+    Env.show_log "elim_ghost" @@ fun _ ->
     Printf.printf "lits:\n%s\n"
     @@ List.split_by "\n"
          (fun (x, lit) -> spf "%s:%s -> %s" x.x (layout x.ty) (layout_lit lit))
@@ -119,6 +125,7 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
       lits
   in
   let () =
+    Env.show_log "elim_ghost" @@ fun _ ->
     Printf.printf "type_safe_lits:\n%s\n"
     @@ List.split_by "\n" (fun lit -> spf "%s" (layout_lit lit)) type_safe_lits
   in
@@ -127,9 +134,7 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
   let () = DT.pprint_fvtab features fvtab in
   (* let mk_solution x phi = (x,  #:: (mk_from_prop x.Nt.ty (fun _ -> phi)) in *)
   let verifier phi =
-    (* let solution = mk_solution gvar phi in *)
     let rpre = close_fv (gvar, phi) rpre in
-    (* let typectx' = typectx_new_to_right typectx solution in *)
     subtyping_srl_bool __FILE__ __LINE__ typectx (lpre, rpre)
   in
   let res = elrond verifier features fvtab in
@@ -148,32 +153,40 @@ open TypedCoreEff
 
 let ghost_infer typectx (lpre : regex) (args : value typed list) (rty : rty) =
   let gvars, rty = destruct_to_gbindings (Rty rty) in
-  let () =
-    Printf.printf "[%s] %s\n"
-      (List.split_by_comma (fun x -> spf "%s:%s" x.x (layout x.ty)) gvars)
-      (layout_hty rty)
-  in
-  let ress =
-    List.fold_left
-      (fun hty v -> snd @@ Baux.app_v_func_rty v (hty_force_rty hty))
-      rty args
-  in
-  let rpre = hty_to_pre ress in
-  let rtys = ghost_infer_aux typectx lpre gvars rpre in
-  let bindings =
-    List.map
-      (fun (x, rty) -> { rx = x.x; rty })
-      (_safe_combine __FILE__ __LINE__ gvars rtys)
-  in
-  let bindings, rty' =
-    List.fold_left
-      (fun (bindings, res) { rx; rty } ->
-        let rx' = Rename.unique rx in
-        let res = subst_hty_id (rx, rx') res in
-        (bindings @ [ { rx = rx'; rty } ], res))
-      ([], rty) bindings
-  in
-  Some (bindings, hty_force_rty rty')
+  match gvars with
+  | [] -> Some ([], hty_force_rty rty)
+  | _ ->
+      let () =
+        Env.show_log "elim_ghost" @@ fun _ ->
+        Printf.printf "[%s] %s\n"
+          (List.split_by_comma (fun x -> spf "%s:%s" x.x (layout x.ty)) gvars)
+          (layout_hty rty)
+      in
+      let ress =
+        List.fold_left
+          (fun hty v -> snd @@ Baux.app_v_func_rty v (hty_force_rty hty))
+          rty args
+      in
+      let () =
+        Env.show_log "elim_ghost" @@ fun _ ->
+        Printf.printf "ress: %s\n" (layout_hty ress)
+      in
+      let rpre = hty_to_pre ress in
+      let rtys = ghost_infer_aux typectx lpre gvars rpre in
+      let bindings =
+        List.map
+          (fun (x, rty) -> { rx = x.x; rty })
+          (_safe_combine __FILE__ __LINE__ gvars rtys)
+      in
+      let bindings, rty' =
+        List.fold_left
+          (fun (bindings, res) { rx; rty } ->
+            let rx' = Rename.unique rx in
+            let res = subst_hty_id (rx, rx') res in
+            (bindings @ [ { rx = rx'; rty } ], res))
+          ([], rty) bindings
+      in
+      Some (bindings, hty_force_rty rty')
 
 let force_without_ghost typectx (rty : rty) (args : value typed list)
     (hty : hty) : (typectx * rty) option =
