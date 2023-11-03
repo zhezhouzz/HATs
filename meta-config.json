@@ -12,8 +12,9 @@
     // "stat",
     // "info",
     // "debug",
-      "debug_infer",
-      "result",
+    "elim_ghost",
+    "debug_infer",
+    "result",
     "never-use"
   ],
   "logfile": ".log",

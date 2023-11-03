@@ -207,7 +207,23 @@ module F (L : Lit.T) = struct
     in
     aux regex
 
-  (* TODO: gather lits/rtys *)
+  (* gather lits *)
+
+  let gather regex =
+    let rec aux regex m =
+      match regex with
+      | EmptyA -> m
+      | AnyA -> m
+      | EpsilonA -> m
+      | EventA se -> SE.gather m se
+      | LorA (t1, t2) -> aux t1 @@ aux t2 m
+      | SetMinusA (t1, t2) -> aux t1 @@ aux t2 m
+      | LandA (t1, t2) -> aux t1 @@ aux t2 m
+      | SeqA (t1, t2) -> aux t1 @@ aux t2 m
+      | StarA t -> aux t m
+      | ComplementA t -> aux t m
+    in
+    aux regex (SE.gathered_lits_init ())
 
   (* normalize name *)
 
@@ -216,6 +232,20 @@ module F (L : Lit.T) = struct
       match regex with
       | AnyA | EmptyA | EpsilonA -> regex
       | EventA se -> EventA (SE.normalize_name se)
+      | LorA (t1, t2) -> LorA (aux t1, aux t2)
+      | SetMinusA (t1, t2) -> SetMinusA (aux t1, aux t2)
+      | LandA (t1, t2) -> LandA (aux t1, aux t2)
+      | SeqA (t1, t2) -> SeqA (aux t1, aux t2)
+      | StarA t -> StarA (aux t)
+      | ComplementA t -> ComplementA (aux t)
+    in
+    aux regex
+
+  let close_fv x regex =
+    let rec aux regex =
+      match regex with
+      | AnyA | EmptyA | EpsilonA -> regex
+      | EventA se -> EventA (SE.close_fv x se)
       | LorA (t1, t2) -> LorA (aux t1, aux t2)
       | SetMinusA (t1, t2) -> SetMinusA (aux t1, aux t2)
       | LandA (t1, t2) -> LandA (aux t1, aux t2)

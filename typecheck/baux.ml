@@ -150,3 +150,43 @@ let print_check_info file line rulename typectx str rty =
 let _force_not_emrty_list file line = function
   | [] -> _failatwith file line "die"
   | _ -> ()
+
+open TypedCoreEff
+
+let app_subst (appf_arg, v) appf_ret =
+  match appf_arg.rx with
+  | None -> appf_ret
+  | Some x ->
+      let lit = _value_to_lit __FILE__ __LINE__ v in
+      subst (x, lit.x) appf_ret
+
+let unify_var_arr_ret y (arr, rethty) =
+  match arr with
+  | NormalArr x ->
+      let rethty = subst_hty_id (x.rx, y) rethty in
+      (Some { rx = y; rty = x.rty }, rethty)
+  | GhostArr _ -> _failatwith __FILE__ __LINE__ "die"
+  | ArrArr _ -> (None, rethty)
+
+let unify_var_func_rty y hty =
+  let arr, rethty = rty_destruct_arr __FILE__ __LINE__ hty in
+  unify_var_arr_ret y (arr, rethty)
+
+let app_v_arr_any (subst : string * lit -> 'a -> 'a) v (arr, rethty) =
+  match arr with
+  | NormalArr x ->
+      let lit = _value_to_lit __FILE__ __LINE__ v in
+      let rethty = subst (x.rx, lit.x) rethty in
+      (Some x, rethty)
+  | GhostArr x ->
+      let lit = _value_to_lit __FILE__ __LINE__ v in
+      let rethty = subst (x.x, lit.x) rethty in
+      (Some { rx = x.x; rty = mk_top x.ty }, rethty)
+  | ArrArr _ -> (None, rethty)
+
+let app_v_arr_ret = app_v_arr_any subst_hty
+let app_v_arr_srl = app_v_arr_any SRL.subst
+
+let app_v_func_rty v hty =
+  let arr, rethty = rty_destruct_arr __FILE__ __LINE__ hty in
+  app_v_arr_ret v (arr, rethty)

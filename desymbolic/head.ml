@@ -133,7 +133,7 @@ let litlist_to_tab (vs, l) =
 (*   + StrMap.fold (fun _ (_, tab) sum -> sum + List.length tab) local_lits 0 *)
 
 let make_tab regex =
-  let g = gather_from_regex regex in
+  let g = gather regex in
   (* let num_lits = num_lits g in *)
   (* let () = record_max stat_max_lits num_lits in *)
   let { global_lits; local_lits } = g in

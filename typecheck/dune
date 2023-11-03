@@ -5,6 +5,7 @@
  (modules
    baux
    bidirectional
+   elim_ghost
    ; infer_ghost
    typecheck
 ))

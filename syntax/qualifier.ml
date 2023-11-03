@@ -172,4 +172,97 @@ module F (L : Lit.T) = struct
       | Exists (_, body) -> aux body
     in
     List.slow_rm_dup String.equal @@ aux prop
+
+  let get_lits prop =
+    let rec aux e res =
+      match e with
+      | Lit (AC _) -> res
+      | Lit lit -> lit :: res
+      | Implies (e1, e2) -> aux e1 @@ aux e2 res
+      | Ite (e1, e2, e3) -> aux e1 @@ aux e2 @@ aux e3 res
+      | Not e -> aux e res
+      | And es -> List.fold_right aux es res
+      | Or es -> List.fold_right aux es res
+      | Iff (e1, e2) -> aux e1 @@ aux e2 res
+      | Forall _ -> _failatwith __FILE__ __LINE__ "die"
+      | Exists _ -> _failatwith __FILE__ __LINE__ "die"
+    in
+    let (lits : lit list) = aux prop [] in
+    Zzdatatype.Datatype.List.slow_rm_dup eq_lit lits
+
+  let subst_lit_lit (lit1, prop) e =
+    let rec aux e =
+      match e with
+      | Lit lit -> if eq_lit lit lit1 then prop else e
+      | Implies (e1, e2) -> Implies (aux e1, aux e2)
+      | Ite (e1, e2, e3) -> Ite (aux e1, aux e2, aux e3)
+      | Not e -> Not (aux e)
+      | And es -> And (List.map aux es)
+      | Or es -> Or (List.map aux es)
+      | Iff (e1, e2) -> Iff (aux e1, aux e2)
+      | Forall (u, body) -> Forall (u, aux body)
+      | Exists (u, body) -> Exists (u, aux body)
+    in
+    aux e
+
+  (* module Nt = Normalty.Ntyped *)
+
+  let close_fv (x, phix) prop =
+    if not (List.exists (String.equal x.Normalty.Ntyped.x) (fv_prop prop)) then
+      prop
+    else
+      let lits = get_lits prop in
+      let lits =
+        List.filter_map
+          (fun lit ->
+            match find_assignment_of_intvar lit x.Normalty.Ntyped.x with
+            | Some eqlit -> Some (lit, eqlit)
+            | None -> None)
+          lits
+      in
+      match lits with
+      | [ (lit, eqlit) ] ->
+          let prop =
+            subst_lit_lit (lit, subst_prop (Common.v_name, eqlit) phix) prop
+          in
+          prop
+      | _ -> Exists (x, smart_add_to phix prop)
+
+  type pe = IsT | IsF | IsOthers
+
+  let pe_prop prop =
+    if is_true prop then IsT else if is_false prop then IsF else IsOthers
+
+  let simpl prop =
+    let rec aux e =
+      match e with
+      | Lit _ -> e
+      | Implies (e1, e2) -> (
+          let e1, e2 = map2 aux (e1, e2) in
+          match (pe_prop e1, pe_prop e2) with
+          | IsT, _ -> e2
+          | IsF, _ -> mk_true
+          | _, IsT -> mk_true
+          | _, IsF -> aux (Not e1)
+          | _, _ -> Implies (e1, e2))
+      | Ite (e1, e2, e3) -> (
+          let e1, e2, e3 = map3 aux (e1, e2, e3) in
+          match pe_prop e1 with
+          | IsT -> e2
+          | IsF -> e3
+          | _ -> (
+              match (pe_prop e2, pe_prop e3) with
+              | IsT, IsT -> mk_true
+              | IsT, IsF -> e1
+              | IsF, IsT -> aux (Not e1)
+              | IsF, IsF -> mk_false
+              | _, _ -> Ite (e1, e2, e3)))
+      | Not e -> Not (aux e)
+      | And es -> And (List.map aux es)
+      | Or es -> Or (List.map aux es)
+      | Iff (e1, e2) -> Iff (aux e1, aux e2)
+      | Forall (u, body) -> Forall (u, aux body)
+      | Exists (u, body) -> Exists (u, aux body)
+    in
+    aux prop
 end

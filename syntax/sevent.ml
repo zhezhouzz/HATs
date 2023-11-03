@@ -45,7 +45,49 @@ module F (L : Lit.T) = struct
             not (List.exists (fun x -> String.equal x.x y) (v :: vs)))
         @@ fv_prop phi
 
-  (* TODO: gather lits/rtys *)
+  (* gather lits *)
+
+  open Zzdatatype.Datatype
+
+  type gathered_lits = {
+    global_lits : lit list;
+    local_lits : (string typed list * lit list) StrMap.t;
+  }
+
+  let gathered_lits_init () = { global_lits = []; local_lits = StrMap.empty }
+
+  let gathered_rm_dup { global_lits; local_lits } =
+    let global_lits = List.slow_rm_dup eq_lit global_lits in
+    let local_lits =
+      StrMap.map
+        (fun (vs, lits) -> (vs, List.slow_rm_dup eq_lit lits))
+        local_lits
+    in
+    { global_lits; local_lits }
+
+  let gather { global_lits; local_lits } sevent =
+    match sevent with
+    | GuardEvent phi ->
+        { global_lits = P.get_lits phi @ global_lits; local_lits }
+    | EffEvent { op; phi; vs; v } ->
+        let lits = P.get_lits phi in
+        let vs' = List.map (fun x -> x.x) (v :: vs) in
+        let is_contain_local_free lit =
+          match List.interset ( == ) vs' @@ P.fv_lit lit with
+          | [] -> false
+          | _ -> true
+        in
+        let llits, glits = List.partition is_contain_local_free lits in
+        let local_lits =
+          StrMap.update op
+            (fun l ->
+              match l with
+              | None -> Some (v :: vs, llits)
+              | Some (_, l) -> Some (v :: vs, l @ llits))
+            local_lits
+        in
+        let global_lits = global_lits @ glits in
+        { global_lits; local_lits }
 
   (* normalize name *)
 
@@ -69,6 +111,12 @@ module F (L : Lit.T) = struct
         EffEvent { op; vs; v; phi }
 
   (* unify name *)
+
+  let close_fv x sevent =
+    match sevent with
+    | GuardEvent phi -> GuardEvent (close_fv x phi)
+    | EffEvent { op; vs; v; phi } ->
+        EffEvent { op; vs; v; phi = close_fv x phi }
 
   (* TODO: stat *)
 end

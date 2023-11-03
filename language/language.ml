@@ -146,64 +146,6 @@ module Rty = struct
     EffEvent { op; vs; v; phi = smart_and (phix :: props) }
 
   (* gather lits/rtys *)
-
-  open Zzdatatype.Datatype
-
-  type gathered_lits = {
-    global_lits : lit list;
-    local_lits : (string Nt.typed list * lit list) StrMap.t;
-  }
-
-  let gathered_lits_init () = { global_lits = []; local_lits = StrMap.empty }
-
-  let gathered_rm_dup { global_lits; local_lits } =
-    let global_lits = List.slow_rm_dup eq_lit global_lits in
-    let local_lits =
-      StrMap.map
-        (fun (vs, lits) -> (vs, List.slow_rm_dup eq_lit lits))
-        local_lits
-    in
-    { global_lits; local_lits }
-
-  let gather_from_sevent { global_lits; local_lits } sevent =
-    match sevent with
-    | GuardEvent phi ->
-        { global_lits = P.get_lits phi @ global_lits; local_lits }
-    | EffEvent { op; phi; vs; v } ->
-        let lits = P.get_lits phi in
-        let vs' = List.map (fun x -> x.Nt.x) (v :: vs) in
-        let is_contain_local_free lit =
-          match List.interset ( == ) vs' @@ P.fv_lit lit with
-          | [] -> false
-          | _ -> true
-        in
-        let llits, glits = List.partition is_contain_local_free lits in
-        let local_lits =
-          StrMap.update op
-            (fun l ->
-              match l with
-              | None -> Some (v :: vs, llits)
-              | Some (_, l) -> Some (v :: vs, l @ llits))
-            local_lits
-        in
-        let global_lits = global_lits @ glits in
-        { global_lits; local_lits }
-
-  let gather_from_regex regex =
-    let rec aux regex m =
-      match regex with
-      | EmptyA -> m
-      | AnyA -> m
-      | EpsilonA -> m
-      | EventA se -> gather_from_sevent m se
-      | LorA (t1, t2) -> aux t1 @@ aux t2 m
-      | SetMinusA (t1, t2) -> aux t1 @@ aux t2 m
-      | LandA (t1, t2) -> aux t1 @@ aux t2 m
-      | SeqA (t1, t2) -> aux t1 @@ aux t2 m
-      | StarA t -> aux t m
-      | ComplementA t -> aux t m
-    in
-    aux regex (gathered_lits_init ())
 end
 
 module Structure = struct
@@ -434,3 +376,16 @@ module TypedCoreEff = struct
     in
     lit #: v.ty
 end
+
+module Predictable = struct
+  type lit = Rty.P.lit
+  type prop = Rty.prop
+
+  let mk_true = Rty.P.mk_true
+  let mk_false = Rty.P.mk_false
+  let mk_lit lit = Rty.P.Lit lit
+  let mk_ite cond bencht benchf = Rty.P.Ite (Rty.P.Lit cond, bencht, benchf)
+  let layout_lit = Rty.layout_lit
+end
+
+module DT = Dtree.Dt.F (Predictable)

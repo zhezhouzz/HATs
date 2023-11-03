@@ -327,6 +327,18 @@ module F (L : Lit.T) = struct
     in
     aux [] [] rty
 
+  let destruct_to_gbindings rty =
+    let rec aux gvars hty =
+      match hty with
+      | Rty rty -> (
+          match rty with
+          | BaseRty _ -> _failatwith __FILE__ __LINE__ "die"
+          | ArrRty { arr = GhostArr x; rethty } -> aux (gvars @ [ x ]) rethty
+          | _ -> (gvars, hty))
+      | _ -> (gvars, hty)
+    in
+    aux [] rty
+
   let hty_to_triples hty =
     let rec aux hty =
       match hty with

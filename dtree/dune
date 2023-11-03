@@ -1,0 +1,12 @@
+(env
+  (dev
+    (flags (:standard -w -32 -w -35 -w -27))))
+
+(library
+ (name dtree)
+ (libraries str bigarray utils zzdatatype)
+ (modules
+   FastDT
+   dt
+ )
+)
