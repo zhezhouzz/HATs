@@ -1,12 +1,12 @@
 let add (path : Path.t) (content : Bytes.t) : bool =
-  if mtree_mem path then false
+  if mem path then false
   else
     let (parent_path : Path.t) = getParent path in
-    let (bytes' : Bytes.t) = mtree_get parent_path in
+    let (bytes' : Bytes.t) = get parent_path in
     if isDir bytes' then (
-      mtree_add_child parent_path path;
-      mtree_put path content;
-      mtree_put parent_path (addChild bytes' path);
+      connect_child parent_path path;
+      put path content;
+      put parent_path (addChild bytes' path);
       true)
     else false
 

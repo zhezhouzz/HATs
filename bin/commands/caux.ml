@@ -52,6 +52,6 @@ let cmd_config_ir_source summary f =
   Command.basic ~summary
     Command.Let_syntax.(
       let%map_open meta_config_file = anon ("meta_config_file" %: regular_file)
-      and ri_file = anon ("representation_invariant_file" %: regular_file)
-      and source_file = anon ("source_code_file" %: regular_file) in
-      f meta_config_file ri_file source_file)
+      and dir = anon ("representation_invariant_file" %: string)
+      and name = anon ("source_code_file" %: string) in
+      f meta_config_file dir name)
