@@ -1,6 +1,6 @@
 open Core
 open Commands
 
-(* let command = Command.group ~summary:"main " [ ("test", Ctest.test) ] *)
-
-let () = Command_unix.run Ctest.test
+let () =
+  Command_unix.run
+    (Command.group ~summary:"Poirot" (Ctest.test_cmds @ Cri.typecheck_cmds))

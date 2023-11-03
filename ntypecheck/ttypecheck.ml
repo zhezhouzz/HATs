@@ -336,7 +336,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           (Match (e, cases), ty)
     in
     let () =
-      Env.show_debug_preprocess @@ fun _ ->
+      Env.show_log "ntyping" @@ fun _ ->
       Ctx.pretty_print_infer ctx (layout_term x #: None, ty)
     in
     (x #: (Some ty), ty)

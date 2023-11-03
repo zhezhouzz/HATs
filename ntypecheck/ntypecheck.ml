@@ -43,8 +43,6 @@ let struc_infer_one opctx ctx x if_rec body =
   res
 
 let opt_to_typed_structure opctx ctx l =
-  let () = NTypectx.pretty_print_lines ctx in
-  let () = NOpTypectx.pretty_print_lines opctx in
   let l = map_imps (struc_infer_one opctx ctx) l in
   let l = map_rtys (rty_check opctx []) l in
   let l = map_aximos (Qualifiercheck.type_check_qualifier opctx []) l in

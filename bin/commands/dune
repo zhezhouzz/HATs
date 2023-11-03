@@ -8,6 +8,7 @@
  (modules
    caux
    ctest
+   cri
    cgen
  )
  (preprocess (pps ppx_inline_test ppx_assert ppx_jane))

@@ -58,9 +58,12 @@ let tp_to_sort ctx t =
   (*   Printf.printf "z3aux t: %s\n" @@ Sexplib.Sexp.to_string @@ sexp_of_t t *)
   (* in *)
   T.(
-    match to_smtty t with
-    | Int | Dt -> Integer.mk_sort ctx
-    | Bool -> Boolean.mk_sort ctx)
+    match t with
+    | Ty_uninter name -> Sort.mk_uninterpreted_s ctx name
+    | _ -> (
+        match to_smtty t with
+        | Int | Dt -> Integer.mk_sort ctx
+        | Bool -> Boolean.mk_sort ctx))
 
 let z3func ctx funcname inptps outtp =
   (* let () = Printf.printf "[%s]funcname: %s\n" __FILE__ funcname in *)
@@ -86,9 +89,12 @@ let z3func ctx funcname inptps outtp =
 
 let tpedvar_to_z3 ctx (tp, name) =
   T.(
-    match to_smtty tp with
-    | Dt | Int -> Integer.mk_const_s ctx name
-    | Bool -> Boolean.mk_const_s ctx name)
+    match tp with
+    | Ty_uninter _ -> Expr.mk_const_s ctx name (tp_to_sort ctx tp)
+    | _ -> (
+        match to_smtty tp with
+        | Dt | Int -> Integer.mk_const_s ctx name
+        | Bool -> Boolean.mk_const_s ctx name))
 
 let make_forall ctx qv body =
   if List.length qv == 0 then body

@@ -66,20 +66,18 @@ module F (I : CtxId) = struct
   let pretty_layout f ctx = List.split_by "\n" (layout_typed f) ctx
 
   let pretty_print f ctx =
-    Env.show_debug_typing (fun _ ->
-        if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
-        else
-          List.iter
-            (fun (x, ty) -> Pp.printf "%s:@{<green>%s@}," (I.layout x) (f ty))
-            ctx)
+    if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
+    else
+      List.iter
+        (fun (x, ty) -> Pp.printf "@{<bold>%s@}:%s," (I.layout x) (f ty))
+        ctx
 
   let pretty_print_lines f ctx =
-    Env.show_debug_typing (fun _ ->
-        if List.length ctx == 0 then Pp.printf "@{<green>∅@}\n"
-        else
-          List.iter
-            (fun (x, ty) -> Pp.printf "%s:@{<green>%s@}\n" (I.layout x) (f ty))
-            ctx)
+    if List.length ctx == 0 then Pp.printf "@{<green>∅---@}\n"
+    else
+      List.iter
+        (fun (x, ty) -> Pp.printf "@{<bold>%s@}:%s\n" (I.layout x) (f ty))
+        ctx
 
   let pretty_layout_judge ctx (e, ty) =
     Printf.sprintf "%s⊢\n%s :\n%s\n" ctx e ty

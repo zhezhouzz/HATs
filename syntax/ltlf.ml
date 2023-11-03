@@ -146,7 +146,9 @@ module F (L : Lit.T) = struct
         if has_len a 0 then a2
         else if has_len a 1 then SeqA (StarA a, a2)
         else _failatwith __FILE__ __LINE__ "unimp until"
-    | SFAPred _ -> _failatwith __FILE__ __LINE__ "die"
+    | SFAPred { name; _ } ->
+        _failatwith __FILE__ __LINE__
+          (spf "Automata pred %s is not desugered" name)
 
   let to_srl (a : ltlf) : regex = simpl @@ to_srl_aux a
 end

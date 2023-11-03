@@ -70,6 +70,7 @@ let of_ocamlexpr_aux expr =
         | "_G", [ e1 ] -> GlobalL (aux e1)
         | "_X", [ e1 ] -> NextL (aux e1)
         | "_U", [ a; b ] -> UntilL (aux a, aux b)
+        | "implies", [ a; b ] -> LorL (NegL (aux a), aux b)
         | "not", [ e1 ] -> NegL (aux e1)
         | "||", [ a; b ] ->
             (* let () = Printf.printf "11\n" in *)

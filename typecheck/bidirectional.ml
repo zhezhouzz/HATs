@@ -311,7 +311,10 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
           (xs, retty))
         ([], Rty fty) args
     in
-    let () = Printf.printf "rethty: %s\n" (layout_hty rethty) in
+    let () =
+      Env.show_debug_typing @@ fun _ ->
+      Printf.printf "rethty: %s\n" (layout_hty rethty)
+    in
     let { v; phi } = hty_force_cty rethty in
     let matched_lit = _value_to_lit __FILE__ __LINE__ matched in
     let phi = P.subst_prop (v.x, matched_lit.x) phi in
