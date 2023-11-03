@@ -11,7 +11,19 @@ let app_subst (appf_arg, v) appf_ret =
       let lit = _value_to_lit __FILE__ __LINE__ v in
       subst (x, lit.x) appf_ret
 
-let unify_arr_ret v (arr, rethty) =
+let unify_var_arr_ret y (arr, rethty) =
+  match arr with
+  | NormalArr x ->
+      let rethty = subst_hty_id (x.rx, y) rethty in
+      (Some { rx = y; rty = x.rty }, rethty)
+  | GhostArr _ -> _failatwith __FILE__ __LINE__ "die"
+  | ArrArr _ -> (None, rethty)
+
+let unify_var_func_rty y hty =
+  let arr, rethty = rty_destruct_arr __FILE__ __LINE__ hty in
+  unify_var_arr_ret y (arr, rethty)
+
+let app_v_arr_ret v (arr, rethty) =
   match arr with
   | NormalArr x ->
       let lit = _value_to_lit __FILE__ __LINE__ v in
@@ -23,15 +35,64 @@ let unify_arr_ret v (arr, rethty) =
       (Some { rx = x.x; rty = mk_top x.ty }, rethty)
   | ArrArr _ -> (None, rethty)
 
-let unify_arr v hty =
+let app_v_func_rty v hty =
   let arr, rethty = rty_destruct_arr __FILE__ __LINE__ hty in
-  unify_arr_ret v (arr, rethty)
+  app_v_arr_ret v (arr, rethty)
 
 let case_cond_mapping =
   [
     ("True", mk_rty_var_eq_c Nt.bool_ty (Const.B true));
     ("False", mk_rty_var_eq_c Nt.bool_ty (Const.B false));
   ]
+
+(* support one *)
+
+let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
+    (nvars : string rtyped list) (rpre : regex) =
+  let phi = mk_true in
+  let mk_solution x phi = x.Nt.x #:: (mk_from_prop x.Nt.ty (fun _ -> phi)) in
+  let solution = mk_solution gvar phi in
+  let typectx' = typectx_new_to_rights typectx (solution :: nvars) in
+  let res = subtyping_srl_bool __FILE__ __LINE__ typectx' (lpre, rpre) in
+  if res then solution.rty else _failatwith __FILE__ __LINE__ "die"
+
+let ghost_infer_aux typectx (lpre : regex) (gvars : string Nt.typed list)
+    (nvars : string rtyped list) (rpre : regex) =
+  match gvars with
+  | [] -> []
+  | [ x ] -> [ ghost_infer_one typectx lpre x nvars rpre ]
+  | _ -> _failatwith __FILE__ __LINE__ "unimp"
+
+let ghost_infer typectx (lpre : regex) (rty : rty) =
+  let gvars, vars, ress = destruct_to_bindings (Rty rty) in
+  let rpre = hty_to_pre ress in
+  let rtys = ghost_infer_aux typectx lpre gvars vars rpre in
+  let rty' =
+    List.fold_left
+      (fun rethty x -> Rty (ArrRty { arr = NormalArr x; rethty }))
+      ress vars
+  in
+  let bindings =
+    List.map
+      (fun (x, rty) -> { rx = x.x; rty })
+      (_safe_combine __FILE__ __LINE__ gvars rtys)
+  in
+  let bindings, rty'' =
+    List.fold_left
+      (fun (bindings, res) { rx; rty } ->
+        let rx' = Rename.unique rx in
+        let res = subst_hty_id (rx, rx') res in
+        (bindings @ [ { rx = rx'; rty } ], res))
+      ([], rty') bindings
+  in
+  Some (bindings, hty_force_rty rty'')
+
+let force_without_ghost typectx (rty : rty) (hty : hty) : (typectx * rty) option
+    =
+  let lpre = hty_to_pre hty in
+  let* bindings, rty = ghost_infer typectx lpre rty in
+  let typectx' = typectx_new_to_rights typectx bindings in
+  Some (typectx', rty)
 
 (* NOTE: The value term can only have pure refinement type (or a type error). *)
 let rec value_type_infer typectx (value : value typed) : rty option =
@@ -78,6 +139,12 @@ let rec value_type_infer typectx (value : value typed) : rty option =
           "type synthesis of functions are disallowed"
   in
   hty
+(* and value_op_infer_without_ghost typectx (op : string) (hty: hty) : (typectx * rty) option = *)
+(*   let lpre = hty_to_pre hty in *)
+(*   let* rty = value_type_infer typectx value in *)
+(*   let* (bindings, rty) = ghost_infer typectx lpre rty in *)
+(*   let typectx' = typectx_new_to_rights typectx bindings in *)
+(*   (typectx', rty) *)
 
 and value_type_check typectx (value : value typed) (hty : rty) : unit option =
   let str = layout_value value in
@@ -99,12 +166,10 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
     | ArrRty { arr = GhostArr Nt.{ x; ty }; rethty } ->
         let rulename = "TGhost" in
         let () = before_info __LINE__ rulename in
-        let typectx' = typectx_new_to_right typectx x #:: (mk_top ty) in
-        let rty =
-          match rethty with
-          | Rty rty -> rty
-          | _ -> _failatwith __FILE__ __LINE__ "die"
-        in
+        let x' = Rename.unique x in
+        let rethty = subst_hty_id (x, x') rethty in
+        let typectx' = typectx_new_to_right typectx x' #:: (mk_top ty) in
+        let rty = hty_force_rty rethty in
         let _ = end_info_b __LINE__ rulename true in
         handle_ghost typectx' rty
     | _ -> (typectx, rty)
@@ -123,16 +188,14 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
       res
       (* end_info_b __LINE__ rulename b *)
   | VVar _ ->
-      (* let rulename = "Var" in *)
-      (* let () = before_info __LINE__ rulename in *)
+      let rulename = "Var" in
+      let () = before_info __LINE__ rulename in
       let b =
         match value_type_infer typectx value with
         | None -> false
         | Some hty' -> subtyping_rty_bool __FILE__ __LINE__ typectx (hty', hty)
       in
-      let res = if b then Some () else None in
-      res
-      (* end_info_b __LINE__ rulename b *)
+      end_info_b __LINE__ rulename b
   | VFix { fixname; fixarg; fixbody } ->
       let rulename = "Fix" in
       let () = before_info __LINE__ rulename in
@@ -143,7 +206,7 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
   | VLam { lamarg; lambody } ->
       let rulename = "Lam" in
       let () = before_info __LINE__ rulename in
-      let rarg, rethty = unify_arr (VVar lamarg.x) #: lamarg.ty hty in
+      let rarg, rethty = unify_var_func_rty lamarg.x hty in
       let typectx' = typectx_newopt_to_right typectx rarg in
       let res = comp_type_check typectx' lambody rethty in
       end_info __LINE__ rulename res
@@ -155,7 +218,7 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
 (*   match arr with *)
 (*   | NormalArr x -> *)
 (*       let* () = value_type_check typectx apparg x.rty in *)
-(*       Some (None, snd @@ unify_arr_ret apparg (arr, rethty)) *)
+(*       Some (None, snd @@ app_v_arr_ret apparg (arr, rethty)) *)
 (*   | GhostArr { x; ty } -> *)
 (*       let typectx' = typectx_new_to_right typectx { rx = x; rty = mk_top ty } in *)
 (*       (\* _failatwith __FILE__ __LINE__ "unimp" *\) *)
@@ -175,15 +238,25 @@ and multi_app_type_infer_aux typectx (f_hty : rty) (appargs : value typed list)
         let arr, rethty = rty_destruct_arr __FILE__ __LINE__ rty in
         match arr with
         | NormalArr x ->
+            let () =
+              Env.show_log "debug_infer" @@ fun _ ->
+              Printf.printf "value_type_check %s <== %s\n" (layout_value apparg)
+                (layout_rty x.rty)
+            in
             let* () = value_type_check typectx apparg x.rty in
             aux
-              (Some (typectx, snd @@ unify_arr_ret apparg (arr, rethty)))
+              (Some (typectx, snd @@ app_v_arr_ret apparg (arr, rethty)))
               appargs
         | GhostArr { x; ty } ->
             let x' = Rename.unique x in
             let rethty = subst_hty_id (x, x') rethty in
             let typectx' =
               typectx_new_to_right typectx { rx = x'; rty = mk_top ty }
+            in
+            let () =
+              Env.show_log "debug_infer" @@ fun _ ->
+              Printf.printf "GhostArr ==> ctx: %s\n"
+                (RTypectx.layout_typed_l typectx'.rctx)
             in
             aux (Some (typectx', rethty)) (apparg :: appargs)
         | ArrArr rty ->
@@ -280,8 +353,17 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
   let comp_htriple_check_letappop rulename typectx (lhs, op, appopargs, letbody)
       hty =
     let () = before_info __LINE__ rulename in
-    let f_hty = ROpCtx.get_ty typectx.opctx op.x in
-    let* typectx', rhs_hty = multi_app_type_infer_aux typectx f_hty appopargs in
+    let f_rty = ROpCtx.get_ty typectx.opctx op.x in
+    let* typectx, f_rty = force_without_ghost typectx f_rty hty in
+    let () =
+      Env.show_log "debug_infer" @@ fun _ ->
+      Printf.printf "op rty: %s\n" (layout_rty f_rty)
+    in
+    let* typectx', rhs_hty = multi_app_type_infer_aux typectx f_rty appopargs in
+    let () =
+      Env.show_log "debug_infer" @@ fun _ ->
+      Printf.printf "==> ctx: %s\n" (RTypectx.layout_typed_l typectx'.rctx)
+    in
     let res = let_aux typectx' (lhs, rhs_hty) letbody hty in
     end_info __LINE__ rulename res
   in
@@ -291,6 +373,7 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
     let rulename = "LetApp" in
     let () = before_info __LINE__ rulename in
     let* appf_rty = value_type_infer typectx appf in
+    let* typectx, appf_rty = force_without_ghost typectx appf_rty hty in
     let* typectx', rhs_hty =
       multi_app_type_infer_aux typectx appf_rty [ apparg ]
     in
@@ -306,7 +389,7 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
         (fun (xs, fty) x ->
           let value = (VVar x.x) #: x.ty in
           let fty = hty_force_rty fty in
-          let rx, retty = unify_arr value fty in
+          let rx, retty = app_v_func_rty value fty in
           let xs = match rx with None -> xs | Some x -> xs @ [ x ] in
           (xs, retty))
         ([], Rty fty) args

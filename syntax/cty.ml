@@ -43,6 +43,10 @@ module F (L : Lit.T) = struct
 
   (* mk bot/top *)
 
+  let mk_from_prop ty phif =
+    let v = Nt.(v_name #: ty) in
+    { v; phi = phif v }
+
   let mk_unit_from_prop phi = Nt.{ v = v_name #: Ty_unit; phi }
   let mk_bot nt = Nt.{ v = v_name #: nt; phi = mk_false }
   let mk_top nt = Nt.{ v = v_name #: nt; phi = mk_true }

@@ -312,6 +312,36 @@ module F (L : Lit.T) = struct
     | ArrRty { arr = ArrArr rty; rethty } -> (rty, rethty)
     | _ -> _failatwith __FILE__ __LINE__ ""
 
+  let destruct_to_bindings rty =
+    let rec aux gvars vars hty =
+      match hty with
+      | Rty rty -> (
+          match rty with
+          | BaseRty _ -> _failatwith __FILE__ __LINE__ "die"
+          | ArrRty { arr; rethty } -> (
+              match arr with
+              | NormalArr x -> aux gvars (vars @ [ x ]) rethty
+              | GhostArr x -> aux (gvars @ [ x ]) vars rethty
+              | ArrArr _ -> aux gvars vars rethty))
+      | _ -> (gvars, vars, hty)
+    in
+    aux [] [] rty
+
+  let hty_to_triples hty =
+    let rec aux hty =
+      match hty with
+      | Rty _ -> _failatwith __FILE__ __LINE__ "die"
+      | Htriple { pre; resrty; post } -> [ (pre, resrty, post) ]
+      | Inter (h1, h2) -> aux h1 @ aux h2
+    in
+    aux hty
+
+  let hty_to_pre htyres =
+    let pres = List.map (fun (x, _, _) -> x) (hty_to_triples htyres) in
+    match pres with
+    | [] -> _failatwith __FILE__ __LINE__ "die"
+    | x :: pres -> List.fold_left (fun x y -> LorA (x, y)) x pres
+
   let get_argty rty =
     match rty with
     | Rty rty ->
@@ -326,6 +356,7 @@ module F (L : Lit.T) = struct
         rethty
     | _ -> _failatwith __FILE__ __LINE__ "die"
 
+  let mk_from_prop ty phif = BaseRty { cty = mk_from_prop ty phif }
   let snd_ty _ = _failatwith __FILE__ __LINE__ "unimp"
   let fst_ty _ = _failatwith __FILE__ __LINE__ "unimp"
   let bool_ty = default_ty
