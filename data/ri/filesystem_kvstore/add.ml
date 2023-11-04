@@ -7,7 +7,7 @@ let add (path : Path.t) (content : Bytes.t) : bool =
       let (bytes' : Bytes.t) = get parent_path in
       if isDir bytes' then (
         put path content;
-        put parent_path (addChild bytes' path);
+        (* put parent_path (addChild bytes' path); *)
         true)
       else false
 

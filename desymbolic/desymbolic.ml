@@ -78,7 +78,7 @@ let model_verify_bool sub_rty_bool (global_m, local_m) =
   (* in *)
   let b = not (sub_rty_bool bindings (lhs_rty, rhs_rty)) in
   let () =
-    Env.show_debug_queries @@ fun _ ->
+    Env.show_log "desymbolic" @@ fun _ ->
     Pp.printf "%s |- %s ≮: @{<bold>%s@}\n@{<bold>Result:@} %b\n"
       (List.split_by_comma
          (fun { rty; _ } -> spf "%s" (Rty.layout_rty rty))
@@ -142,23 +142,30 @@ let se_force_op = function
   | GuardEvent _ -> _failatwith __FILE__ __LINE__ "die"
   | EffEvent { op; vs; v; phi } -> (op, vs, v, phi)
 
-let desymbolic_sevent ctx mts se =
+let desymbolic_sevent ctx (mts, g) se =
   let open NRegex in
   match se with
   | GuardEvent phi ->
-      let l = mts_to_global_m mts in
-      let l =
-        List.filter
-          (fun global_embedding ->
-            let m = tab_i_to_b ctx.global_tab global_embedding in
-            op_models m phi)
-          l
+      (* let l = mts_to_global_m mts in *)
+      (* let l = *)
+      (*   List.filter *)
+      (*     (fun global_embedding -> *)
+      (*       let m = tab_i_to_b ctx.global_tab global_embedding in *)
+      (*       op_models m phi) *)
+      (*     l *)
+      (* in *)
+      let mts =
+        NRegex.mts_local_fold g
+          (fun mt res ->
+            let m = tab_i_to_b ctx.global_tab mt.global_embedding in
+            if op_models m phi then NRegex.Minterm mt :: res else res)
+          mts []
       in
-      if List.length l > 0 then Epsilon else Empt
+      if List.length mts > 0 then Union mts else Empt
   | _ ->
       let op = se_get_op se in
       let mts =
-        NRegex.mts_fold_on_op op
+        NRegex.mts_local_fold_on_op g op
           (fun mt res ->
             if models_event ctx mt se then NRegex.Minterm mt :: res else res)
           mts []
@@ -166,14 +173,25 @@ let desymbolic_sevent ctx mts se =
       if List.length mts > 0 then Union mts else Empt
 
 (* NOTE: the None indicate the emrty set *)
-let desymbolic ctx mts regex =
+let desymbolic_local ctx (mts, g) regex =
   let open NRegex in
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    Pp.printf "@{<bold>regex before:@} %s\n" (layout_regex regex)
+  in
   let rec aux regex =
     match regex with
     | EmptyA -> Empt
-    | AnyA -> Any
+    | AnyA ->
+        Any
+        (* let mts = *)
+        (*   NRegex.mts_local_fold g *)
+        (*     (fun mt res -> NRegex.Minterm mt :: res) *)
+        (*     mts [] *)
+        (* in *)
+        (* if List.length mts > 0 then Union mts else Empt *)
     | EpsilonA -> Epsilon
-    | EventA se -> desymbolic_sevent ctx mts se
+    | EventA se -> desymbolic_sevent ctx (mts, g) se
     | LorA (t1, t2) -> Union [ aux t1; aux t2 ]
     | SetMinusA (t1, t2) -> Diff (aux t1, aux t2)
     | LandA (t1, t2) -> Intersect [ aux t1; aux t2 ]
@@ -182,7 +200,24 @@ let desymbolic ctx mts regex =
     | ComplementA t -> Complement (aux t)
   in
   let res = aux regex in
-  simp res
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    Pp.printf "@{<bold>regex after:@} %s\n" (reg_to_string res)
+  in
+  let res = simp res in
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    Pp.printf "@{<bold>regex simpl:@} %s\n" (reg_to_string res)
+  in
+  res
+
+let desymbolic ctx mts regex =
+  (* let open NRegex in *)
+  let ress =
+    IntMap.to_value_list
+    @@ IntMap.mapi (fun g _ -> desymbolic_local ctx (mts, g) regex) mts
+  in
+  ress
 
 (* let get_max_lits () = *)
 (*   let n = !Head.stat_max_lits in *)
@@ -192,7 +227,7 @@ let filter_sat_mts_ ctx sub_rty_bool_with_binding mts =
   NRegex.mts_filter_map
     (fun mt ->
       let () =
-        Env.show_debug_queries @@ fun _ ->
+        Env.show_log "desymbolic" @@ fun _ ->
         Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt)
       in
       let b = minterm_verify_bool sub_rty_bool_with_binding ctx mt in

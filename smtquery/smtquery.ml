@@ -60,7 +60,7 @@ let check_inclusion (r1, r2) = Check.inclusion_query ctx r1 r2
 let check_inclusion_bool (r1, r2) =
   let runtime, res = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
   let () =
-    Env.show_debug_debug @@ fun _ ->
+    Env.show_log "smt_regex" @@ fun _ ->
     Printf.printf "check_inclusion_bool: %f\n" runtime
   in
   match res with
@@ -69,7 +69,7 @@ let check_inclusion_bool (r1, r2) =
   | Some mt_list ->
       (* ( Env.show_debug_queries @@ fun _ -> *)
       (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
-      ( Env.show_debug_info @@ fun _ ->
+      ( Env.show_log "smt_regex" @@ fun _ ->
         Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
           (Check.layout_counterexample mt_list) );
       false
@@ -83,7 +83,7 @@ let check_inclusion_counterexample (r1, r2) =
   match res with
   | None -> None
   | Some mt_list ->
-      ( Env.show_debug_info @@ fun _ ->
+      ( Env.show_log "smt_regex" @@ fun _ ->
         Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
           (Check.layout_counterexample mt_list) );
       Some mt_list

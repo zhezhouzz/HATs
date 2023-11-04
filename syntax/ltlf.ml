@@ -121,6 +121,7 @@ module F (L : Lit.T) = struct
     | EventL sevent -> SeqA (EventA sevent, mk_regex_all)
     | LastL -> AnyA
     | GlobalL (EventL se) -> StarA (EventA se)
+    | GlobalL (NegL (EventL se)) -> StarA (SetMinusA (AnyA, EventA se))
     | GlobalL a ->
         let a' = to_srl_aux a in
         if has_len a' 0 then EmptyA

@@ -18,6 +18,8 @@ module F (L : Lit.T) = struct
 
   type sfa = regex [@@deriving sexp]
 
+  let raw_to_string r = Sexplib.Sexp.to_string @@ sexp_of_regex r
+
   (* open Sugar *)
   (* open Common *)
 
@@ -110,62 +112,144 @@ module F (L : Lit.T) = struct
 
   open Sugar
 
-  let is_aligned (r1, r2) = eq_sfa_len (has_len_aux r1) (has_len_aux r2)
+  let is_aligned (r1, r2) =
+    match (has_len_aux r1, has_len_aux r2) with
+    | EmptySet, EmptySet -> true
+    | HasUniqLen n, HasUniqLen n' when n == n' -> true
+    | _, _ -> false
+  (* eq_sfa_len (has_len_aux r1) (has_len_aux r2) *)
+
+  type layout_setting = {
+    sym_true : string;
+    sym_false : string;
+    sym_and : string;
+    sym_or : string;
+    sym_not : string;
+    sym_implies : string;
+    sym_iff : string;
+    sym_forall : string;
+    sym_exists : string;
+    layout_typedid : string Nt.typed -> string;
+    layout_mp : string -> string;
+  }
+
+  let psetting =
+    {
+      sym_true = "⊤";
+      sym_false = "⊥";
+      sym_and = " ∧ ";
+      sym_or = " ∨ ";
+      sym_not = "¬";
+      sym_implies = "=>";
+      sym_iff = "<=>";
+      sym_forall = "∀";
+      sym_exists = "∃";
+      layout_typedid = (fun x -> x.x);
+      (* (fun x ->          Printf.spf "(%s:%s)" x.x (Ty.layout x.ty)); *)
+      layout_mp = (fun x -> x);
+    }
+
+  let rec raw_pprint_aux = function
+    | EmptyA -> ("∅", true)
+    | EpsilonA -> ("ϵ", true)
+    | EventA _ -> ("se", true)
+    | LorA (a1, a2) ->
+        (spf "%s%s%s" (raw_p_pprint a1) psetting.sym_or (raw_p_pprint a2), false)
+    | SetMinusA (a1, a2) ->
+        (spf "%s\\%s" (raw_p_pprint a1) (raw_p_pprint a2), false)
+    | LandA (a1, a2) ->
+        ( spf "%s%s%s" (raw_p_pprint a1) psetting.sym_and (raw_p_pprint a2),
+          false )
+    | SeqA (a1, a2) -> (spf "%s;%s" (raw_p_pprint a1) (raw_p_pprint a2), false)
+    (* | StarA AnyA -> (".*", true) *)
+    | StarA a -> (spf "%s*" (raw_p_pprint a), true)
+    | AnyA -> (".", true)
+    (* | ComplementA (EventA se) -> spf "%sᶜ" (pprint (EventA se)) *)
+    | ComplementA a -> (spf "%sᶜ" (raw_p_pprint a), true)
+
+  (* let rec raw_pprint_aux = function *)
+  (*   | EmptyA -> ("∅", true) *)
+  (*   | EpsilonA -> ("ϵ", true) *)
+  (*   | EventA se -> (To_se.pprint se, true) *)
+  (*   | LorA (a1, a2) -> *)
+  (*       (spf "%s%s%s" (raw_p_pprint a1) psetting.sym_or (raw_p_pprint a2), false) *)
+  (*   | SetMinusA (a1, a2) -> (spf "%s\\%s" (raw_p_pprint a1) (raw_p_pprint a2), false) *)
+  (*   | LandA (a1, a2) -> *)
+  (*       (spf "%s%s%s" (raw_p_pprint a1) psetting.sym_and (raw_p_pprint a2), false) *)
+  (*   | SeqA (a1, a2) -> (spf "%s;%s" (raw_p_pprint a1) (raw_p_pprint a2), false) *)
+  (*   (\* | StarA AnyA -> (".*", true) *\) *)
+  (*   | StarA a -> (spf "%s*" (raw_p_pprint a), true) *)
+  (*   | AnyA -> (".", true) *)
+  (*   (\* | ComplementA (EventA se) -> spf "%sᶜ" (pprint (EventA se)) *\) *)
+  (*   | ComplementA a -> (spf "%sᶜ" (raw_p_pprint a), true) *)
+
+  and raw_p_pprint a =
+    let str, is_p = raw_pprint_aux a in
+    if is_p then str else spf "(%s)" str
 
   let rec simpl r =
-    match r with
-    | EventA (GuardEvent phi) when is_true phi -> AnyA
-    | EventA (GuardEvent phi) when is_false phi -> EmptyA
-    | EmptyA | EpsilonA | AnyA | EventA _ -> r
-    | LorA (r1, r2) -> (
-        let r1, r2 = map2 simpl (r1, r2) in
-        match (r1, r2) with
-        | StarA AnyA, _ | _, StarA AnyA -> StarA AnyA
-        | SeqA (r11, r12), SeqA (r21, r22) when is_aligned (r11, r21) ->
-            SeqA (simpl (LorA (r11, r21)), simpl (LorA (r12, r22)))
-        | _, _ -> (
-            match (has_len_aux r1, has_len_aux r2) with
-            | EmptySet, _ -> r2
-            | _, EmptySet -> r1
-            | _ -> LorA (r1, r2)))
-    | LandA (r1, r2) -> (
-        let r1, r2 = map2 simpl (r1, r2) in
-        match (r1, r2) with
-        | StarA AnyA, r2 -> r2
-        | r1, StarA AnyA -> r1
-        | SeqA (r11, r12), SeqA (r21, r22) when is_aligned (r11, r21) ->
-            SeqA (simpl (LandA (r11, r21)), simpl (LandA (r12, r22)))
-        | _, _ -> (
-            match (has_len_aux r1, has_len_aux r2) with
-            | EmptySet, _ | _, EmptySet -> EmptyA
-            | _ -> (
-                match (r1, r2) with
-                | AnyA, _ -> be_singleton r2
-                | _, AnyA -> be_singleton r1
-                | _, _ -> LandA (r1, r2))))
-    | SeqA (r1, r2) -> (
-        let r1, r2 = map2 simpl (r1, r2) in
-        match (has_len_aux r1, has_len_aux r2) with
-        | EmptySet, _ | _, EmptySet -> EmptyA
-        | HasUniqLen 0, _ -> r2
-        | _, HasUniqLen 0 -> r1
-        | _ -> SeqA (r1, r2))
-    | StarA r -> (
-        let r = simpl r in
-        match has_len_aux r with
-        | EmptySet -> EmptyA
-        | HasUniqLen 0 -> EpsilonA
-        | _ -> StarA r)
-    | ComplementA (ComplementA a) -> simpl a
-    | ComplementA a -> (
-        let a' = simpl a in
-        match a' with ComplementA a' -> a' | _ -> ComplementA a')
-    | SetMinusA (r1, r2) -> (
-        let r1, r2 = map2 simpl (r1, r2) in
-        match (has_len_aux r1, has_len_aux r2) with
-        | EmptySet, _ -> EmptyA
-        | _, EmptySet -> r1
-        | _ -> SetMinusA (r1, r2))
+    let res =
+      match r with
+      | EventA (GuardEvent phi) when is_true phi -> AnyA
+      | EventA (GuardEvent phi) when is_false phi -> EmptyA
+      | EmptyA | EpsilonA | AnyA | EventA _ -> r
+      | LorA (r1, r2) -> (
+          let r1, r2 = map2 simpl (r1, r2) in
+          match (r1, r2) with
+          | StarA AnyA, _ | _, StarA AnyA -> StarA AnyA
+          | SeqA (r11, r12), SeqA (r21, r22) when is_aligned (r11, r21) ->
+              SeqA (simpl (LorA (r11, r21)), simpl (LorA (r12, r22)))
+          | _, _ -> (
+              match (has_len_aux r1, has_len_aux r2) with
+              | EmptySet, _ -> r2
+              | _, EmptySet -> r1
+              | _ -> LorA (r1, r2)))
+      | LandA (r1, r2) -> (
+          let r1, r2 = map2 simpl (r1, r2) in
+          match (r1, r2) with
+          | StarA AnyA, r2 -> r2
+          | r1, StarA AnyA -> r1
+          | SeqA (r11, r12), SeqA (r21, r22) when is_aligned (r11, r21) ->
+              SeqA (simpl (LandA (r11, r21)), simpl (LandA (r12, r22)))
+          | _, _ -> (
+              match (has_len_aux r1, has_len_aux r2) with
+              | EmptySet, _ | _, EmptySet -> EmptyA
+              | _ -> (
+                  match (r1, r2) with
+                  | AnyA, _ -> be_singleton r2
+                  | _, AnyA -> be_singleton r1
+                  | _, _ -> LandA (r1, r2))))
+      | SeqA (r1, r2) -> (
+          let r1, r2 = map2 simpl (r1, r2) in
+          match (has_len_aux r1, has_len_aux r2) with
+          | EmptySet, _ | _, EmptySet -> EmptyA
+          | HasUniqLen 0, _ -> r2
+          | _, HasUniqLen 0 -> r1
+          | _ -> SeqA (r1, r2))
+      | StarA r -> (
+          let r = simpl r in
+          match has_len_aux r with
+          | EmptySet -> EmptyA
+          | HasUniqLen 0 -> EpsilonA
+          | _ -> StarA r)
+      | ComplementA (ComplementA a) -> simpl a
+      | ComplementA a -> (
+          let a' = simpl a in
+          match a' with ComplementA a' -> a' | _ -> ComplementA a')
+      | SetMinusA (r1, r2) -> (
+          let r1, r2 = map2 simpl (r1, r2) in
+          match (has_len_aux r1, has_len_aux r2) with
+          | EmptySet, _ -> EmptyA
+          | _, EmptySet -> r1
+          | _ -> SetMinusA (r1, r2))
+    in
+    (* let () = *)
+    (*   Env.show_log "desymbolic" @@ fun _ -> *)
+    (*   if not (eq r res) then ( *)
+    (*     Pp.printf "@{<bold>[--simpl] regex before:@} %s\n" (raw_p_pprint r); *)
+    (*     Pp.printf "@{<bold>[--simpl] regex after:@} %s\n" (raw_p_pprint res)) *)
+    (* in *)
+    res
 
   (* subst *)
 

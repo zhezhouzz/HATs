@@ -42,10 +42,6 @@ let elrond verifier features fvtab =
         in
         let dt = DT.classify_hash_is_not_neg (Array.length features) fvtab in
         let prop = P.simpl @@ DT.to_prop features dt in
-        let () =
-          Env.show_log "elim_ghost" @@ fun _ ->
-          Pp.printf "@{<bold>@{<yellow> prop: %s@}@}\n" (layout_prop prop)
-        in
         if verifier prop then
           let () =
             Env.show_log "elim_ghost" @@ fun _ ->
@@ -67,8 +63,10 @@ let elrond verifier features fvtab =
         let prop = P.simpl @@ DT.to_prop features dt in
         if verifier prop then Some prop else None
   in
-  let res = loop () in
-  res
+  if verifier mk_true then
+    let res = loop () in
+    res
+  else None
 
 (* let candidate_to_prop ictx candidate = *)
 (*   let l = List.map (fun idx -> List.nth ictx.ftab idx) candidate in *)
@@ -134,6 +132,10 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
   let () = DT.pprint_fvtab features fvtab in
   (* let mk_solution x phi = (x,  #:: (mk_from_prop x.Nt.ty (fun _ -> phi)) in *)
   let verifier phi =
+    let () =
+      Env.show_log "elim_ghost" @@ fun _ ->
+      Pp.printf "@{<bold>@{<yellow>verifier %s@}@}\n" (layout_prop phi)
+    in
     let rpre = close_fv (gvar, phi) rpre in
     subtyping_srl_bool __FILE__ __LINE__ typectx (lpre, rpre)
   in
@@ -146,7 +148,10 @@ let ghost_infer_aux typectx (lpre : regex) (gvars : string Nt.typed list)
     (rpre : regex) =
   match gvars with
   | [] -> []
-  | [ x ] -> [ ghost_infer_one typectx lpre x rpre ]
+  (* | [ x ] -> [ ghost_infer_one typectx lpre x rpre ] *)
+  | [ x ] ->
+      if true then [ mk_from_prop x.Nt.ty (fun _ -> mk_true) ]
+      else [ ghost_infer_one typectx lpre x rpre ]
   | _ -> _failatwith __FILE__ __LINE__ "unimp"
 
 open TypedCoreEff

@@ -69,8 +69,15 @@ and sub_srl_bool rctx (srl1, srl2) =
   (* let () = *)
   (*   Printf.printf "srl2: %s\n" (Sexplib.Sexp.to_string @@ sexp_of_srl srl2) *)
   (* in *)
+  let srl1' = simpl srl1 in
+  (* let () = *)
+  (*   Env.show_log "desymbolic" @@ fun _ -> *)
+  (*   Pp.printf "@{<bold>[simpl] regex before:@} %s\n" (layout_regex srl1); *)
+  (*   Pp.printf "@{<bold>[simpl] regex after:@} %s\n" (layout_regex srl1') *)
+  (* in *)
+  let srl2' = simpl srl2 in
   let res =
-    match (simpl srl1, simpl srl2) with
+    match (srl1', srl2') with
     | EmptyA, _ | _, StarA AnyA -> true
     | _, EmptyA ->
         (* let () = Printf.printf "sdsd\n" in *)
@@ -119,45 +126,48 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
       mts
   in
   let () = Env.show_debug_queries @@ fun _ -> NRegex.pprint_mts mts in
-  let runtime, srl1 =
+  let runtime1, srl1 =
     Sugar.clock (fun () -> Desymbolic.desymbolic ctx mts srl1)
   in
-  let () =
-    Env.show_debug_stat @@ fun _ ->
-    Printf.printf "Desymbolic.desymbolic r1: %f\n" runtime
-  in
-  let runtime, srl2 =
+  let runtime2, srl2 =
     Sugar.clock (fun () -> Desymbolic.desymbolic ctx mts srl2)
   in
-  let () =
-    Env.show_debug_stat @@ fun _ ->
-    Printf.printf "Desymbolic.desymbolic r2: %f\n" runtime
+  let check (srl1, srl2) =
+    let () =
+      Env.show_debug_stat @@ fun _ ->
+      Printf.printf "Desymbolic.desymbolic r1: %f\n" runtime1;
+      Printf.printf "Desymbolic.desymbolic r2: %f\n" runtime2
+    in
+    let () =
+      Env.show_debug_info @@ fun _ ->
+      Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n"
+        (NRegex.reg_to_string srl1)
+    in
+    let () =
+      Env.show_debug_info @@ fun _ ->
+      Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
+        (NRegex.reg_to_string srl2)
+    in
+    let res = Smtquery.check_inclusion_counterexample (srl1, srl2) in
+    (* let () = *)
+    (*   if 1 == !debug_counter then failwith "end" *)
+    (*   else debug_counter := !debug_counter + 1 *)
+    (* in *)
+    let res =
+      match res with
+      | None -> true
+      | Some mt_list ->
+          ( Env.show_debug_debug @@ fun _ ->
+            Desymbolic.display_trace rctx ctx mt_list );
+          false
+    in
+    let () =
+      Env.show_debug_queries @@ fun _ ->
+      Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res
+    in
+    res
   in
-  let () =
-    Env.show_debug_info @@ fun _ ->
-    Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n" (NRegex.reg_to_string srl1)
-  in
-  let () =
-    Env.show_debug_info @@ fun _ ->
-    Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n" (NRegex.reg_to_string srl2)
-  in
-  let res = Smtquery.check_inclusion_counterexample (srl1, srl2) in
-  (* let () = *)
-  (*   if 1 == !debug_counter then failwith "end" *)
-  (*   else debug_counter := !debug_counter + 1 *)
-  (* in *)
-  let res =
-    match res with
-    | None -> true
-    | Some mt_list ->
-        ( Env.show_debug_debug @@ fun _ ->
-          Desymbolic.display_trace rctx ctx mt_list );
-        false
-  in
-  let () =
-    Env.show_debug_queries @@ fun _ ->
-    Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res
-  in
+  let res = List.for_all check @@ _safe_combine __FILE__ __LINE__ srl1 srl2 in
   res
 
 let is_bot_hty rctx = function

@@ -11,4 +11,5 @@ let[@axiom] bytes2 ((content [@forall]) : Bytes.t) =
 (*   iff (is_dir content) (is_dir (add_child content path)) *)
 
 let[@axiom] path1 ((path [@forall]) : Path.t) =
-  iff (is_root path) (path == parent path)
+  (* iff (is_root path) (path == parent path) *)
+  not (path == parent path)
