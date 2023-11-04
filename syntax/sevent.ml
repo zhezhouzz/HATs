@@ -66,6 +66,7 @@ module F (L : Lit.T) = struct
     { global_lits; local_lits }
 
   let gather { global_lits; local_lits } sevent =
+    let () = Printf.printf ">>>>> gather:\n" in
     match sevent with
     | GuardEvent phi ->
         { global_lits = P.get_lits phi @ global_lits; local_lits }

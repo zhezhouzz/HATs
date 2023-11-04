@@ -38,10 +38,13 @@ module F (L : Lit.T) = struct
       | l -> Or l
 
   let get_lits prop =
+    let () = Printf.printf ">>>>> get_lits:\n" in
     let rec aux e res =
       match e with
       | Lit (AC _) -> res
-      | Lit lit -> lit :: res
+      | Lit lit -> (
+          let litopt = get_non_unit_lit lit #: bool_ty in
+          match litopt with None -> res | Some lit -> lit :: res)
       | Implies (e1, e2) -> aux e1 @@ aux e2 res
       | Ite (e1, e2, e3) -> aux e1 @@ aux e2 @@ aux e3 res
       | Not e -> aux e res
@@ -173,22 +176,22 @@ module F (L : Lit.T) = struct
     in
     List.slow_rm_dup String.equal @@ aux prop
 
-  let get_lits prop =
-    let rec aux e res =
-      match e with
-      | Lit (AC _) -> res
-      | Lit lit -> lit :: res
-      | Implies (e1, e2) -> aux e1 @@ aux e2 res
-      | Ite (e1, e2, e3) -> aux e1 @@ aux e2 @@ aux e3 res
-      | Not e -> aux e res
-      | And es -> List.fold_right aux es res
-      | Or es -> List.fold_right aux es res
-      | Iff (e1, e2) -> aux e1 @@ aux e2 res
-      | Forall _ -> _failatwith __FILE__ __LINE__ "die"
-      | Exists _ -> _failatwith __FILE__ __LINE__ "die"
-    in
-    let (lits : lit list) = aux prop [] in
-    Zzdatatype.Datatype.List.slow_rm_dup eq_lit lits
+  (* let get_lits prop = *)
+  (*   let rec aux e res = *)
+  (*     match e with *)
+  (*     | Lit (AC _) -> res *)
+  (*     | Lit lit -> lit :: res *)
+  (*     | Implies (e1, e2) -> aux e1 @@ aux e2 res *)
+  (*     | Ite (e1, e2, e3) -> aux e1 @@ aux e2 @@ aux e3 res *)
+  (*     | Not e -> aux e res *)
+  (*     | And es -> List.fold_right aux es res *)
+  (*     | Or es -> List.fold_right aux es res *)
+  (*     | Iff (e1, e2) -> aux e1 @@ aux e2 res *)
+  (*     | Forall _ -> _failatwith __FILE__ __LINE__ "die" *)
+  (*     | Exists _ -> _failatwith __FILE__ __LINE__ "die" *)
+  (*   in *)
+  (*   let (lits : lit list) = aux prop [] in *)
+  (*   Zzdatatype.Datatype.List.slow_rm_dup eq_lit lits *)
 
   let subst_lit_lit (lit1, prop) e =
     let rec aux e =

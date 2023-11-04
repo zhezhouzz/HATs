@@ -29,6 +29,7 @@ module type T = sig
   val find_assignment_of_intvar : lit -> string -> lit option
   val get_uninterops_from_lit : lit -> string list
   val get_uninterops_from_tlit : lit typed -> string list
+  val get_non_unit_lit : lit typed -> lit option
 end
 
 module F (Ty : Typed.T) : T with type t = Ty.t and type 'a typed = 'a Ty.typed =
@@ -58,6 +59,24 @@ struct
     res
 
   open Sugar
+  open Zzdatatype.Datatype
+
+  let rec get_non_unit_lit lit =
+    let () =
+      Printf.printf ">>>>> get_non_unit_lit: %s\n"
+        (Sexplib.Sexp.to_string (sexp_of_lit lit.x))
+    in
+    if eq unit_ty lit.ty then None
+    else
+      match lit.x with
+      | AAppOp (op, args) -> (
+          let () =
+            Printf.printf ">>>>> %s: %s\n" (Op.to_string op.x)
+              (List.split_by_comma (fun x -> layout x.ty) args)
+          in
+          let res = List.filter_map get_non_unit_lit args in
+          match res with [] -> None | _ -> Some lit.x)
+      | _ -> Some lit.x
 
   let force_to_id = function
     | AVar x -> x
