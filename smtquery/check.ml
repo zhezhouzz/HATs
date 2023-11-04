@@ -223,8 +223,8 @@ let inclusion_query ctx r1 r2 =
       (*   if 1 == !debug_counter then failwith "end" *)
       (*   else debug_counter := !debug_counter + 1 *)
       (* in *)
-      ( Env.show_log "smt_regex" @@ fun _ ->
-        Printf.printf "model:\n%s\n" (Z3.Model.to_string model) );
+      (* ( Env.show_log "smt_regex" @@ fun _ -> *)
+      (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
       let str =
         match Z3aux.get_string_by_name model sequence_name with
         | Some str -> str

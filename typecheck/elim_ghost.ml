@@ -127,6 +127,7 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
     Printf.printf "type_safe_lits:\n%s\n"
     @@ List.split_by "\n" (fun lit -> spf "%s" (layout_lit lit)) type_safe_lits
   in
+  let () = _failatwith __FILE__ __LINE__ "end" in
   let features = Array.of_list type_safe_lits in
   let fvtab = DT.init_fvtab features in
   let () = DT.pprint_fvtab features fvtab in
@@ -156,10 +157,27 @@ let ghost_infer_aux typectx (lpre : regex) (gvars : string Nt.typed list)
 
 open TypedCoreEff
 
+let mk_ctx_rty typectx gvars rtys hty =
+  let bindings =
+    List.map
+      (fun (x, rty) -> { rx = x.x; rty })
+      (_safe_combine __FILE__ __LINE__ gvars rtys)
+  in
+  let bindings, hty' =
+    List.fold_left
+      (fun (bindings, res) { rx; rty } ->
+        let rx' = Rename.unique rx in
+        let res = subst_hty_id (rx, rx') res in
+        (bindings @ [ { rx = rx'; rty } ], res))
+      ([], hty) bindings
+  in
+  let typectx' = typectx_new_to_rights typectx bindings in
+  Some (typectx', hty_force_rty hty')
+
 let ghost_infer typectx (lpre : regex) (args : value typed list) (rty : rty) =
   let gvars, rty = destruct_to_gbindings (Rty rty) in
   match gvars with
-  | [] -> Some ([], hty_force_rty rty)
+  | [] -> Some (typectx, hty_force_rty rty)
   | _ ->
       let () =
         Env.show_log "elim_ghost" @@ fun _ ->
@@ -176,26 +194,20 @@ let ghost_infer typectx (lpre : regex) (args : value typed list) (rty : rty) =
         Env.show_log "elim_ghost" @@ fun _ ->
         Printf.printf "ress: %s\n" (layout_hty ress)
       in
-      let rpre = hty_to_pre ress in
+      let rpre =
+        match hty_to_pre_opt ress with
+        | Some rpre -> rpre
+        | None -> _failatwith __FILE__ __LINE__ "die"
+      in
       let rtys = ghost_infer_aux typectx lpre gvars rpre in
-      let bindings =
-        List.map
-          (fun (x, rty) -> { rx = x.x; rty })
-          (_safe_combine __FILE__ __LINE__ gvars rtys)
-      in
-      let bindings, rty' =
-        List.fold_left
-          (fun (bindings, res) { rx; rty } ->
-            let rx' = Rename.unique rx in
-            let res = subst_hty_id (rx, rx') res in
-            (bindings @ [ { rx = rx'; rty } ], res))
-          ([], rty) bindings
-      in
-      Some (bindings, hty_force_rty rty')
+      mk_ctx_rty typectx gvars rtys rty
 
 let force_without_ghost typectx (rty : rty) (args : value typed list)
     (hty : hty) : (typectx * rty) option =
-  let lpre = hty_to_pre hty in
-  let* bindings, rty = ghost_infer typectx lpre args rty in
-  let typectx' = typectx_new_to_rights typectx bindings in
-  Some (typectx', rty)
+  let lpre = hty_to_pre_opt hty in
+  match lpre with
+  | Some lpre -> ghost_infer typectx lpre args rty
+  | None ->
+      let gvars, rty = destruct_to_gbindings (Rty rty) in
+      let rtys = List.map (fun x -> Rty.mk_top x.ty) gvars in
+      mk_ctx_rty typectx gvars rtys rty

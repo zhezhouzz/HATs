@@ -1,6 +1,5 @@
 open Language
-
-(* open Zzdatatype.Datatype *)
+open Zzdatatype.Datatype
 open Sugar
 open Rty
 
@@ -97,7 +96,7 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
     Printf.printf "sub_srl_bool_aux R: %s\n" (RTypectx.layout_typed_l rctx)
   in
   let runtime, (ctx, mts) =
-    Sugar.clock (fun () -> Desymbolic.ctx_init (LorA (srl1, srl2)))
+    Sugar.clock (fun () -> Desymbolic.ctx_ctx_init rctx (LorA (srl1, srl2)))
   in
   let () =
     Env.show_debug_stat @@ fun _ ->

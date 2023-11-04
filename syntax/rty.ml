@@ -342,17 +342,17 @@ module F (L : Lit.T) = struct
   let hty_to_triples hty =
     let rec aux hty =
       match hty with
-      | Rty _ -> _failatwith __FILE__ __LINE__ "die"
+      | Rty _ -> []
       | Htriple { pre; resrty; post } -> [ (pre, resrty, post) ]
       | Inter (h1, h2) -> aux h1 @ aux h2
     in
     aux hty
 
-  let hty_to_pre htyres =
+  let hty_to_pre_opt htyres =
     let pres = List.map (fun (x, _, _) -> x) (hty_to_triples htyres) in
     match pres with
-    | [] -> _failatwith __FILE__ __LINE__ "die"
-    | x :: pres -> List.fold_left (fun x y -> LorA (x, y)) x pres
+    | [] -> None
+    | x :: pres -> Some (List.fold_left (fun x y -> LorA (x, y)) x pres)
 
   let get_argty rty =
     match rty with

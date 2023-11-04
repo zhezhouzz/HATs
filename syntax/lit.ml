@@ -13,6 +13,9 @@ module type T = sig
   val typed_force_to_id_list : lit typed list -> string list
   val mk_lit_true : lit
   val mk_lit_false : lit
+  val get_op_args : lit -> lit typed list
+  val mk_lit_eq_lit : t -> lit -> lit -> lit
+  val mk_var_eq_var : t -> string -> string -> lit
   val subst_lit : string * lit -> lit -> lit
   val subst_lit_id : string * string -> lit -> lit
   val fv_lit : lit -> string list
@@ -42,6 +45,8 @@ struct
     | AAppOp of Op.t typed * lit typed list
   [@@deriving sexp]
 
+  let get_op_args lit = match lit with AAppOp (_, args) -> args | _ -> []
+
   let compare_lit l1 l2 =
     let res = Sexplib.Sexp.compare (sexp_of_lit l1) (sexp_of_lit l2) in
     (* let () = *)
@@ -63,6 +68,16 @@ struct
   let mk_lit_true = AC (Constant.B true)
   let mk_lit_false = AC (Constant.B false)
   let get_var_opt = function AVar x -> Some x | _ -> None
+
+  let mk_lit_eq_lit ty lx ly =
+    let mk_eq_typed_op = Op.mk_eq_op #: T.(mk_arr ty (mk_arr ty bool_ty)) in
+    AAppOp (mk_eq_typed_op, [ lx #: ty; ly #: ty ])
+
+  let mk_var_eq_var ty x y =
+    let lx = AVar x in
+    let ly = AVar y in
+    let mk_eq_typed_op = Op.mk_eq_op #: T.(mk_arr ty (mk_arr ty bool_ty)) in
+    AAppOp (mk_eq_typed_op, [ lx #: ty; ly #: ty ])
 
   let mk_int_l1_eq_l2 l1 l2 =
     let mk_eq_typed_op =
