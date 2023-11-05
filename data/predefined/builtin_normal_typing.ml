@@ -13,13 +13,20 @@ val ( mod ) : int -> int -> int
 val ( * ) : int -> int -> int
 val ( / ) : int -> int -> int
 val not : bool -> bool
+
+(* path *)
 val parent : Path.t -> Path.t
 val is_root : Path.t -> bool
+
+(* bytes *)
 val is_deleted : Bytes.t -> bool
 val is_dir : Bytes.t -> bool
 val add_child : Bytes.t -> Path.t -> Bytes.t
 val del_child : Bytes.t -> Path.t -> Bytes.t
 
+(* elem *)
+val elem_lt : Elem.t -> Elem.t -> bool
+val elem_eq : Elem.t -> Elem.t -> bool
 (* eff operator **)
 
 (* set *)

@@ -56,3 +56,11 @@ let[@libRty] ( * ) ?l:(a = (true : [%v: int]) [@over])
 let[@libRty] ( / ) ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (not (v == 0) : [%v: int]) [@over]) : [%v: int] =
   v == a / b
+
+let[@libRty] elem_eq ?l:(a = (true : [%v: Elem.t]) [@over])
+    ?l:(b = (true : [%v: Elem.t]) [@over]) : [%v: bool] =
+  iff v (a == b)
+
+let[@libRty] elem_lt ?l:(a = (true : [%v: Elem.t]) [@over])
+    ?l:(b = (true : [%v: Elem.t]) [@over]) : [%v: bool] =
+  iff v (elem_lt a b)

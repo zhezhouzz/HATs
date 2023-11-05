@@ -19,27 +19,29 @@
     "result",
     "never-use"
   ],
-  "logfile": ".log",
-  "resfile": ".result",
-  "benchmark_table_file": "data/benchmark.json",
-  "uninterops": [
-    "not",
-    "mod",
-    "parent",
-    "is_dir",
-    "add_child",
-    "del_child",
-    "is_root",
-    "is_deleted"
-  ],
-  "prim_path": {
-    "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",
-    "data_type_decls": "data/predefined/data_type_decls.ml",
-    "builtin_libfunc_typing": "data/predefined/builtin_libfunc_typing.ml",
-    "builtin_pure_typing": "data/predefined/builtin_pure_typing.ml",
-    "builtin_eff_typing": "data/predefined/builtin_eff_typing.ml",
-    "builtin_automata_pred_typing": "data/predefined/builtin_automata_pred_typing.ml",
-    "builtin_normal_typing": "data/predefined/builtin_normal_typing.ml",
-    "builtin_axioms": "data/predefined/builtin_axioms.ml"
-  }
+    "logfile": ".log",
+    "resfile": ".result",
+    "benchmark_table_file": "data/benchmark.json",
+    "uninterops": [
+        "not",
+        "mod",
+        "parent",
+        "is_dir",
+        "add_child",
+        "del_child",
+        "is_root",
+        "is_deleted",
+        "elem_eq",
+        "elem_lt"
+    ],
+    "prim_path": {
+        "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",
+        "data_type_decls": "data/predefined/data_type_decls.ml",
+        "builtin_libfunc_typing": "data/predefined/builtin_libfunc_typing.ml",
+        "builtin_pure_typing": "data/predefined/builtin_pure_typing.ml",
+        "builtin_eff_typing": "data/predefined/builtin_eff_typing.ml",
+        "builtin_automata_pred_typing": "data/predefined/builtin_automata_pred_typing.ml",
+        "builtin_normal_typing": "data/predefined/builtin_normal_typing.ml",
+        "builtin_axioms": "data/predefined/builtin_axioms.ml"
+    }
 }

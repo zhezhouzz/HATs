@@ -292,15 +292,27 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
   let comp_htriple_check_letapp typectx (lhs, appf, apparg, letbody) hty =
     let rulename = "LetApp" in
     let () = before_info __LINE__ rulename in
+    let () = Printf.printf "before appf_rty\n" in
     let* appf_rty = value_type_infer typectx appf in
-    let* typectx, appf_rty =
-      Elim_ghost.force_without_ghost typectx appf_rty [ apparg ] hty
-    in
-    let* typectx', rhs_hty =
-      multi_app_type_infer_aux typectx appf_rty [ apparg ]
-    in
-    let res = let_aux typectx' (lhs, rhs_hty) letbody hty in
-    end_info __LINE__ rulename res
+    let () = Printf.printf "appf_rty:%s\n" (layout_rty appf_rty) in
+    match is_multi_args_rty appf_rty with
+    | None ->
+        let* typectx, appf_rty =
+          Elim_ghost.force_without_ghost typectx appf_rty [ apparg ] hty
+        in
+        let* typectx', rhs_hty =
+          multi_app_type_infer_aux typectx appf_rty [ apparg ]
+        in
+        let res = let_aux typectx' (lhs, rhs_hty) letbody hty in
+        end_info __LINE__ rulename res
+    | Some (gvars, appf_rty) ->
+        let* typectx', rhs_hty =
+          multi_app_type_infer_aux typectx appf_rty [ apparg ]
+        in
+        let rhs_rty = hty_force_rty rhs_hty in
+        let rhs_rty = construct_gvars_rty gvars rhs_rty in
+        let res = let_aux typectx' (lhs, Rty rhs_rty) letbody hty in
+        end_info __LINE__ rulename res
   in
   let handle_match_case typectx (matched, { constructor; args; exp }) hty =
     let _, fty =

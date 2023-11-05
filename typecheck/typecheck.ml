@@ -35,10 +35,12 @@ let pprint_res_one (id, res, timef) =
 (* let pprint_res = List.iter pprint_res_one *)
 
 let check (opctx', rctx') structure normalized_structure =
-  (* let () = *)
-  (*   Printf.printf "Structure:\n%s\n" @@ Structure.layout_structure structure *)
-  (* in *)
+  let () =
+    Printf.printf "Structure:\n%s\n" @@ Structure.layout_structure structure
+  in
   let opctx, rctx = ROpCtx.from_code structure in
+  (* let () = Printf.printf "%s\n" @@ RTypectx.layout_typed_l rctx in *)
+  (* let () = failwith "end" in *)
   let opctx = opctx' @ opctx in
   let rctx = rctx' @ rctx in
   (* let num_effects = List.length opctx in *)

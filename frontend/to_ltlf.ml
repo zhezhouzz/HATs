@@ -59,6 +59,7 @@ let of_ocamlexpr_aux expr =
     | Pexp_ident id ->
         let id = To_id.longid_to_id id in
         if String.equal "lastL" id then LastL
+        else if String.equal "rI" id then SFAPred { name = id; args = [] }
         else
           _failatwith __FILE__ __LINE__
             (spf "the automata var (%s) are disallowed" id)

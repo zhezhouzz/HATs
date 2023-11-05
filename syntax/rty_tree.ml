@@ -25,6 +25,26 @@ module SyntaxF (A : Sfa.SFA) (L : Lit.T) = struct
   (* erase *)
   open Sugar
 
+  let rec destruct_gvars_rty rty =
+    match rty with
+    | ArrRty { arr = GhostArr x; rethty = Rty rty } ->
+        let gvars, rty = destruct_gvars_rty rty in
+        (x :: gvars, rty)
+    | _ -> ([], rty)
+
+  let rec construct_gvars_rty gvars rty =
+    match gvars with
+    | [] -> rty
+    | x :: gvars ->
+        let rty = construct_gvars_rty gvars rty in
+        ArrRty { arr = GhostArr x; rethty = Rty rty }
+
+  let is_multi_args_rty rty =
+    let gvars, rty = destruct_gvars_rty rty in
+    match rty with
+    | ArrRty { rethty = Rty (ArrRty _); _ } -> Some (gvars, rty)
+    | _ -> None
+
   let rec erase_rty rty =
     let open Nt in
     match rty with

@@ -165,6 +165,56 @@ module Structure = struct
     StructureRaw.layout_structure @@ Coersion.Structure.besome_structure x
 end
 
+module RTypectx = struct
+  include Rty
+  include Typectx.FString
+
+  type ctx = rty poly_ctx
+
+  let new_to_right ctx { rx; rty } = new_to_right ctx (rx, rty)
+
+  let new_to_rights ctx l =
+    let l = List.map (fun { rx; rty } -> (rx, rty)) l in
+    new_to_rights ctx l
+
+  let _f = layout_rty
+  let layout_typed = layout_typed _f
+  let layout_typed_l = layout_typed_l _f
+  let pretty_print = pretty_print _f
+  let pretty_print_lines = pretty_print_lines _f
+  let pretty_print_infer = pretty_print_infer _f
+  let pretty_print_judge = pretty_print_judge _f
+  let pretty_layout = pretty_layout _f
+
+  let filter_map_hty f code =
+    List.filter_map
+      (fun code ->
+        let open Structure in
+        match code with
+        | FuncImp _ | Func_dec _ | Type_dec _ -> None
+        | Rty { name; kind; rty } -> f (name, kind, rty)
+        | LtlfRty _ -> None
+        | LtlfPred _ | SrlPred _ | Axiom _ -> None)
+      code
+
+  (* let get_rtys_from_code code = filter_map_hty (fun x -> x) code *)
+
+  let from_code code =
+    from_kv_list
+    @@ filter_map_hty
+         (fun (name, kind, hty) ->
+           let open Structure in
+           match kind with RtyLib -> Some (name, hty) | RtyToCheck -> None)
+         code
+
+  let get_task code =
+    filter_map_hty
+      (fun (name, kind, hty) ->
+        let open Structure in
+        match kind with RtyLib -> None | RtyToCheck -> Some (name, hty))
+      code
+end
+
 module ROpTypectx = struct
   include Rty
   include Typectx.FOp
@@ -234,13 +284,21 @@ module ROpTypectx = struct
              match kind with RtyLib -> Some (name, hty) | RtyToCheck -> None)
            code
     in
+    (* let () = Printf.printf "[%i]: %s\n" __LINE__ @@ RTypectx.layout_typed_l l in *)
     let pure_opctx, rctx =
       List.partition (fun (x, _) -> NOpTypectx.exists opctx (Op.BuiltinOp x)) l
     in
+    (* let () = *)
+    (*   Printf.printf "[%i]: %s\n" __LINE__ @@ RTypectx.layout_typed_l rctx *)
+    (* in *)
     let pure_opctx = to_pureopctx pure_opctx in
-    let eff_opctx, rctx = to_opctx_if_cap rctx in
-    let eff_opctx = to_effopctx eff_opctx in
-    let opctx = pure_opctx @ eff_opctx in
+    (* let eff_opctx, rctx = to_opctx_if_cap rctx in *)
+    (* let () = *)
+    (*   Printf.printf "[%i]: %s\n" __LINE__ @@ RTypectx.layout_typed_l rctx *)
+    (* in *)
+    (* let eff_opctx = to_effopctx eff_opctx in *)
+    (* let opctx = pure_opctx @ eff_opctx in *)
+    let opctx = pure_opctx in
     (opctx, rctx)
 
   (* let op_and_rctx_from_code code = *)
@@ -265,56 +323,6 @@ module ROpTypectx = struct
         | ty :: _ -> (x, erase_rty ty)
         | _ -> _failatwith __FILE__ __LINE__ "die")
       rctx
-end
-
-module RTypectx = struct
-  include Rty
-  include Typectx.FString
-
-  type ctx = rty poly_ctx
-
-  let new_to_right ctx { rx; rty } = new_to_right ctx (rx, rty)
-
-  let new_to_rights ctx l =
-    let l = List.map (fun { rx; rty } -> (rx, rty)) l in
-    new_to_rights ctx l
-
-  let _f = layout_rty
-  let layout_typed = layout_typed _f
-  let layout_typed_l = layout_typed_l _f
-  let pretty_print = pretty_print _f
-  let pretty_print_lines = pretty_print_lines _f
-  let pretty_print_infer = pretty_print_infer _f
-  let pretty_print_judge = pretty_print_judge _f
-  let pretty_layout = pretty_layout _f
-
-  let filter_map_hty f code =
-    List.filter_map
-      (fun code ->
-        let open Structure in
-        match code with
-        | FuncImp _ | Func_dec _ | Type_dec _ -> None
-        | Rty { name; kind; rty } -> f (name, kind, rty)
-        | LtlfRty _ -> None
-        | LtlfPred _ | SrlPred _ | Axiom _ -> None)
-      code
-
-  (* let get_rtys_from_code code = filter_map_hty (fun x -> x) code *)
-
-  let from_code code =
-    from_kv_list
-    @@ filter_map_hty
-         (fun (name, kind, hty) ->
-           let open Structure in
-           match kind with RtyLib -> Some (name, hty) | RtyToCheck -> None)
-         code
-
-  let get_task code =
-    filter_map_hty
-      (fun (name, kind, hty) ->
-        let open Structure in
-        match kind with RtyLib -> None | RtyToCheck -> Some (name, hty))
-      code
 end
 
 (* module RTypectx = struct *)

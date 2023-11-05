@@ -153,10 +153,10 @@ let type_check_ s source_file =
   let setting, code, normalized =
     normalized_ @@ ntyped_ @@ print_source_code_ s source_file
   in
-  let () =
-    Printf.printf "\n>>>>Top Operation Rty Context:\n";
-    ROpTypectx.pretty_print_lines setting.oprctx
-  in
+  (* let () = *)
+  (*   Printf.printf "\n>>>>Top Operation Rty Context:\n"; *)
+  (*   ROpTypectx.pretty_print_lines setting.oprctx *)
+  (* in *)
   let ress = Typecheck.check (setting.oprctx, setting.rctx) code normalized in
   let () =
     Env.show_log "result" @@ fun _ -> List.iter ~f:Typecheck.pprint_res_one ress
