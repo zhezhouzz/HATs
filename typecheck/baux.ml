@@ -25,7 +25,8 @@ let typectx_introduce_gvar typectx binding =
   {
     typectx with
     introduced_gvars =
-      { x = binding.rx; ty = erase_rty binding.rty } :: typectx.introduced_gvars;
+      typectx.introduced_gvars
+      @ [ { x = binding.rx; ty = erase_rty binding.rty } ];
   }
 
 let typectx_newopt_to_right typectx binding =

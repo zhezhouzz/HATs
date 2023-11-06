@@ -34,18 +34,18 @@ let[@libRty] select ((a : Elem.t) [@ghost]) ?l:(idx = (true : [%v: int])) =
     };
   |]
 
-let[@libRty] write ?l:(idx = (true : [%v: int])) =
-  {
-    pre = _G (Any true);
-    res = (true : [%v: unit]);
-    newadding = lastL && Write ((idx [@d]), v, true);
-  }
+(* let[@libRty] write ?l:(idx = (true : [%v: int])) = *)
+(*   { *)
+(*     pre = _G (Any true); *)
+(*     res = (true : [%v: unit]); *)
+(*     newadding = lastL && Write ((idx [@d]), v, true); *)
+(*   } *)
 
-let[@libRty] read ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) =
-  [|
-    {
-      pre = writtenP a;
-      res = (v == a : [%v: int]);
-      newadding = lastL && Read (x_0, v, v == a);
-    };
-  |]
+(* let[@libRty] read ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) = *)
+(*   [| *)
+(*     { *)
+(*       pre = writtenP a; *)
+(*       res = (v == a : [%v: int]); *)
+(*       newadding = lastL && Read (x_0, v, v == a); *)
+(*     }; *)
+(*   |] *)

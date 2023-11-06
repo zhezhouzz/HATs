@@ -63,6 +63,7 @@ struct
 
   let rec get_non_unit_lit lit =
     let () =
+      Env.show_log "gather" @@ fun _ ->
       Printf.printf ">>>>> get_non_unit_lit: %s\n"
         (Sexplib.Sexp.to_string (sexp_of_lit lit.x))
     in
@@ -71,6 +72,7 @@ struct
       match lit.x with
       | AAppOp (op, args) -> (
           let () =
+            Env.show_log "gather" @@ fun _ ->
             Printf.printf ">>>>> %s: %s\n" (Op.to_string op.x)
               (List.split_by_comma (fun x -> layout x.ty) args)
           in

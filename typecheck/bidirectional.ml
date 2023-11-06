@@ -283,14 +283,16 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
             List.map (fun x -> x.ty) typectx.introduced_gvars
           in
           let () =
+            Env.show_log "ghost" @@ fun _ ->
+            Printf.printf "gvars: %s;\nintroduced_gvars: %s;\nrty: %s\n"
+              (layout_typed_l (fun x -> x) gvars)
+              (layout_typed_l (fun x -> x) typectx.introduced_gvars)
+              (layout_rty appf_rty)
+          in
+          let () =
             _assert __FILE__ __LINE__ "ghost vars instantiate"
               (List.equal Nt.eq gvars_ty introduced_ty)
           in
-          (* let () = *)
-          (*   Printf.printf "gvars: %s;\n rty: %s\n" *)
-          (*     (layout_typed_l (fun x -> x) gvars) *)
-          (*     (layout_rty appf_rty) *)
-          (* in *)
           let appf_rty =
             List.fold_left
               (fun rty (x, y) -> subst_rty_id (x.x, y.x) rty)

@@ -1,6 +1,6 @@
 let rec mem_aux (idx : int) (x : Elem.t) : bool =
-  let (bound : int) = read () in
-  if idx < bound then
+  let (len : int) = size () in
+  if idx < len then
     let (a : Elem.t) = select idx in
     if elem_eq x a then true
     else

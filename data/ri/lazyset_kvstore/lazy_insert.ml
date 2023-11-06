@@ -1,9 +1,12 @@
 let lazy_insert (x : Elem.t) (thunk : unit -> unit) (z : unit) : unit =
   thunk ();
-  if exists x then ()
+  if has_value x then ()
   else (
-    put x ();
+    insert_aux x;
     ())
+
+let[@libRty] insert_aux ((a : Elem.t) [@ghost]) ?l:(x = (true : [%v: Elem.t])) =
+  { pre = rI a; res = (true : [%v: unit]); post = rI a }
 
 let[@assertRty] lazy_insert ((m : Elem.t) [@ghost])
     ?l:(x = (true : [%v: Elem.t]))

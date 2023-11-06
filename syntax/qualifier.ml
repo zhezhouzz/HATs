@@ -38,7 +38,9 @@ module F (L : Lit.T) = struct
       | l -> Or l
 
   let get_lits prop =
-    let () = Printf.printf ">>>>> get_lits:\n" in
+    let () =
+      Env.show_log "gather" @@ fun _ -> Printf.printf ">>>>> get_lits:\n"
+    in
     let rec aux e res =
       match e with
       | Lit (AC _) -> res
