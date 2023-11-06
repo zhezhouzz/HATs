@@ -7,6 +7,10 @@ open RtyRaw.SE
 (* open Aux *)
 
 let check opctx ctx sevent =
+  let () =
+    Env.show_log "ntyping" @@ fun _ ->
+    Printf.printf ">>>>>>SE Check %s\n" (To_se.layout sevent)
+  in
   match sevent with
   | GuardEvent phi ->
       let phi = type_check_qualifier opctx ctx phi in

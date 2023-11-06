@@ -11,10 +11,22 @@ open Sugar
 let layout_comp = Denormalize.layout_comp
 let layout_value = Denormalize.layout_value
 
-type typectx = { rctx : RCtx.ctx; opctx : ROpCtx.ctx }
+type typectx = {
+  rctx : RCtx.ctx;
+  opctx : ROpCtx.ctx;
+  introduced_gvars : string typed list;
+}
 
 let typectx_new_to_right typectx (binding : string rtyped) =
   { typectx with rctx = RCtx.new_to_right typectx.rctx binding }
+
+let typectx_introduce_gvar typectx binding =
+  let typectx = typectx_new_to_right typectx binding in
+  {
+    typectx with
+    introduced_gvars =
+      { x = binding.rx; ty = erase_rty binding.rty } :: typectx.introduced_gvars;
+  }
 
 let typectx_newopt_to_right typectx binding =
   match binding with

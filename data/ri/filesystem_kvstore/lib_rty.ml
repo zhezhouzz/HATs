@@ -1,5 +1,3 @@
-(* kvstore *)
-
 let[@libRty] put ?l:(k = (true : [%v: Path.t])) ?l:(a = (true : [%v: Bytes.t]))
     =
   {

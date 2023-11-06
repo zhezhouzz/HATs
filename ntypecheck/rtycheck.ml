@@ -9,6 +9,10 @@ open RtyRaw
 (* open Aux *)
 
 let rec hty_check opctx ctx (hty : hty) : hty =
+  let () =
+    Env.show_log "ntyping" @@ fun _ ->
+    Printf.printf ">>>>>>>>>>>>Hty Check %s\n" (To_rty.layout_hty hty)
+  in
   match hty with
   | Rty rty -> Rty (rty_check opctx ctx rty)
   | Htriple { pre; resrty; post } ->
@@ -34,7 +38,10 @@ and arr_check opctx ctx (arr : arr) : arr * string Nt.typed option =
   | ArrArr rty -> (ArrArr (rty_check opctx ctx rty), None)
 
 and rty_check opctx ctx (hty : rty) : rty =
-  (* let () = Printf.printf "hty: %s\n" @@ StructureRaw.layout_rty hty in *)
+  let () =
+    Env.show_log "ntyping" @@ fun _ ->
+    Printf.printf ">>>>>>>>>>>>Rty Check %s\n" (To_rty.layout_rty hty)
+  in
   match hty with
   | BaseRty { cty } -> BaseRty { cty = Ctycheck.check opctx ctx cty }
   | ArrRty { arr; rethty } ->

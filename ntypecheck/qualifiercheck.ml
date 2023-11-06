@@ -125,7 +125,7 @@ let type_check_qualifier (opctx : NOpTypectx.ctx) (ctx : NTypectx.ctx)
   let rec aux ctx qualifier =
     let () =
       Env.show_log "ntyping" @@ fun _ ->
-      Printf.printf "Qualifier Check %s\n" (To_qualifier.layout qualifier)
+      Printf.printf ">>>Qualifier Check %s\n" (To_qualifier.layout qualifier)
     in
     match qualifier with
     | Lit lit -> Lit (type_check_lit opctx ctx (lit, ty)).x

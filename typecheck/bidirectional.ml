@@ -86,7 +86,7 @@ and value_type_check typectx (value : value typed) (hty : rty) : unit option =
         let () = before_info __LINE__ rulename in
         let x' = Rename.unique x in
         let rethty = subst_hty_id (x, x') rethty in
-        let typectx' = typectx_new_to_right typectx x' #:: (mk_top ty) in
+        let typectx' = typectx_introduce_gvar typectx x' #:: (mk_top ty) in
         let rty = hty_force_rty rethty in
         let _ = end_info_b __LINE__ rulename true in
         handle_ghost typectx' rty
@@ -183,28 +183,6 @@ and multi_app_type_infer_aux typectx (f_hty : rty) (appargs : value typed list)
   in
   aux (Some (typectx, Rty f_hty)) appargs
 
-(* List.fold_left *)
-(*   (fun x apparg -> *)
-(*     let* typectx, f_hty = x in *)
-(*     let rty = hty_force_rty f_hty in *)
-(*     app_type_infer_aux typectx rty apparg) *)
-(*   (Some (typectx, Rty f_hty)) *)
-(*   appargs *)
-
-(* and comp_type_check (typectx : typectx) (comp : comp typed) (hty : hty) *)
-(*   : bool = *)
-
-(* and split_typectx { typectx; curA; preA } x (rhs_regex : regex) = *)
-(*   let rhs_regexs = Auxtyping.branchize_regex rhs_regex in *)
-(*   let () = _force_not_emrty_list __FILE__ __LINE__ rhs_regexs in *)
-(*   List.map *)
-(*     (fun (curA', rty) -> *)
-(*       let curA = smart_seq (curA, curA') in *)
-(*       let typectx = typectx_new_to_right typectx x #:: rty in *)
-(*       let typectx = { typectx; curA; preA } in *)
-(*       typectx) *)
-(*     rhs_regexs *)
-
 and comp_type_check (typectx : typectx) (comp : comp typed) (hty : hty) :
     unit option =
   match hty with
@@ -295,6 +273,36 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
     let () = Printf.printf "before appf_rty\n" in
     let* appf_rty = value_type_infer typectx appf in
     let () = Printf.printf "appf_rty:%s\n" (layout_rty appf_rty) in
+    let gvars, appf_rty = destruct_gvars_rty appf_rty in
+    let appf_rty =
+      match gvars with
+      | [] -> appf_rty
+      | _ ->
+          let gvars_ty = List.map (fun x -> x.ty) gvars in
+          let introduced_ty =
+            List.map (fun x -> x.ty) typectx.introduced_gvars
+          in
+          let () =
+            _assert __FILE__ __LINE__ "ghost vars instantiate"
+              (List.equal Nt.eq gvars_ty introduced_ty)
+          in
+          (* let () = *)
+          (*   Printf.printf "gvars: %s;\n rty: %s\n" *)
+          (*     (layout_typed_l (fun x -> x) gvars) *)
+          (*     (layout_rty appf_rty) *)
+          (* in *)
+          let appf_rty =
+            List.fold_left
+              (fun rty (x, y) -> subst_rty_id (x.x, y.x) rty)
+              appf_rty
+              (_safe_combine __FILE__ __LINE__ gvars typectx.introduced_gvars)
+          in
+          (* let () = *)
+          (*   Printf.printf "instansiated rty: %s\n" (layout_rty appf_rty) *)
+          (* in *)
+          (* let () = failwith "end" in *)
+          appf_rty
+    in
     match is_multi_args_rty appf_rty with
     | None ->
         let* typectx, appf_rty =

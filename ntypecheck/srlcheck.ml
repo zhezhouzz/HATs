@@ -8,6 +8,10 @@ open RtyRaw.SRL
 (* open Aux *)
 
 let rec check opctx ctx (srl : regex) : regex =
+  let () =
+    Env.show_log "ntyping" @@ fun _ ->
+    Printf.printf ">>>>>>>>>SRL Check %s\n" (To_srl.layout srl)
+  in
   match srl with
   | EpsilonA | AnyA | EmptyA -> srl
   | EventA se -> EventA (Secheck.check opctx ctx se)

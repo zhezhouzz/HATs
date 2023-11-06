@@ -81,7 +81,9 @@ let check (opctx', rctx') structure normalized_structure =
             (* let () = do_stat comp rty in *)
             let typecheck_time, res =
               Sugar.clock (fun () ->
-                  Bidirectional.comp_type_check { rctx; opctx } comp (R.Rty rty))
+                  Bidirectional.comp_type_check
+                    { rctx; opctx; introduced_gvars = [] }
+                    comp (R.Rty rty))
             in
             (* let stat = *)
             (*   Stat.update_dynamic_stat stat typecheck_time *)
