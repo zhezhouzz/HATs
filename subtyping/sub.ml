@@ -156,6 +156,11 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
       match res with
       | None -> true
       | Some mt_list ->
+          let () =
+            Env.show_log "smt_regex" @@ fun _ ->
+            Printf.printf "sub_srl_bool_aux R: %s\n"
+              (RTypectx.layout_typed_l rctx)
+          in
           ( Env.show_debug_debug @@ fun _ ->
             Desymbolic.display_trace rctx ctx mt_list );
           false

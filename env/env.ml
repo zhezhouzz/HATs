@@ -69,7 +69,8 @@ open Yojson.Basic.Util
 let load_meta meta_fname =
   (* let () = Printf.printf "meta_fname: %s\n" meta_fname in *)
   (* let () = Printf.printf "pwd: %s\n" (Sys.getcwd ()) in *)
-  let () = Printf.printf "Loading meta-config.json...\n" in
+  (* let () = Printf.printf "Loading meta-config.json...\n" in *)
+  let () = Printf.printf "\n" in
   let metaj = Yojson.Basic.from_file meta_fname in
   let mode =
     match metaj |> member "mode" |> to_string with

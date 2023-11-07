@@ -208,7 +208,8 @@ let expr_of_ocamlexpr expr =
         | _ -> (App (func, List.map (fun x -> aux @@ snd x) args)) #: None)
     | Pexp_ifthenelse (e1, e2, Some e3) ->
         (Ite (aux e1, aux e2, aux e3)) #: None
-    | Pexp_ifthenelse (_, _, None) -> raise @@ failwith "no else branch in ite"
+    | Pexp_ifthenelse (e1, e2, None) ->
+        (Ite (aux e1, aux e2, (Const Constant.U) #: unit_ty)) #: None
     | Pexp_match (case_target, cases) ->
         let cs =
           List.map
@@ -259,7 +260,11 @@ let expr_of_ocamlexpr expr =
 
 let typed_id_of_ocamlexpr expr =
   let x = expr_of_ocamlexpr expr in
-  match x.x with Var id -> id #: x.ty | _ -> _failatwith __FILE__ __LINE__ "?"
+  match x.x with
+  | Var id -> id #: x.ty
+  | _ ->
+      _failatwith __FILE__ __LINE__
+        (spf "die: %s" (Pprintast.string_of_expression expr))
 
 let id_of_ocamlexpr expr = (typed_id_of_ocamlexpr expr).x
 let layout x = Pprintast.string_of_expression @@ expr_to_ocamlexpr x

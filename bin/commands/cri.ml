@@ -149,6 +149,12 @@ let normalized_ (setting, code) =
   in
   (setting, code, normalized)
 
+let ntype_check_ s source_file =
+  let setting, code, normalized =
+    normalized_ @@ ntyped_ @@ print_source_code_ s source_file
+  in
+  ()
+
 let type_check_ s source_file =
   let setting, code, normalized =
     normalized_ @@ ntyped_ @@ print_source_code_ s source_file
@@ -228,7 +234,7 @@ let typecheck_cmds =
           let s = mk_inputs_setting meta_config_file in
           let ri_file = sprintf "%s/ri.ml" dir in
           let pred_file = sprintf "%s/automata_preds.ml" dir in
-          let source_file = sprintf "%s/%s.ml" dir name in
+          let source_file = sprintf "%s/%s" dir name in
           let libntyfile = sprintf "%s/lib_nty.ml" dir in
           let librtyfile = sprintf "%s/lib_rty.ml" dir in
           let s =
@@ -240,6 +246,24 @@ let typecheck_cmds =
             }
           in
           let x = type_check_ s [ ri_file; source_file ] in
+          ()) );
+    ( "ri-ntype-check",
+      cmd_config_ir_source "type check" (fun meta_config_file dir name () ->
+          let s = mk_inputs_setting meta_config_file in
+          let ri_file = sprintf "%s/ri.ml" dir in
+          let pred_file = sprintf "%s/automata_preds.ml" dir in
+          let source_file = sprintf "%s/%s" dir name in
+          let libntyfile = sprintf "%s/lib_nty.ml" dir in
+          let librtyfile = sprintf "%s/lib_rty.ml" dir in
+          let s =
+            {
+              s with
+              automata_pred_files = s.automata_pred_files @ [ pred_file ];
+              opeffnctx_files = s.opeffnctx_files @ [ libntyfile ];
+              opeffrctx_files = s.opeffrctx_files @ [ librtyfile ];
+            }
+          in
+          let x = ntype_check_ s [ ri_file; source_file ] in
           ()) );
     ( "type-check",
       cmd_config_source "type check" (fun meta_config_file source_file () ->

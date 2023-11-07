@@ -10,6 +10,6 @@ let add (path : Path.t) (content : Bytes.t) : bool =
       true)
     else false
 
-let[@assertRty] add ((p1 : Path.t) [@ghost]) ((p2 : Path.t) [@ghost])
-    ?l:(path = (true : [%v: Path.t])) ?l:(content = (true : [%v: Bytes.t])) =
-  { pre = rI p1 p2; res = (true : [%v: bool]); post = rI p1 p2 }
+let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
+    ?l:(content = (true : [%v: Bytes.t])) =
+  { pre = rI p; res = (true : [%v: bool]); post = rI p }

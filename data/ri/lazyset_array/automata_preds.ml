@@ -1,4 +1,6 @@
-let[@pred] sizeP (n : int) = _F (Init ((n [@d]), v, true))
+let[@pred] sizeP (n : int) =
+  _F (Init ((n [@d]), v, true) && _X (_F (Init (x_0, v, true))))
+
 let[@pred] valid_idxP (n : int) = _F (Init (x_0, v, n < x_0))
 
 let[@pred] storedP (k : int) (value : Elem.t) =

@@ -61,8 +61,8 @@ let test_cmds =
       cmd_config_source "print rty" (fun meta_config_file source_file () ->
           let x = print_rty_ meta_config_file source_file in
           ()) );
-    ( "print-raw-rty",
-      cmd_config_source "print raw rty (before desugar LTLf into SRL)"
+    ( "print-raw",
+      cmd_config_source "print raw (before desugar LTLf into SRL)"
         (fun meta_config_file source_file () ->
           let x = print_raw_rty_ meta_config_file source_file in
           ()) );

@@ -176,7 +176,7 @@ let desymbolic_sevent ctx (mts, g) se =
 let desymbolic_local ctx (mts, g) regex =
   let open NRegex in
   let () =
-    Env.show_log "desymbolic" @@ fun _ ->
+    Env.show_log "regex_simpl" @@ fun _ ->
     Pp.printf "@{<bold>regex before:@} %s\n" (layout_regex regex)
   in
   let rec aux regex =
@@ -201,12 +201,12 @@ let desymbolic_local ctx (mts, g) regex =
   in
   let res = aux regex in
   let () =
-    Env.show_log "desymbolic" @@ fun _ ->
+    Env.show_log "regex_simpl" @@ fun _ ->
     Pp.printf "@{<bold>regex after:@} %s\n" (reg_to_string res)
   in
   let res = simp res in
   let () =
-    Env.show_log "desymbolic" @@ fun _ ->
+    Env.show_log "regex_simpl" @@ fun _ ->
     Pp.printf "@{<bold>regex simpl:@} %s\n" (reg_to_string res)
   in
   res

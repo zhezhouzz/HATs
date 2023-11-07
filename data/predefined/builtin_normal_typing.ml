@@ -1,7 +1,7 @@
 val ( && ) : bool -> bool -> bool
 
 (* == is poly *)
-(* val ( == ) : int -> int -> bool *)
+val ( == ) : int -> int -> bool
 val ( != ) : int -> int -> bool
 val ( < ) : int -> int -> bool
 val ( > ) : int -> int -> bool
@@ -23,6 +23,8 @@ val is_deleted : Bytes.t -> bool
 val is_dir : Bytes.t -> bool
 val add_child : Bytes.t -> Path.t -> Bytes.t
 val del_child : Bytes.t -> Path.t -> Bytes.t
+val is_child : Bytes.t -> Path.t -> bool
+val has_child : Bytes.t -> bool
 
 (* elem *)
 val elem_lt : Elem.t -> Elem.t -> bool

@@ -31,7 +31,7 @@ module T = struct
           map2 int_of_string (global_embedding, local_embedding)
         in
         { op; global_embedding; local_embedding }
-    | _ -> _failatwith __FILE__ __LINE__ "die"
+    | _ -> _failatwith __FILE__ __LINE__ (spf "string_to_mt: %s" str)
 
   let mts_fold_on_op op f (i_s_il : mts) res =
     IntMap.fold

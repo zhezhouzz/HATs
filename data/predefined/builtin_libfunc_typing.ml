@@ -14,9 +14,15 @@ let[@libRty] addChild ?l:(a = (true : [%v: Bytes.t]) [@over])
     ?l:(b = (true : [%v: Path.t]) [@over]) : [%v: Bytes.t] =
   v == add_child a b
 
-let[@libRty] deleteChild ?l:(a = (true : [%v: Bytes.t]) [@over])
+let[@libRty] delChild ?l:(a = (true : [%v: Bytes.t]) [@over])
     ?l:(b = (true : [%v: Path.t]) [@over]) : [%v: Bytes.t] =
   v == del_child a b
+
+let[@libRty] getChild ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: Path.t] =
+  is_child a v
+
+let[@libRty] hasChild ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
+  iff v (has_child a)
 
 let[@libRty] isDeleted ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
   v == is_deleted a

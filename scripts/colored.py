@@ -12,3 +12,9 @@ class color:
 
 def bold_text(string):
     return color.BOLD + string + color.END
+
+def underline_text(string):
+    return color.UNDERLINE + string + color.END
+
+def purple_text(string):
+    return color.PURPLE + string + color.END

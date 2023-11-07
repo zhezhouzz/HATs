@@ -3,6 +3,7 @@ import argparse
 import os
 import os.path
 import subprocess
+import colored
 
 cmd_prefix = ["dune", "exec", "--", "bin/main.exe"]
 

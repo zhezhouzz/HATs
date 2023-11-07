@@ -72,6 +72,9 @@ let of_ocamlexpr_aux expr =
         | "_X", [ e1 ] -> NextL (aux e1)
         | "_U", [ a; b ] -> UntilL (aux a, aux b)
         | "implies", [ a; b ] -> LorL (NegL (aux a), aux b)
+        | "iff", [ a; b ] ->
+            let a, b = map2 aux (a, b) in
+            LandL (LorL (NegL a, b), LorL (NegL b, a))
         | "not", [ e1 ] -> NegL (aux e1)
         | "||", [ a; b ] ->
             (* let () = Printf.printf "11\n" in *)

@@ -5,6 +5,20 @@ let[@libRty] init ?l:(n = (true : [%v: int])) =
     newadding = lastL && Init ((n [@d]), v, true);
   }
 
+let[@libRty] isInited ?l:(n = (true : [%v: unit])) =
+  [|
+    {
+      pre = _F (Init (x_0, v, true));
+      res = (v : [%v: bool]);
+      newadding = lastL && IsInited (x_0, v, v);
+    };
+    {
+      pre = not (_F (Init (x_0, v, true)));
+      res = (not v : [%v: bool]);
+      newadding = lastL && IsInited (x_0, v, not v);
+    };
+  |]
+
 let[@libRty] size ((n : int) [@ghost]) ?l:(y = (true : [%v: unit])) =
   {
     pre = sizeP n;
@@ -33,19 +47,3 @@ let[@libRty] select ((a : Elem.t) [@ghost]) ?l:(idx = (true : [%v: int])) =
       newadding = lastL && Select ((idx [@d]), v, true);
     };
   |]
-
-(* let[@libRty] write ?l:(idx = (true : [%v: int])) = *)
-(*   { *)
-(*     pre = _G (Any true); *)
-(*     res = (true : [%v: unit]); *)
-(*     newadding = lastL && Write ((idx [@d]), v, true); *)
-(*   } *)
-
-(* let[@libRty] read ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) = *)
-(*   [| *)
-(*     { *)
-(*       pre = writtenP a; *)
-(*       res = (v == a : [%v: int]); *)
-(*       newadding = lastL && Read (x_0, v, v == a); *)
-(*     }; *)
-(*   |] *)
