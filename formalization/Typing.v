@@ -89,6 +89,7 @@ Inductive effop_type_check : listctx pty -> effop -> pty -> Prop :=
 | TEOp : forall Γ op ρ,
     Γ ⊢WFp ρ ->
     builtin_typing_relation op ρ ->
+    ⌊ ρ ⌋ = ty_of_op op ->
     Γ ⊢ op ⋮o ρ
 | TESub : forall Γ op ρ1 ρ2,
     Γ ⊢WFp ρ2 ->
@@ -100,6 +101,7 @@ where
 
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TValue: forall Γ v ρ A,
+    Γ ⊢WF [: ρ | A ▶ A] ->
     Γ ⊢ v ⋮v ρ ->
     Γ ⊢ v ⋮t [: ρ | A ▶ A]
 | TSub: forall Γ e (τ1 τ2: hty),
@@ -181,26 +183,10 @@ where
 "Γ '⊢' e '⋮t' τ" := (term_type_check Γ e τ) and "Γ '⊢' e '⋮v' ρ" := (value_type_check Γ e ρ).
 
 
-Scheme value_type_check_rec := Induction for value_type_check Sort Prop
-    with term_type_check_rec := Induction for term_type_check Sort Prop.
-
-(*
-
-Lemma pty_to_hty_wf Γ ρ :
-  wf_pty Γ ρ ->
-  wf_hty Γ (pty_to_hty ρ).
-Proof.
-  unfold pty_to_hty.
-  induction 1.
-  - cbn. econstructor.
-    hnf. intros. qauto. eauto.
-    repeat econstructor. my_set_solver.
-    qsimpl. repeat econstructor. my_set_solver.
-  - cbn. econstructor.
-    hnf. intros. qauto. eauto.
-    repeat econstructor. my_set_solver.
-    qsimpl.
-Qed.
+Scheme value_term_type_check_ind := Minimality for value_type_check Sort Prop
+    with term_value_type_check_ind := Minimality for term_type_check Sort Prop.
+Combined Scheme value_term_type_check_mutind from
+  value_term_type_check_ind, term_value_type_check_ind.
 
 Lemma subtyping_preserves_basic_typing Γ τ1 τ2 :
   Γ ⊢ τ1 <⋮ τ2 ->
@@ -209,121 +195,93 @@ Proof.
   qauto.
 Qed.
 
+Lemma pty_subtyping_preserves_basic_typing Γ ρ1 ρ2 :
+  Γ ⊢ ρ1 <⋮p ρ2 ->
+  ⌊ρ1⌋ = ⌊ρ2⌋.
+Proof.
+  qauto.
+Qed.
+
+Lemma effop_typing_preserves_basic_typing Γ ρ op :
+  Γ ⊢ op ⋮o ρ ->
+  ⌊ρ⌋ = ty_of_op op.
+Proof.
+  induction 1; eauto.
+  apply pty_subtyping_preserves_basic_typing in H1.
+  congruence.
+Qed.
+
 Lemma value_typing_regular_wf : forall (Γ: listctx pty) (v: value) (ρ: pty),
     Γ ⊢ v ⋮v ρ -> wf_pty Γ ρ
 with tm_typing_regular_wf : forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ -> wf_hty Γ τ.
 Proof.
-  all: destruct 1; eauto using pty_to_hty_wf.
+  all: destruct 1; eauto.
 Qed.
 
-(* Maybe move these lemmas to other files. *)
-Lemma list_not_nil_ex {A} (xs : list A) :
-  xs <> [] ->
-  exists x, In x xs.
+Lemma value_tm_typing_regular_basic_typing:
+  (forall (Γ: listctx pty) (v: value) (ρ: pty),
+    Γ ⊢ v ⋮v ρ -> ⌊ Γ ⌋* ⊢t v ⋮v ⌊ ρ ⌋) /\
+  (forall (Γ: listctx pty) (e: tm) (τ: hty),
+    Γ ⊢ e ⋮t τ -> ⌊ Γ ⌋* ⊢t e ⋮t ⌊ τ ⌋).
 Proof.
-  destruct xs; qauto.
-Qed.
-
-Lemma Forall2_In_l {A B} R (xs : list A) (ys : list B) :
-  Forall2 R xs ys ->
-  forall x, In x xs -> exists y, In y ys /\ R x y.
-Proof.
-  induction 1; qauto.
-Qed.
-
-Lemma Forall2_In_r {A B} R (xs : list A) (ys : list B) :
-  Forall2 R xs ys ->
-  forall y, In y ys -> exists x, In x xs /\ R x y.
-Proof.
-  induction 1; qauto.
-Qed.
-
-Ltac simpl_Forall2 :=
-  repeat
-    (match goal with
-     | H : _ <> [] |- _ => apply list_not_nil_ex in H
-     | H : Forall2 _ ?xs _, H' : In _ ?xs |- _ =>
-         eapply Forall2_In_l in H; [ | apply H' ]
-     | H : Forall2 _ _ ?ys, H' : In _ ?ys |- _ =>
-         eapply Forall2_In_r in H; [ | apply H' ]
-     end; simp_hyps; simplify_eq); set_fold_not.
-
-Lemma union_list_subseteq_forall
-  {A C} `{SemiSet A C}
-  (Xs : list C) (Y : C):
-  (forall X, In X Xs -> X ⊆ Y) ->
-  ⋃ Xs ⊆ Y.
-Proof.
-  intros. induction Xs. my_set_solver.
-  simpl.
-  apply union_least.
-  qauto.
-  qauto.
-Qed.
-
-Lemma union_list_not_in
-  {A C} `{SemiSet A C}
-  (Xs : list C) x:
-  (forall X, In X Xs -> x ∉ X) ->
-  x ∉ ⋃ Xs.
-Proof.
-  intros. induction Xs. my_set_solver.
-  simpl.
-  apply not_elem_of_union. split; eauto.
-  auto_apply. qauto.
-  auto_apply. qauto.
+  apply value_term_type_check_mutind; intros; cbn; subst; eauto.
+  - hauto using pty_subtyping_preserves_basic_typing.
+  - auto_pose_fv x. repeat specialize_with x.
+    rewrite ctx_erase_app_r in H1 by my_set_solver.
+    rewrite <- pty_erase_open_eq in H1.
+    eapply basic_typing_strengthen_value; eauto. my_set_solver.
+  - econstructor.
+    qauto using ctx_erase_lookup.
+  - econstructor.
+    qauto using ctx_erase_lookup.
+  - econstructor.
+    instantiate_atom_listctx.
+    rewrite ctx_erase_app_r in H1 by my_set_solver.
+    rewrite <- hty_erase_open_eq in H1.
+    eauto.
+  - econstructor.
+    instantiate_atom_listctx.
+    rewrite ctx_erase_app_r in H1 by my_set_solver.
+    cbn in H1.
+    rewrite <- hty_erase_open_eq in H1.
+    eauto.
+  - hauto using subtyping_preserves_basic_typing.
+  - econstructor; eauto.
+    instantiate_atom_listctx.
+    rewrite ctx_erase_app_r in H3 by my_set_solver.
+    eauto.
+  - econstructor.
+    cbn in H3. eauto. eauto.
+    instantiate_atom_listctx.
+    rewrite ctx_erase_app_r in H6 by my_set_solver.
+    apply (f_equal erase) in H4.
+    rewrite <- hty_erase_open_eq in H4.
+    rewrite H4. eauto.
+  - apply effop_typing_preserves_basic_typing in H2. cbn in H2. sinvert H2.
+    econstructor; eauto. qauto.
+    instantiate_atom_listctx.
+    rewrite ctx_erase_app_r in H5 by my_set_solver.
+    apply (f_equal erase) in H3.
+    rewrite <- hty_erase_open_eq in H3.
+    rewrite <- H8. rewrite H3. eauto.
+  - auto_pose_fv x. repeat specialize_with x.
+    rewrite ctx_erase_app_r in H3, H5 by my_set_solver.
+    econstructor; eauto.
+    eapply basic_typing_strengthen_tm; eauto. my_set_solver.
+    eapply basic_typing_strengthen_tm; eauto. my_set_solver.
 Qed.
 
 Lemma value_typing_regular_basic_typing: forall (Γ: listctx pty) (v: value) (ρ: pty),
-    Γ ⊢ v ⋮v ρ -> ⌊ Γ ⌋* ⊢t v ⋮v ⌊ ρ ⌋
-with tm_typing_regular_basic_typing: forall (Γ: listctx pty) (e: tm) (τ: hty),
+    Γ ⊢ v ⋮v ρ -> ⌊ Γ ⌋* ⊢t v ⋮v ⌊ ρ ⌋.
+Proof.
+  apply value_tm_typing_regular_basic_typing.
+Qed.
+
+Lemma tm_typing_regular_basic_typing: forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ -> ⌊ Γ ⌋* ⊢t e ⋮t ⌊ τ ⌋.
 Proof.
-  all: destruct 1; cbn; subst;
-    eauto using value_has_type, tm_has_type, ctx_erase_lookup.
-  - econstructor.
-    instantiate_atom_listctx.
-    rewrite <- ctx_erase_app_r by my_set_solver.
-    qauto.
-  - econstructor.
-    instantiate_atom_listctx.
-    eapply value_typing_regular_basic_typing in H0.
-    apply_eq H0. apply ctx_erase_app_r. my_set_solver.
-  - erewrite <- subtyping_preserves_basic_typing; eauto.
-  - econstructor. apply tm_typing_regular_basic_typing. eauto.
-    instantiate_atom_listctx.
-    sinvert H. simpl_Forall2.
-    cbn. eapply_eq tm_typing_regular_basic_typing; eauto.
-    rewrite ctx_erase_app_r by my_set_solver.
-    f_equal. apply tm_typing_regular_wf in H0. sinvert H0. eauto.
-  - econstructor; eauto.
-    apply_eq value_typing_regular_basic_typing; eauto.
-    instantiate_atom_listctx.
-    sinvert H. simpl_Forall2.
-    eapply_eq tm_typing_regular_basic_typing; eauto.
-    rewrite ctx_erase_app_r by my_set_solver.
-    rewrite <- pty_erase_open_eq.
-    f_equal. apply value_typing_regular_wf in H1. sinvert H1. eauto.
-  - econstructor; eauto.
-    qauto.
-    instantiate_atom_listctx.
-    sinvert H. simpl_Forall2.
-    apply_eq tm_typing_regular_basic_typing; eauto.
-    rewrite ctx_erase_app_r by my_set_solver.
-    f_equal.
-  - auto_pose_fv x. repeat specialize_with x.
-    econstructor. qauto.
-    eapply basic_typing_strengthen_tm.
-    rewrite <- ctx_erase_app_r.
-    auto_apply. eauto.
-    my_set_solver.
-    my_set_solver.
-    eapply basic_typing_strengthen_tm.
-    rewrite <- ctx_erase_app_r.
-    auto_apply. eauto.
-    my_set_solver.
-    my_set_solver.
+  apply value_tm_typing_regular_basic_typing.
 Qed.
 
 Lemma am_concat: forall A B α β,
@@ -333,6 +291,9 @@ Proof.
   split.
   select! (a⟦_⟧ _) (fun H => apply langA_closed in H; sinvert H).
   repeat econstructor; eauto. my_set_solver.
+  split.
+  select! (a⟦_⟧ _) (fun H => apply langA_valid_trace in H).
+  apply Forall_app. eauto.
   eauto.
 Qed.
 
@@ -409,7 +370,7 @@ Ltac rewrite_msubst_insert :=
   cbn; fold_msubst; rewrite !msubst_insert;
   (* TODO: hintdb? *)
   eauto using subst_commute_value, subst_commute_tm, subst_commute_qualifier,
-    subst_commute_pty, subst_commute_am, subst_commute_postam, subst_commute_hty.
+    subst_commute_pty, subst_commute_am, subst_commute_hty.
 
 Lemma pty_erase_msubst_eq ρ Γv :
   pty_erase ρ = pty_erase (m{Γv}p ρ).
@@ -423,43 +384,6 @@ Lemma hty_erase_msubst_eq τ Γv :
 Proof.
   msubst_tac.
   qauto using hty_erase_subst_eq.
-Qed.
-
-Lemma msubst_bvar: forall Γv n, (m{Γv}v) (vbvar n) = vbvar n.
-Proof.
-  msubst_tac.
-Qed.
-
-Lemma msubst_constant: forall Γv (c: constant), (m{Γv}v) c = c.
-Proof.
-  msubst_tac.
-Qed.
-
-Lemma msubst_fvar: forall Γv (x : atom),
-    closed_env Γv ->
-    (m{Γv}v) x = match Γv !! x with
-                 | Some v => v
-                 | None => x
-                 end.
-Proof.
-  msubst_tac.
-  destruct (decide (x = i)); subst; simplify_map_eq. reflexivity.
-  case_match.
-  apply subst_fresh_value.
-  gen_closed_env. my_set_solver.
-  simpl. rewrite decide_False; eauto.
-Qed.
-
-Lemma msubst_arrty: forall Γv ρ T A B,
-    closed_env Γv ->
-    (m{Γv}p) (-:ρ⇨[:T|A▶B]) = (-:(m{Γv}p ρ)⇨[:T| (m{Γv}a A) ▶ (m{Γv}pa B) ]).
-Proof.
-  msubst_tac. rewrite_msubst_insert.
-Qed.
-
-Lemma msubst_bty: forall Γv b ϕ, closed_env Γv -> (m{Γv}p) {:b|ϕ} = {:b| (m{Γv}q) ϕ}.
-Proof.
-  msubst_tac. rewrite_msubst_insert.
 Qed.
 
 Lemma msubst_qualifier: forall Γv ϕ,
@@ -492,6 +416,51 @@ Proof.
   apply qualifier_and_subst.
 Qed.
 
+Lemma msubst_aany: forall (Γv: env),
+    m{Γv}a aany = aany.
+Proof.
+  msubst_tac.
+Qed.
+
+Lemma msubst_aconcat: forall (Γv: env) A1 A2,
+    closed_env Γv ->
+    m{Γv}a (aconcat A1 A2) = (aconcat (m{Γv}a A1) (m{Γv}a A2)).
+Proof.
+  msubst_tac. rewrite_msubst_insert.
+Qed.
+
+Lemma msubst_aevent: forall (Γv: env) op ϕ,
+    closed_env Γv ->
+    m{Γv}a ⟨op|ϕ⟩ = ⟨op| m{Γv}q ϕ⟩.
+Proof.
+  msubst_tac. rewrite_msubst_insert.
+Qed.
+
+Lemma msubst_constant: forall Γv (c: constant), (m{Γv}v) c = c.
+Proof.
+  msubst_tac.
+Qed.
+
+Lemma msubst_bvar: forall Γv n, (m{Γv}v) (vbvar n) = vbvar n.
+Proof.
+  msubst_tac.
+Qed.
+
+Lemma msubst_fvar: forall Γv (x : atom),
+    closed_env Γv ->
+    (m{Γv}v) x = match Γv !! x with
+                 | Some v => v
+                 | None => x
+                 end.
+Proof.
+  msubst_tac.
+  destruct (decide (x = i)); subst; simplify_map_eq. reflexivity.
+  case_match.
+  apply subst_fresh_value.
+  gen_closed_env. my_set_solver.
+  simpl. rewrite decide_False; eauto.
+Qed.
+
 Lemma msubst_lam: forall Γv T e,
     closed_env Γv ->
     ((m{Γv}v) (vlam T e)) = (vlam T ((m{Γv}t) e)).
@@ -520,6 +489,13 @@ Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
+Lemma msubst_lete: forall (Γv: env) e_x e,
+    closed_env Γv ->
+    (m{Γv}t (tlete e_x e) = tlete ((m{Γv}t) e_x) ((m{Γv}t) e)).
+Proof.
+  msubst_tac. rewrite_msubst_insert.
+Qed.
+
 Lemma msubst_tleteffop: forall Γv op (v2: value) e,
     closed_env Γv ->
     (m{Γv}t) (tleteffop op v2 e) = (tleteffop op (m{Γv}v v2) (m{Γv}t e)).
@@ -534,89 +510,90 @@ Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Lemma msubst_hty: forall (Γv: env) T A B,
+Lemma msubst_basepty: forall Γv b ϕ,
     closed_env Γv ->
-    m{Γv}h [:T|A▶B] = [:T|m{Γv}a A ▶ m{Γv}pa B].
+    (m{Γv}p) {:b|ϕ} = {:b| (m{Γv}q) ϕ}.
 Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Lemma subst_postam: forall pa x v,
-    {x := v}pa pa = map (fun '(B, ρ) => ({x := v}a B, {x := v}p ρ)) pa.
-Proof.
-  induction pa; simpl; intros; eauto.
-  destruct a. simpl in *.
-  f_equal. eauto.
-Qed.
-
-Lemma msubst_postam: forall (Γv: env) pa,
+Lemma msubst_arrpty: forall Γv ρ τ,
     closed_env Γv ->
-    m{Γv}pa pa = map (fun '(B, ρ) => (m{Γv}a B, m{Γv}p ρ)) pa.
-Proof.
-  msubst_tac.
-  - rewrite <- map_id at 1. apply map_ext.
-    intros [].
-    by rewrite !map_fold_empty.
-  - rewrite subst_postam.
-    rewrite map_map. apply map_ext.
-    intros [].
-    rewrite_msubst_insert.
-Qed.
-
-Lemma msubst_lete: forall (Γv: env) e_x e,
-    closed_env Γv ->
-    (m{Γv}t (tlete e_x e) = tlete ((m{Γv}t) e_x) ((m{Γv}t) e)).
+    ((m{Γv}p) (ρ⇨τ)) = ((m{Γv}p ρ)⇨(m{Γv}h τ)).
 Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Lemma msubst_aϵ: forall (Γv: env),
-    m{Γv}a aϵ = aϵ.
-Proof.
-  msubst_tac.
-Qed.
-
-Lemma msubst_concat: forall (Γv: env) A1 A2,
+Lemma msubst_ghostpty: forall Γv b ρ,
     closed_env Γv ->
-    m{Γv}a (aconcat A1 A2) = (aconcat (m{Γv}a A1) (m{Γv}a A2)).
+    ((m{Γv}p) (b⇢ρ)) = (b⇢(m{Γv}p ρ)).
 Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Lemma msubst_aevent: forall (Γv: env) op ϕ,
+Lemma msubst_hoarehty: forall (Γv: env) ρ A B,
     closed_env Γv ->
-    m{Γv}a ⟨op|ϕ⟩ = ⟨op| m{Γv}q ϕ⟩.
+    m{Γv}h [:ρ|A▶B] = [:m{Γv}p ρ|m{Γv}a A ▶ m{Γv}a B].
 Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Lemma msubst_pty_to_hty: forall Γv ρ,
+Lemma msubst_interhty: forall (Γv: env) τ1 τ2,
     closed_env Γv ->
-    (m{Γv}h) (pty_to_hty ρ) = pty_to_hty (m{Γv}p ρ).
+    m{Γv}h (τ1 ⊓ τ2) = (m{Γv}h τ1) ⊓ (m{Γv}h τ2).
 Proof.
-  msubst_tac.
-  unfold pty_to_hty.
-  simpl. f_equal.
-  - rewrite_msubst_insert.
-    rewrite <- pty_erase_subst_eq. reflexivity.
-  - rewrite_msubst_insert.
+  msubst_tac. rewrite_msubst_insert.
+Qed.
+
+Ltac rewrite_msubst lem := rewrite lem in *; eauto using ctxRst_closed_env.
+
+Lemma msubst_mk_top: forall (Γv: env) b,
+    closed_env Γv ->
+    m{Γv}p (mk_top b) = mk_top b.
+Proof.
+  intros.
+  unfold mk_top, mk_q_under_top.
+  rewrite_msubst msubst_basepty.
+  rewrite_msubst msubst_qualifier.
+Qed.
+
+Lemma msubst_mk_eq_constant: forall (Γv: env) c,
+    closed_env Γv ->
+    (m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c).
+Proof.
+  intros.
+  unfold mk_eq_constant, mk_q_bvar_eq_val.
+  repeat rewrite_msubst msubst_basepty.
+  repeat rewrite_msubst msubst_qualifier.
+  simpl.
+  repeat rewrite_msubst msubst_bvar.
+  repeat rewrite_msubst msubst_constant.
+Qed.
+
+Lemma msubst_mk_eq_var: forall (Γv: env) b x v,
+    closed_env Γv ->
+    Γv !! x = Some v ->
+    (m{Γv}p) (mk_eq_var b x) = {:b | b0:v= v}.
+Proof.
+  intros.
+  unfold mk_eq_var.
+  repeat rewrite_msubst msubst_basepty.
+  repeat rewrite_msubst msubst_qualifier.
+  simpl.
+  repeat rewrite_msubst msubst_bvar.
+  repeat rewrite_msubst msubst_fvar.
+  rewrite H0.
+  eauto.
 Qed.
 
 Ltac msubst_simp :=
   match goal with
-  | H: context [ m{ _ }h (pty_to_hty _) ] |- _ => rewrite msubst_pty_to_hty in H
-  | |- context [ m{ _ }h (pty_to_hty _) ] => rewrite msubst_pty_to_hty
-  | H: context [ m{ _ }h _ ] |- _ => rewrite msubst_hty in H
-  | |- context [ m{ _ }h _ ] => rewrite msubst_hty
-  | H: context [ m{ _ }p {: _ | _ } ] |- _ => rewrite msubst_bty in H
-  | |- context [ m{ _ }p {: _ | _ } ] => rewrite msubst_bty
-  | H: context [ m{ _ }p (-: _ ⇨[: _ | _ ▶ _ ]) ] |- _ => rewrite msubst_arrty in H
-  | |- context [ m{ _ }p (-: _ ⇨[: _ | _ ▶ _ ]) ] => rewrite msubst_arrty
-  | H: context [ m{ _ }a (aϵ) ] |- _ => rewrite msubst_aϵ in H
-  | |- context [ m{ _ }a (aϵ) ] => rewrite msubst_aϵ
-  | H: context [ m{ _ }a (aconcat _ _) ] |- _ => rewrite msubst_concat in H
-  | |- context [ m{ _ }a (aconcat _ _) ] => rewrite msubst_concat
+  | H: context [ m{ _ }a (aany) ] |- _ => rewrite msubst_aany in H
+  | |- context [ m{ _ }a (aany) ] => rewrite msubst_aany
+  | H: context [ m{ _ }a (aconcat _ _) ] |- _ => rewrite msubst_aconcat in H
+  | |- context [ m{ _ }a (aconcat _ _) ] => rewrite msubst_aconcat
   | H: context [ m{ _ }a (aevent _ _) ] |- _ => rewrite msubst_aevent in H
+  | |- context [ m{ _ }a (aevent _ _) ] => rewrite msubst_aevent
   | |- context [ m{ _ }t (tlete _ _) ] => rewrite msubst_lete
   | H: context [ m{ _ }t (tleteffop _ _ _) ] |- _ => rewrite msubst_tleteffop in H
   | |- context [ m{ _ }t (tleteffop _ _ _) ] => rewrite msubst_tleteffop
@@ -636,10 +613,26 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }v (vfvar _) ] => rewrite msubst_fvar
   | H: context [ m{ _ }v (vconst _) ] |- _ => rewrite msubst_constant in H
   | |- context [ m{ _ }v (vconst _) ] => rewrite msubst_constant
-  | H: context [ m{ _ }q (_ & _) ] |- _ => rewrite msubst_qualifier_and in H
-  | |- context [ m{ _ }q (_ & _) ] => rewrite msubst_qualifier_and
   (* | H: context [ m{ _ }q _ ] |- _ => rewrite msubst_qualifier in H *)
   (* | |- context [ m{ _ }q _ ] => rewrite msubst_qualifier *)
+  | H: context [ m{ _ }q (_ & _) ] |- _ => rewrite msubst_qualifier_and in H
+  | |- context [ m{ _ }q (_ & _) ] => rewrite msubst_qualifier_and
+  | H: context [ m{ _ }p {: _ | _ } ] |- _ => rewrite msubst_basepty in H
+  | |- context [ m{ _ }p {: _ | _ } ] => rewrite msubst_basepty
+  | H: context [ m{ _ }p (_ ⇨ _) ] |- _ => rewrite msubst_arrpty in H
+  | |- context [ m{ _ }p (_ ⇨ _) ] => rewrite msubst_arrpty
+  | H: context [ m{ _ }p (_ ⇢ _) ] |- _ => rewrite msubst_ghostpty in H
+  | |- context [ m{ _ }p (_ ⇢ _) ] => rewrite msubst_ghostpty
+  | H: context [ m{ _ }h [:_|_▶_] ] |- _ => rewrite msubst_hoarehty in H
+  | |- context [ m{ _ }h [:_|_▶_] ] => rewrite msubst_hoarehty
+  | H: context [ m{ _ }h (_⊓_) ] |- _ => rewrite msubst_interhty in H
+  | |- context [ m{ _ }h (_⊓_) ] => rewrite msubst_interhty
+  | H: context [ m{ _ }p (mk_top _) ] |- _ => rewrite msubst_mk_top in H
+  | |- context [ m{ _ }p (mk_top _) ] => rewrite msubst_mk_top
+  | H: context [ m{ _ }p (mk_eq_constant _) ] |- _ => rewrite msubst_mk_eq_constant in H
+  | |- context [ m{ _ }p (mk_eq_constant _) ] => rewrite msubst_mk_eq_constant
+  | H: context [ m{ _ }p (mk_eq_var _ ?x) ], H': _ !! ?x = Some ?v |- _ => rewrite msubst_mk_eq_var with (v:=v) in H
+  | H': _ !! ?x = Some ?v |- context [ m{ _ }p (mk_eq_var _ ?x) ] => rewrite msubst_mk_eq_var with (v:=v)
   end; eauto using ctxRst_closed_env.
 
 Lemma msubst_open_var_tm: forall (Γv: env) e k (x: atom),
@@ -803,28 +796,6 @@ Proof.
   by rewrite subst_open_qualifier_closed by qauto.
 Qed.
 
-Lemma msubst_intro_postam: forall (Γv: env) e k (v_x: value) (x: atom),
-    closed_env Γv ->
-    closed_value v_x ->
-    map_Forall (fun _ v => lc (treturn v)) Γv ->
-    x ∉ dom Γv ∪ stale e ->
-    {k ~pa> v_x} ((m{Γv}pa) e) = (m{<[x:=v_x]> Γv}pa) ({k ~pa> x} e).
-Proof.
-  intros.
-  rewrite_msubst_insert.
-  2 : apply not_elem_of_dom; my_set_solver.
-  revert_all.
-  intros *.
-  msubst_tac.
-  rewrite map_fold_empty.
-  rewrite open_subst_same_postam. auto. my_set_solver.
-  rewrite_msubst_insert.
-  apply map_Forall_insert in H3; eauto.
-  rewrite subst_commute_postam by my_set_solver.
-  rewrite <- H0 by my_set_solver.
-  by rewrite subst_open_postam_closed by qauto.
-Qed.
-
 Lemma msubst_intro_am: forall (Γv: env) e k (v_x: value) (x: atom),
     closed_env Γv ->
     closed_value v_x ->
@@ -865,15 +836,6 @@ Proof.
   rewrite fv_of_subst_hty by eauto. my_set_solver.
 Qed.
 
-Lemma msubst_postam_fv_subseteq Γv v_x pa:
-  closed_env Γv ->
-  closed_value v_x ->
-  postam_fv (m{Γv}pa pa) ⊆ postam_fv pa.
-Proof.
-  msubst_tac.
-  rewrite fv_of_subst_postam by eauto. my_set_solver.
-Qed.
-
 Lemma msubst_qualifier_fv_subseteq Γv v_x ϕ:
   closed_env Γv ->
   closed_value v_x ->
@@ -901,6 +863,15 @@ Proof.
   rewrite fv_of_subst_tm by eauto. my_set_solver.
 Qed.
 
+Lemma msubst_value_fv_subseteq Γv v_x (v : value):
+  closed_env Γv ->
+  closed_value v_x ->
+  fv_value (m{Γv}v v) ⊆ fv_tm v.
+Proof.
+  msubst_tac.
+  rewrite fv_of_subst_value by eauto. my_set_solver.
+Qed.
+
 Lemma msubst_insert_fresh_pty Γv x v_x ρ:
   closed_env Γv ->
   closed_value v_x ->
@@ -925,19 +896,6 @@ Proof.
   apply subst_fresh_hty.
   eapply not_elem_of_weaken; eauto.
   rewrite msubst_hty_fv_subseteq by eauto. my_set_solver.
-Qed.
-
-Lemma msubst_insert_fresh_postam Γv x v_x pa:
-  closed_env Γv ->
-  closed_value v_x ->
-  x ∉ dom Γv ∪ postam_fv pa ->
-  (m{<[x:=v_x]> Γv}pa) pa = (m{Γv}pa) pa.
-Proof.
-  intros.
-  rewrite_msubst_insert. 2: apply not_elem_of_dom; my_set_solver.
-  apply subst_fresh_postam.
-  eapply not_elem_of_weaken; eauto.
-  rewrite msubst_postam_fv_subseteq by eauto. my_set_solver.
 Qed.
 
 Lemma msubst_insert_fresh_qualifier Γv x v_x ϕ:
@@ -977,6 +935,19 @@ Proof.
   apply subst_fresh_tm.
   eapply not_elem_of_weaken; eauto.
   rewrite msubst_tm_fv_subseteq by eauto. my_set_solver.
+Qed.
+
+Lemma msubst_insert_fresh_value Γv x v_x (v : value):
+  closed_env Γv ->
+  closed_value v_x ->
+  x ∉ dom Γv ∪ fv_tm v ->
+  (m{<[x:=v_x]> Γv}v) v = (m{Γv}v) v.
+Proof.
+  intros.
+  rewrite_msubst_insert. 2: apply not_elem_of_dom; my_set_solver.
+  apply subst_fresh_value.
+  eapply not_elem_of_weaken; eauto.
+  rewrite msubst_value_fv_subseteq by eauto. my_set_solver.
 Qed.
 
 Lemma lc_msubst_pty Γv (ρ: pty):
@@ -1064,85 +1035,6 @@ Proof.
   by apply not_elem_of_dom.
 Qed.
 
-Lemma postam_msubst_in: forall (Γv: env) (A: am) (ρ: pty) (B: postam),
-    closed_env Γv ->
-    In (A, ρ) (m{Γv}pa B) ->
-    exists A' ρ', A = m{Γv}a A' /\ ρ = m{Γv}p ρ' /\ In (A', ρ') B.
-Proof.
-  intros *. revert A ρ. apply_msubst_ind; intros; eauto.
-  apply postam_subst_in in H2. simp_hyps. subst.
-  gen_closed_env.
-  apply H0 in H2; eauto. simp_hyps. subst.
-  repeat esplit; eauto; rewrite_msubst_insert.
-Qed.
-
-Lemma postam_in_msubst: forall (Γv: env) (A: am) (ρ: pty) (B: postam),
-    closed_env Γv ->
-    In (A, ρ) B ->
-    In ((m{Γv}a) A, (m{Γv}p) ρ) ((m{Γv}pa) B).
-Proof.
-  intros *. revert A ρ. apply_msubst_ind; intros; eauto.
-  gen_closed_env.
-  eapply postam_in_subst in H0; eauto.
-  rewrite_msubst_insert.
-Qed.
-
-(* move some of these lemmas to another file? *)
-Lemma amlist_typed_open B k v_x T:
-  amlist_typed B T ->
-  amlist_typed ({k ~pa> v_x} B) T.
-Proof.
-  intros. hnf in *.
-  intros.
-  apply postam_open_in in H0. simp_hyps. subst.
-  rewrite <- pty_erase_open_eq.
-  eauto.
-Qed.
-
-Lemma subst_amlist_typed: forall B T x v,
-    amlist_typed B T ->
-    amlist_typed ({x := v}pa B) T.
-Proof.
-  intros; hnf in *; intros.
-  apply postam_subst_in in H0. simp_hyps. subst.
-  rewrite <- pty_erase_subst_eq.
-  eauto.
-Qed.
-
-
-Lemma msubst_amlist_typed: forall (Γv: env) B T,
-    amlist_typed B T ->
-    amlist_typed ((m{Γv}pa) B) T.
-Proof.
-  msubst_tac.
-  eauto using subst_amlist_typed.
-Qed.
-
-Lemma subst_preserves_valid_pty x (v : value) ρ:
-  lc v ->
-  valid_pty ρ ->
-  valid_pty ({x:=v}p ρ).
-Proof.
-  intros Hlc.
-  induction 1; simpl; econstructor; eauto using subst_amlist_typed.
-  instantiate_atom_listctx.
-  apply in_map_iff in H4. simp_hyps. simpl in *.
-  eapply_eq H2. eauto.
-  apply subst_open_var_pty; eauto. my_set_solver.
-Qed.
-
-Lemma subst_preserves_valid_hty x (v : value) τ:
-  lc v ->
-  valid_hty τ ->
-  valid_hty ({x:=v}h τ).
-Proof.
-  intros Hlc.
-  induction 1; simpl; econstructor; eauto using subst_amlist_typed.
-  intros.
-  apply postam_subst_in in H1. simp_hyps. subst.
-  eauto using subst_preserves_valid_pty.
-Qed.
-
 Lemma subst_preserves_closed_pty Γ x (v : value) ρ' ρ:
   lc v ->
   fv_value v ⊆ ctxdom ⦑Γ⦒ ->
@@ -1151,7 +1043,7 @@ Lemma subst_preserves_closed_pty Γ x (v : value) ρ' ρ:
 Proof.
   intros Hlc Hc H.
   sinvert H.
-  econstructor. eauto using subst_preserves_valid_pty.
+  econstructor.
   eauto using subst_lc_pty.
   rewrite remove_arr_pty_ctx_dom_union in *.
   rewrite union_mono_l in * by apply remove_arr_pty_ctx_dom_singleton.
@@ -1165,7 +1057,7 @@ Lemma subst_preserves_closed_hty Γ x (v : value) ρ' τ:
   closed_hty (ctxdom ⦑Γ⦒) ({x:=v}h τ).
 Proof.
   intros Hlc Hc H. sinvert H.
-  econstructor. eauto using subst_preserves_valid_hty.
+  econstructor.
   eauto using subst_lc_hty.
   rewrite remove_arr_pty_ctx_dom_union in *.
   rewrite union_mono_l in * by apply remove_arr_pty_ctx_dom_singleton.
@@ -1250,7 +1142,7 @@ Proof.
   rewrite <- insert_union_singleton_l. reflexivity.
   eapply basic_typing_weaken_value. apply map_empty_subseteq.
   apply ptyR_typed_closed in H1. simp_hyps.
-  sinvert H3. apply_eq H6. eauto using pty_erase_msubst_eq.
+  sinvert H1. apply_eq H6. eauto using pty_erase_msubst_eq.
 Qed.
 
 Lemma msubst_preserves_basic_typing_tm_empty Γ Γv :
@@ -1283,7 +1175,7 @@ Proof.
   rewrite <- insert_union_singleton_l. reflexivity.
   eapply basic_typing_weaken_value. apply map_empty_subseteq.
   apply ptyR_typed_closed in H1. simp_hyps.
-  sinvert H3. apply_eq H6. eauto using pty_erase_msubst_eq.
+  sinvert H1. apply_eq H6. eauto using pty_erase_msubst_eq.
 Qed.
 
 Lemma msubst_preserves_basic_typing_value_empty Γ Γv :
@@ -1296,88 +1188,58 @@ Proof.
   rewrite map_union_empty. eauto.
 Qed.
 
-Lemma wf_pty_closed Γ ρ :
-  wf_pty Γ ρ ->
-  closed_pty (ctxdom ⦑ Γ ⦒) ρ.
+Lemma msubst_preserves_pty_measure ρ Γv:
+  pty_measure ρ = pty_measure (m{Γv}p ρ).
 Proof.
-  induction 1; eauto.
-  sinvert IHwf_pty.
-  econstructor.
-  - econstructor; eauto.
-    instantiate_atom_listctx.
-    eapply H4; eauto.
-  - econstructor; eauto.
-    instantiate_atom_listctx.
-    apply H2.
-    intros. repeat specialize_with x.
-    eapply H2; eauto.
-    intros. repeat specialize_with x.
-    eapply H4; eauto.
-  - simpl.
-    repeat apply union_least. eauto. {
-      auto_pose_fv x. repeat specialize_with x. simp_hyps.
-      sinvert H2.
-      rewrite <- open_fv_am' in *.
-      rewrite remove_arr_pty_ctx_dom_union in *.
-      rewrite union_mono_l in * by apply remove_arr_pty_ctx_dom_singleton.
-      my_set_solver.
-    }
-    apply union_list_subseteq_forall.
-    setoid_rewrite in_map_iff.
-    intros. simp_hyps. set_fold_not. simpl in *. subst.
-    auto_pose_fv x. repeat specialize_with x. simp_hyps.
-    sinvert H2. sinvert H4.
-    rewrite <- open_fv_am' in *.
-    rewrite <- open_fv_pty' in *.
-    rewrite remove_arr_pty_ctx_dom_union in *.
-    rewrite union_mono_l in * by apply remove_arr_pty_ctx_dom_singleton.
-    my_set_solver.
+  msubst_tac. qauto using subst_preserves_pty_measure.
 Qed.
 
-Lemma wf_hty_closed Γ τ :
+Lemma msubst_preserves_hty_measure τ Γv:
+  hty_measure τ = hty_measure (m{Γv}h τ).
+Proof.
+  msubst_tac. qauto using subst_preserves_hty_measure.
+Qed.
+
+Lemma wf_pty_closed Γ ρ :
+  wf_pty Γ ρ ->
+  closed_pty (ctxdom ⦑ Γ ⦒) ρ
+with wf_hty_closed Γ τ :
   wf_hty Γ τ ->
   closed_hty (ctxdom ⦑ Γ ⦒) τ.
 Proof.
-  intros H. sinvert H. simp_hyps. sinvert H2.
-  econstructor.
-  econstructor; eauto.
-  intros; eapply wf_pty_closed in H; eauto. sinvert H. eauto.
-  econstructor; eauto.
-  intros; sinvert H3.
-  intros; eapply wf_pty_closed in H; eauto. sinvert H. eauto.
-  simpl.
-  apply union_least. eauto.
-  apply union_list_subseteq_forall.
-  intros. rewrite in_map_iff in *. simp_hyps. subst. simpl in *.
-  sinvert H3.
-  eapply wf_pty_closed in H; eauto. sinvert H.
-  my_set_solver.
+  all: destruct 1; eauto; split;
+    let go :=
+      repeat select (_ ⊢WFp _) (fun H => apply wf_pty_closed in H; sinvert H);
+      repeat select (_ ⊢WF _) (fun H => apply wf_hty_closed in H; sinvert H);
+      repeat destruct select (_ ⊢WFa _);
+      eauto in
+    match goal with
+    | |- lc_pty _ =>
+        repeat econstructor; try instantiate_atom_listctx; go
+    | |- lc_hty _ =>
+        repeat econstructor; try instantiate_atom_listctx; go
+    | |- _ =>
+        simpl; auto_pose_fv x; repeat specialize_with x; go;
+        rewrite <- ?open_fv_hty' in *;
+        rewrite <- ?open_fv_pty' in *;
+        rewrite ?remove_arr_pty_ctx_dom_union in *;
+        rewrite ?union_mono_l in * by apply remove_arr_pty_ctx_dom_singleton;
+        my_set_solver
+    end.
 Qed.
 
-Lemma wf_pty_arr_not_in Γ ρ T' A' B' T A B :
-  Γ ⊢WFp (-:-:ρ⇨[:T'|A'▶B']⇨[:T|A▶B]) ->
-  exists (L : aset), forall (x : atom), x ∉ L -> x # [:T|A▶B] ^h^ x.
+Lemma wf_pty_arr_not_in Γ ρ τ τ':
+  Γ ⊢WFp ((ρ⇨τ')⇨τ) ->
+  exists (L : aset), forall (x : atom), x ∉ L -> x # τ ^h^ x.
 Proof.
   intros H. sinvert H.
   eexists. instantiate_atom_listctx.
-  apply not_elem_of_union. split.
-  - sinvert H0.
-    rewrite remove_arr_pty_ctx_dom_union in *.
-    simpl in *.
-    rewrite union_empty_r_L in *.
-    rewrite remove_arr_pty_ctx_dom_subseteq in *.
-    my_set_solver.
-  - apply union_list_not_in.
-    intros.
-    rewrite in_map_iff in *. simp_hyps.
-    apply postam_open_in in H5. simp_hyps. subst. simpl in *.
-    sinvert H1; eauto.
-    eapply wf_pty_closed in H9; eauto. sinvert H9.
-    rewrite remove_arr_pty_ctx_dom_union in *.
-    simpl in *.
-    rewrite union_empty_r_L in *.
-    rewrite remove_arr_pty_ctx_dom_subseteq in *.
-    my_set_solver.
+  apply wf_hty_closed in H4.
+  sinvert H4.
+  rewrite remove_arr_pty_ctx_dom_union in *. simpl in *.
+  rewrite union_empty_r_L in *.
+  rewrite remove_arr_pty_ctx_dom_subseteq in *.
+  my_set_solver.
 Qed.
 
 Lemma value_reduction_refl: forall α β (v1: value) v2, α ⊧ v1 ↪*{ β} v2 -> v2 = v1 /\ β = [].
@@ -1560,6 +1422,35 @@ Proof.
   sinvert H0. simplify_list_eq. eauto.
 Qed.
 
+Lemma mk_top_closed_pty b : closed_pty ∅ (mk_top b).
+Proof.
+  econstructor. unshelve (repeat econstructor). exact ∅.
+  my_set_solver.
+Qed.
+
+Lemma mk_top_denote_pty (b : base_ty) (v : value) :
+  ∅ ⊢t v ⋮v b ->
+  p⟦ mk_top b ⟧ v.
+Proof.
+  intros.
+  split; [| split]; simpl; eauto using mk_top_closed_pty.
+  hauto using value_reduction_refl.
+Qed.
+
+Lemma mk_eq_constant_closed_pty c : closed_pty ∅ (mk_eq_constant c).
+Proof.
+  econstructor. unshelve (repeat econstructor). exact ∅.
+  my_set_solver.
+Qed.
+
+Lemma mk_eq_constant_denote_pty c:
+  p⟦ mk_eq_constant c ⟧ c.
+Proof.
+  simpl. split; [| split]; eauto using mk_eq_constant_closed_pty.
+  hauto using value_reduction_refl.
+Qed.
+
+(*
 Lemma denotation_application_base_arg:
   forall (b: base_ty) ϕ T A B (Tb: ty) e,
     Tb = b ->
@@ -1677,38 +1568,7 @@ Proof.
   apply postam_open_in in H.
   simp_hyps. subst. eauto.
 Qed.
-
-Lemma pty_to_hty_preserves_closed: forall (ρ: pty) d,
-    closed_pty d ρ -> closed_hty d (pty_to_hty ρ).
-Proof.
-  inversion 1.
-  repeat econstructor; try solve [hnf; qauto]. qsimpl.
-  cbn. repeat my_set_solver.
-Qed.
-
-Lemma denotation_value_pure: forall (ρ: pty) (v: value), p⟦ ρ ⟧ v <-> ⟦pty_to_hty ρ ⟧ v.
-Proof.
-  split; simpl; intros.
-  - dup_hyp H (fun H => apply ptyR_typed_closed in H).
-    simp_hyps.
-    split; simpl; eauto. split; eauto using pty_to_hty_preserves_closed.
-    intros Hamlist α β v' Hα Hstepv. reduction_simp.
-    exists aϵ, ρ. split. unfold In. left; auto. split; auto. repeat constructor; auto.
-  - destruct H as (Ht & Hclose & H).
-    cbn in *.
-    assert (amlist_typed [(aϵ, ρ)] ⌊ρ⌋) as Hamlist. {
-      clear. hnf. qauto.
-    }
-    specialize (H Hamlist [] [] v).
-    assert (closed_am ∅ (astar ∘) ∧ repeat_tr (a⟦∘⟧) []) as H1. {
-      split; auto. repeat constructor; simpl; auto. econstructor.
-    }
-    assert ([] ⊧ v ↪*{ [] } v) as Hstepv. {
-      econstructor.
-      eauto using basic_typing_regular_tm.
-    }
-    specialize (H H1 Hstepv). mydestr. apply in_singleton in H. mydestr; subst; auto.
-Qed.
+*)
 
 Lemma closed_bool_typed_value: forall v, ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
 Proof.
@@ -1732,6 +1592,7 @@ Proof.
   rewrite dom_insert. my_set_solver.
 Qed.
 
+(*
 Lemma msubst_constant_remove_arr_pty_ctx Γ Γv v (c : constant):
   ctxRst Γ Γv ->
   m{Γv}v v = c ->
@@ -1759,27 +1620,9 @@ Proof.
     rewrite <- pty_erase_msubst_eq in *. simpl in *.
     sinvert H2. sinvert H6.
 Qed.
+*)
 
-Lemma closed_hty_congr d T A B :
-  closed_am d A ->
-  (forall Bi ρi, In (Bi, ρi) B -> closed_am d Bi /\ closed_pty d ρi) ->
-  amlist_typed B T ->
-  closed_hty d [:T|A▶B].
-Proof.
-  intros. sinvert H.
-  simp_hyps.
-  econstructor.
-  - econstructor; eauto.
-    intros. sinvert H.
-  - econstructor; eauto.
-    intros. sinvert H0.
-    intros. sinvert H.
-  - simpl. apply union_least; eauto.
-    apply union_list_subseteq_forall.
-    intros. srewrite in_map_iff. simp_hyps. simpl in *. subst.
-    sinvert H. sinvert H0. my_set_solver.
-Qed.
-
+(*
 Definition builtinR op ρx A B :=
   forall (v_x: constant),
     p⟦ ρx ⟧ v_x ->
@@ -1794,6 +1637,9 @@ Definition well_formed_builtin_typing := forall Γ op ρx A B,
     forall Γv,
       ctxRst Γ Γv ->
       builtinR op (m{Γv}p ρx) (m{Γv}a A) (m{Γv}pa B).
+*)
+
+Definition well_formed_builtin_typing : Prop. Admitted.
 
 Ltac simpl_fv :=
   do_hyps (fun H => try match type of H with
@@ -1804,108 +1650,100 @@ Ltac simpl_fv :=
 (* At some point the proof is very slow without marking [msubst] opaque. *)
 Opaque msubst.
 
-
-*)
-
-Definition well_formed_builtin_typing : Prop. Admitted.
-
 Theorem fundamental:
   well_formed_builtin_typing ->
   forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ ->
     forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }h τ ⟧ (m{ Γv }t e).
 Proof.
-Admitted.
-(*
   intros HWFbuiltin.
-  apply (term_type_check_rec
-           (fun Γ (v: value) ρ _ =>
+  apply (term_value_type_check_ind
+           (fun Γ (v: value) ρ =>
               forall Γv, ctxRst Γ Γv -> p⟦ m{Γv}p ρ ⟧ (m{Γv}v v))
-           (fun Γ e (τ: hty) _ =>
+           (fun Γ e (τ: hty) =>
               forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h τ ⟧ (m{Γv}t e))
         ).
-  (* [TConstant] *)
-  - intros Γ c HWF Γv HΓv. repeat msubst_simp.
-    assert ((m{Γv}p) (mk_eq_constant c) = (mk_eq_constant c)) as Htmp. {
-      unfold mk_eq_constant, mk_q_bvar_eq_val.
-      repeat (simpl; msubst_simp).
-      rewrite msubst_qualifier; eauto using ctxRst_closed_env.
-      repeat (simpl; msubst_simp).
-    }
-    rewrite Htmp; clear Htmp.
-    simpl.
-    split. eauto. split. repeat econstructor.
-    split. unshelve (repeat econstructor). exact ∅. simpl. repeat my_set_solver.
-    intros. unfold bpropR. simpl.
-    apply value_reduction_refl in H.
-    simp_hyps. eauto.
-
-  (* [TVar] *)
-  - intros Γ x ρ Hwf Hfind Γv HΓv. repeat msubst_simp.
-    eapply ctxRst_ctxfind in HΓv; eauto.
-    qauto.
-
-  (* [TLam] *)
-  - intros Γ Tx ρ e T A B L HWF Ht HDe He Γv HΓv. repeat msubst_simp.
-    assert (∅ ⊢t vlam Tx ((m{Γv}t) e) ⋮t Tx ⤍ T) as Hlam. {
-      econstructor. econstructor.
-      instantiate_atom_listctx.
-      rewrite <- msubst_open_var_tm by
-        (eauto using ctxRst_closed_env, ctxRst_lc; simpl_fv; my_set_solver).
-      eapply msubst_preserves_basic_typing_tm; eauto.
-      eapply tm_typing_regular_basic_typing in Ht.
-      apply_eq Ht; eauto.
-      cbn in He. subst.
-      rewrite ctx_erase_app. f_equal. cbn.
-      rewrite map_union_empty. eauto.
-    }
-    assert (closed_pty ∅ (m{Γv}p (-:ρ⇨[:T|A▶B]))). {
+  (* [TVSub] *)
+  - intros Γ v ρ1 ρ2 HWFρ2 _ HDρ1 Hsub Γv HΓv. specialize (HDρ1 _ HΓv).
+    apply Hsub in HDρ1; auto.
+  (* [TGhost] *)
+  - intros Γ v b ρ L HWF Hv HDv Γv HΓv. repeat msubst_simp.
+    simpl. split; [| split]. {
+      assert (Γ ⊢ v ⋮v (b⇢ρ)) by eauto using value_type_check.
+      eapply value_typing_regular_basic_typing in H.
+      eapply msubst_preserves_basic_typing_value_empty in H; eauto.
+      econstructor. apply_eq H. cbn. apply pty_erase_msubst_eq.
+    } {
       eapply_eq msubst_preserves_closed_pty_empty; eauto using wf_pty_closed.
+      msubst_simp.
     }
-    destruct ρ.
-    + repeat msubst_simp. apply denotation_application_base_arg; eauto.
-      auto_pose_fv x. repeat specialize_with x.
-      intros v_x Hv_x.
-      assert (ctxRst (Γ ++ [(x, {:B0|ϕ})]) (<[x := v_x]> Γv)) as HΓv'. {
-        econstructor; eauto.
-        econstructor; eauto using ctxRst_ok_ctx.
-        sinvert HWF. sinvert H5. eauto.
-        my_set_solver.
-        msubst_simp.
-      }
-      specialize (HDe _ HΓv').
-      rewrite <- msubst_intro_tm in HDe by
-        (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
-         simpl_fv; my_set_solver).
-      rewrite <- msubst_intro_hty in HDe by
-        (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
-         simpl_fv; my_set_solver).
+    auto_pose_fv x. repeat specialize_with x.
+    intros.
+    ospecialize* (HDv (<[x:=v0]>Γv)). {
+      econstructor; eauto.
+      econstructor; eauto using ctxRst_ok_ctx.
+      eapply closed_pty_subseteq_proper. apply mk_top_closed_pty. my_set_solver.
+      my_set_solver.
       repeat msubst_simp.
-    + repeat msubst_simp. apply denotation_application_arr_arg; eauto.
-      qauto using pty_erase_msubst_eq.
-      dup_hyp HWF (fun H => apply wf_pty_arr_not_in in H; destruct H as (L'&?)).
-      auto_pose_fv x. repeat specialize_with x.
-      intros v_x Hv_x.
-      assert (ctxRst (Γ ++ [(x, -:ρ⇨[:T0|pre▶post] )]) (<[x := v_x]> Γv)) as HΓv'. {
-        econstructor; eauto.
-        econstructor; eauto using ctxRst_ok_ctx.
-        sinvert HWF.
-        apply wf_pty_closed. eauto.
-        my_set_solver.
-        msubst_simp.
-      }
-      specialize (HDe _ HΓv').
-      rewrite <- msubst_intro_tm in HDe by
+      eauto using mk_top_denote_pty.
+    }
+    rewrite <- msubst_intro_pty in HDv by
+      (eauto using ctxRst_closed_env, ctxRst_lc, basic_typing_closed_value;
+       simpl_fv; my_set_solver).
+    apply_eq HDv. by rewrite <- open_preserves_pty_measure.
+    rewrite msubst_insert_fresh_value by
+      (eauto using ctxRst_closed_env, basic_typing_closed_value;
+       simpl_fv; my_set_solver).
+    auto.
+  (* [TConstant] *)
+  - intros Γ c HWF Γv HΓv. repeat msubst_simp. eauto using mk_eq_constant_denote_pty.
+  (* [TBaseVar] *)
+  - intros Γ x b ϕ Hwf Hfind Γv HΓv.
+    dup_hyp HΓv (fun H => eapply ctxRst_ctxfind in H; eauto). simp_hyps.
+    repeat msubst_simp. rewrite H0.
+    destruct H1 as [H _].
+    sinvert H. cbn in H3.
+    dup_hyp H3 (fun H => apply empty_basic_typing_base_const_exists in H).
+    simp_hyps. subst. sinvert H3.
+    eauto using mk_eq_constant_denote_pty.
+  (* [TFuncVar] *)
+  - intros Γ x ρ τ Hwf Hfind Γv HΓv.
+    dup_hyp HΓv (fun H => eapply ctxRst_ctxfind in H; eauto). simp_hyps.
+    repeat msubst_simp.
+    by rewrite H0.
+  (* [TLam] *)
+  - intros Γ Tx ρ e τ L HWF Ht HDe He Γv HΓv. repeat msubst_simp.
+    split; [| split]. {
+      assert (Γ ⊢ vlam Tx e ⋮v (ρ⇨τ)) by eauto using value_type_check.
+      eapply value_typing_regular_basic_typing in H.
+      eapply msubst_preserves_basic_typing_value_empty in H; eauto.
+      repeat msubst_simp.
+      econstructor. apply_eq H. cbn.
+      by rewrite <- ?pty_erase_msubst_eq, <- ?hty_erase_msubst_eq.
+    } {
+      eapply_eq msubst_preserves_closed_pty_empty; eauto using wf_pty_closed.
+      msubst_simp.
+    }
+    intros v_x Hv_x.
+    auto_pose_fv x. repeat specialize_with x.
+    ospecialize* (HDe (<[x:=v_x]>Γv)). {
+      econstructor; eauto.
+      econstructor; eauto using ctxRst_ok_ctx.
+      sinvert HWF. eauto using wf_pty_closed. my_set_solver.
+      rewrite ptyR_measure_irrelevant. eauto. lia. lia.
+    }
+    rewrite <- msubst_intro_tm in HDe by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
-      assert ((m{<[x:=v_x]> Γv}h) ([:T|A▶B] ^h^ x) = m{Γv}h [:T|A▶B]) as Htmp3. {
-        rewrite <- open_not_in_eq_hty.
-        apply msubst_insert_fresh_hty; eauto using ctxRst_closed_env, ptyR_closed_value.
-        simpl_fv; my_set_solver.
-        eauto.
-      }
-      rewrite Htmp3 in HDe.
-      repeat msubst_simp.
+    rewrite <- msubst_intro_hty in HDe by
+        (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
+         simpl_fv; my_set_solver).
+    rewrite htyR_measure_irrelevant; [
+      | rewrite <- open_preserves_hty_measure; lia
+      | reflexivity ].
+    admit.
+
+(*
 
   (* [TLamFix] *)
   - intros Γ Tx ϕ e T A B L HWF Hlam HDlam Γv HΓv. repeat msubst_simp.

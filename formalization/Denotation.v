@@ -125,6 +125,13 @@ Proof.
   destruct a; simpl; intuition.
 Qed.
 
+Lemma langA_valid_trace a α :
+  langA a α ->
+  valid_trace α.
+Proof.
+  destruct a; simpl; intuition.
+Qed.
+
 Lemma pty_measure_gt_0 ρ : pty_measure ρ > 0.
 Proof.
   induction ρ; simpl; lia.
@@ -214,3 +221,73 @@ Lemma ctxRst_ok_ctx Γ Γv :
 Proof.
   induction 1; eauto. econstructor.
 Qed.
+
+Lemma open_preserves_pty_measure ρ k t:
+  pty_measure ρ = pty_measure ({k ~p> t} ρ)
+with open_preserves_hty_measure τ k t:
+  hty_measure τ = hty_measure ({k ~h> t} τ).
+Proof.
+  destruct ρ; simpl; eauto.
+  destruct τ; simpl; eauto.
+Qed.
+
+Lemma subst_preserves_pty_measure ρ x t:
+  pty_measure ρ = pty_measure ({x:=t}p ρ)
+with subst_preserves_hty_measure τ x t:
+  hty_measure τ = hty_measure ({x:=t}h τ).
+Proof.
+  destruct ρ; simpl; eauto.
+  destruct τ; simpl; eauto.
+Qed.
+
+(* The conclusion has to be strengthened to an equivalence to get around
+termination checker. *)
+Lemma ptyR_measure_irrelevant m n ρ e :
+  pty_measure ρ <= n ->
+  pty_measure ρ <= m ->
+  ptyR n ρ e <-> ptyR m ρ e
+with htyR_measure_irrelevant m n τ e :
+  hty_measure τ <= n ->
+  hty_measure τ <= m ->
+  htyR n τ e <-> htyR m τ e.
+Proof.
+  all: destruct m, n; intros;
+    try solve [ pose proof (pty_measure_gt_0 ρ); lia
+              | pose proof (hty_measure_gt_0 τ); lia ];
+    specialize (ptyR_measure_irrelevant m);
+    specialize (htyR_measure_irrelevant m);
+    simpl.
+  - intuition.
+    + destruct ρ; intros; simpl in *; eauto.
+      rewrite <- htyR_measure_irrelevant.
+      auto_apply.
+      rewrite ptyR_measure_irrelevant; eauto. lia. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite <- ptyR_measure_irrelevant; eauto.
+      rewrite <- open_preserves_pty_measure. lia.
+      rewrite <- open_preserves_pty_measure. lia.
+    + destruct ρ; intros; simpl in *; eauto.
+      rewrite htyR_measure_irrelevant.
+      auto_apply.
+      rewrite <- ptyR_measure_irrelevant; eauto. lia. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite ptyR_measure_irrelevant; eauto.
+      rewrite <- open_preserves_pty_measure. lia.
+      rewrite <- open_preserves_pty_measure. lia.
+  - intuition.
+    + destruct τ; intros; simpl in *; eauto.
+      specialize (H4 _ _ _ H3 H5). intuition.
+      rewrite <- ptyR_measure_irrelevant; eauto. lia. lia.
+      intuition.
+      rewrite <- htyR_measure_irrelevant; eauto. lia. lia.
+      rewrite <- htyR_measure_irrelevant; eauto. lia. lia.
+    + destruct τ; intros; simpl in *; eauto.
+      specialize (H4 _ _ _ H3 H5). intuition.
+      rewrite ptyR_measure_irrelevant; eauto. lia. lia.
+      intuition.
+      rewrite htyR_measure_irrelevant; eauto. lia. lia.
+      rewrite htyR_measure_irrelevant; eauto. lia. lia.
+Qed.
+
