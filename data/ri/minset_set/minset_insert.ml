@@ -1,12 +1,11 @@
 let minset_insert (x : Elem.t) : unit =
-  insert x;
-  if isWritten () then
+  if isWritten () then (
     let (min : Elem.t) = read () in
-    if elem_lt x min then (
-      write x;
-      ())
-    else ()
+    if elem_lt x min then write x;
+    insert x;
+    ())
   else (
+    insert x;
     write x;
     ())
 

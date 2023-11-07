@@ -47,3 +47,38 @@ let[@libRty] select ((a : Elem.t) [@ghost]) ?l:(idx = (true : [%v: int])) =
       newadding = lastL && Select ((idx [@d]), v, true);
     };
   |]
+
+let[@libRty] write ?l:(idx = (true : [%v: int])) =
+  {
+    pre = _G (Any true);
+    res = (true : [%v: unit]);
+    newadding = lastL && Write ((idx [@d]), v, true);
+  }
+
+let[@libRty] isWritten ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) =
+  [|
+    {
+      pre = writtenP a;
+      res = (v : [%v: bool]);
+      newadding = lastL && IsWritten (x_0, v, v);
+    };
+    {
+      pre = not (writtenP a);
+      res = (not v : [%v: bool]);
+      newadding = lastL && IsWritten (x_0, v, not v);
+    };
+  |]
+
+let[@libRty] read ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) =
+  [|
+    {
+      pre = writtenP a;
+      res = (v == a : [%v: int]);
+      newadding = lastL && Read (x_0, v, v == a);
+    };
+    {
+      pre = not (writtenP a);
+      res = (true : [%v: int]);
+      newadding = lastL && Read (x_0, v, true);
+    };
+  |]

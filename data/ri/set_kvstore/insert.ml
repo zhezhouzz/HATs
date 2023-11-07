@@ -1,7 +1,7 @@
 let rec insert (x : Elem.t) : unit =
-  if has_value x then ()
+  if hasValue x then ()
   else
-    let (k : Key.t) = random_key () in
+    let (k : Key.t) = randomKey () in
     if exists k then (
       insert x;
       ())

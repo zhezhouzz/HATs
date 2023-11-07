@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import pathlib
 import run_datatype
+import marple_interface
 
 meta_config_file = "meta-config.json"
 stat_file = ".stat.json"
@@ -71,6 +72,7 @@ if __name__ == '__main__':
             verbose = True
     except:
         verbose = False
+    marple_interface.build_marple(verbose)
     if "benchmarks" == sys.argv[2]:
         load_benchmarks(sys.argv[3])
     elif "ntyping" == sys.argv[2]:

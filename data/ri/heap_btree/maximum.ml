@@ -1,6 +1,6 @@
 let rec maximum (default : Elem.t) : Elem.t =
-  if has_root () then
-    let (root : Elem.t) = get_root () in
+  if hasRoot () then
+    let (root : Elem.t) = getRoot () in
     root
   else default
 

@@ -1,19 +1,19 @@
 let rec insert_aux (cur : Elem.t) (x : Elem.t) : unit =
   if elem_eq cur x then ()
   else if elem_lt x cur then
-    if has_left cur then (
-      let (left : Elem.t) = get_left cur in
+    if hasLeft cur then (
+      let (left : Elem.t) = getLeft cur in
       insert_aux left x;
       ())
     else (
-      add_left cur x;
+      addLeft cur x;
       ())
-  else if has_right cur then (
-    let (right : Elem.t) = get_right cur in
+  else if hasRight cur then (
+    let (right : Elem.t) = getRight cur in
     insert_aux right x;
     ())
   else (
-    add_right cur x;
+    addRight cur x;
     ())
 
 let[@assertRty] insert_aux ?l:(cur = (true : [%v: Elem.t]))

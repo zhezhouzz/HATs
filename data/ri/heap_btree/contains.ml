@@ -1,6 +1,6 @@
 let rec contains (x : Elem.t) : bool =
-  if has_root () then
-    let (root : Elem.t) = get_root () in
+  if hasRoot () then
+    let (root : Elem.t) = getRoot () in
     if elem_eq root x then true
     else
       let (res : bool) = contains_aux root x in

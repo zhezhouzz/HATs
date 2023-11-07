@@ -40,6 +40,8 @@ def print_datatype(config, verbose):
     marple_interface.print_raw(config["automata_preds_file"], verbose)
     print (colored.bold_text("Refinement Types of Underline Effectful Library:"))
     marple_interface.print_raw(config["lib_rty_file"], verbose)
+    print (colored.bold_text("Rrepresentaion Invariant:"))
+    marple_interface.print_raw(config["ri_file"], verbose)
     print (colored.bold_text("Datatype Interefaces:"))
     for path in config["methods"]:
         marple_interface.print_raw(path, verbose)
@@ -55,4 +57,5 @@ if __name__ == '__main__':
     except:
         verbose = False
     # print_datatype(load_datatype(sys.argv[1]), verbose)
+    marple_interface.build_marple(verbose)
     ntypecheck_datatype(load_datatype(sys.argv[1]), verbose)

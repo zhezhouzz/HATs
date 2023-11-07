@@ -1,6 +1,6 @@
 let lazy_insert (x : Elem.t) (thunk : unit -> unit) (z : unit) : unit =
   thunk ();
-  if has_value x then ()
+  if hasValue x then ()
   else (
     insert_aux x;
     ())

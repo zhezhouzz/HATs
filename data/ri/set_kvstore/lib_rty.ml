@@ -26,23 +26,23 @@ let[@libRty] exists ?l:(k = (true : [%v: Key.t])) =
     };
   |]
 
-let[@libRty] has_value ?l:(a = (true : [%v: Elem.t])) =
+let[@libRty] hasValue ?l:(a = (true : [%v: Elem.t])) =
   [|
     {
       pre = has_valueP a;
       res = (v : [%v: bool]);
-      newadding = lastL && Has_value ((a [@d]), v, v);
+      newadding = lastL && HasValue ((a [@d]), v, v);
     };
     {
       pre = not (has_valueP a);
       res = (not v : [%v: bool]);
-      newadding = lastL && Has_value ((a [@d]), v, not v);
+      newadding = lastL && HasValue ((a [@d]), v, not v);
     };
   |]
 
-let[@libRty] random_key ?l:(k = (true : [%v: unit])) =
+let[@libRty] randomKey ?l:(k = (true : [%v: unit])) =
   {
     pre = _G (Any true);
     res = (true : [%v: Key.t]);
-    newadding = lastL && Random_key (x_0, v, true);
+    newadding = lastL && RandomKey (x_0, v, true);
   }

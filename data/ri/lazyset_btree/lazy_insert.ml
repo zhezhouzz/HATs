@@ -1,11 +1,11 @@
 let lazy_insert (x : Elem.t) (thunk : unit -> unit) (z : unit) : unit =
   thunk ();
-  if has_root () then (
-    let (root : Elem.t) = get_root () in
+  if hasRoot () then (
+    let (root : Elem.t) = getRoot () in
     insert_aux root x;
     ())
   else (
-    put_root x;
+    putRoot x;
     ())
 
 let[@libRty] insert_aux ?l:(cur = (true : [%v: Elem.t]))

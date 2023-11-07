@@ -1,21 +1,17 @@
 let rec minset_insert (x : Elem.t) : unit =
-  if has_value x then ()
-  else
-    let (k : Key.t) = random_key () in
-    if exists k then (
-      minset_insert x;
-      ())
-    else (
-      put k x;
-      if isWritten () then
-        let (min : Elem.t) = read () in
-        if elem_lt x min then (
-          write x;
-          ())
-        else ()
+  if isWritten () then
+    if hasValue x then ()
+    else
+      let (k : Key.t) = randomKey () in
+      if exists k then (
+        minset_insert x;
+        ())
       else (
-        write x;
-        ()))
+        put k x;
+        let (min : Elem.t) = read () in
+        if elem_lt x min then write x;
+        ())
+  else ()
 
 let[@assertRty] minset_insert ((m : Elem.t) [@ghost])
     ?l:(x = (true : [%v: Elem.t])) =

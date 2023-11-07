@@ -1,13 +1,13 @@
 let rec contains_aux (cur : Elem.t) (x : Elem.t) : bool =
   if elem_eq cur x then true
   else if elem_lt x cur then
-    if has_left cur then
-      let (left : Elem.t) = get_left cur in
+    if hasLeft cur then
+      let (left : Elem.t) = getLeft cur in
       let (res : bool) = contains_aux left x in
       res
     else false
-  else if has_right cur then
-    let (right : Elem.t) = get_right cur in
+  else if hasRight cur then
+    let (right : Elem.t) = getRight cur in
     let (res : bool) = contains_aux right x in
     res
   else false

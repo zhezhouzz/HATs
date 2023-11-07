@@ -1,5 +1,3 @@
-(* set *)
-
 let[@libRty] insert ?l:(a = (true : [%v: Elem.t])) =
   {
     pre = _G (Any true);

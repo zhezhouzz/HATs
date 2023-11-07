@@ -1,9 +1,9 @@
-val put_root : Elem.t -> unit
-val add_left : Elem.t -> Elem.t -> unit
-val add_right : Elem.t -> Elem.t -> unit
-val has_root : unit -> bool
-val has_left : Elem.t -> bool
-val has_right : Elem.t -> bool
-val get_root : unit -> Elem.t
-val get_left : Elem.t -> Elem.t
-val get_right : Elem.t -> Elem.t
+val putRoot : Elem.t -> unit
+val addLeft : Elem.t -> Elem.t -> unit
+val addRight : Elem.t -> Elem.t -> unit
+val hasRoot : unit -> bool
+val hasLeft : Elem.t -> bool
+val hasRight : Elem.t -> bool
+val getRoot : unit -> Elem.t
+val getLeft : Elem.t -> Elem.t
+val getRight : Elem.t -> Elem.t

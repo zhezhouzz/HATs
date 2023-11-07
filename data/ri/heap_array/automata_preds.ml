@@ -9,3 +9,6 @@ let[@pred] storedP (k : int) (value : Elem.t) =
     && _X (_G (not (Update ((k [@d]), x_1, v, true)))))
 
 let[@pred] existsP (k : int) = _F (Update ((k [@d]), x_1, v, true))
+
+let[@pred] writtenP (idx : int) =
+  _F (Write ((idx [@d]), v, true) && _X (_G (not (Write (x_0, v, true)))))

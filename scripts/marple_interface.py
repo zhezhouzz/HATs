@@ -5,7 +5,8 @@ import os.path
 import subprocess
 import colored
 
-cmd_prefix = ["dune", "exec", "--", "bin/main.exe"]
+# cmd_prefix = ["dune", "exec", "--", "bin/main.exe"]
+cmd_prefix = ["./_build/default/bin/main.exe"]
 
 workdir = ""
 
@@ -28,6 +29,10 @@ def invoc_cmd(verbose, cmd, output_file, cwd=None):
             subprocess.run(cmd, cwd=cwd)
         except subprocess.CalledProcessError as e:
             print(e.output)
+
+def build_marple(verbose):
+    cmd = ["dune", "build"]
+    invoc_cmd(verbose, cmd, None)
 
 def ri_type_check(filename, verbose):
     path = filename.split('/')
@@ -68,4 +73,5 @@ if __name__ == '__main__':
             verbose = True
     except:
         verbose = False
+    build_marple(verbose)
     print_raw(sys.argv[1], verbose)

@@ -1,5 +1,5 @@
 let rec mem (x : Elem.t) : bool =
-  let (res : bool) = has_value x in
+  let (res : bool) = hasValue x in
   res
 
 let[@assertRty] mem ((a : Elem.t) [@ghost]) ?l:(x = (true : [%v: Elem.t])) =

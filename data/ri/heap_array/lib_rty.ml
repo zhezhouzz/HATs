@@ -48,9 +48,37 @@ let[@libRty] select ((a : Elem.t) [@ghost]) ?l:(idx = (true : [%v: int])) =
     };
   |]
 
-let[@libRty] randomLen ?l:(a = (true : [%v: unit])) =
+let[@libRty] write ?l:(idx = (true : [%v: int])) =
   {
     pre = _G (Any true);
-    res = (0 < v : [%v: int]);
-    newadding = lastL && RandomLen (x_0, v, 0 < v);
+    res = (true : [%v: unit]);
+    newadding = lastL && Write ((idx [@d]), v, true);
   }
+
+let[@libRty] isWritten ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) =
+  [|
+    {
+      pre = writtenP a;
+      res = (v : [%v: bool]);
+      newadding = lastL && IsWritten (x_0, v, v);
+    };
+    {
+      pre = not (writtenP a);
+      res = (not v : [%v: bool]);
+      newadding = lastL && IsWritten (x_0, v, not v);
+    };
+  |]
+
+let[@libRty] read ((a : int) [@ghost]) ?l:(u = (true : [%v: unit])) =
+  [|
+    {
+      pre = writtenP a;
+      res = (v == a : [%v: int]);
+      newadding = lastL && Read (x_0, v, v == a);
+    };
+    {
+      pre = not (writtenP a);
+      res = (true : [%v: int]);
+      newadding = lastL && Read (x_0, v, true);
+    };
+  |]
