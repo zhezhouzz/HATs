@@ -249,3 +249,7 @@ Notation " 'b0:x≺' x " :=
 Notation " 'b0:v≺' v " :=
   (qual [# vbvar 0; v] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
     (at level 5).
+
+Notation " 'b0:c≺' c " :=
+  (qual [# vbvar 0; vconst c] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
+    (at level 5).

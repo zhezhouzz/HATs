@@ -142,6 +142,13 @@ Proof.
   induction τ; simpl; lia.
 Qed.
 
+Lemma htyR_typed_closed gas τ e :
+  htyR gas τ e ->
+  ∅ ⊢t e ⋮t ⌊ τ ⌋ /\ closed_hty ∅ τ.
+Proof.
+  destruct gas; simpl; tauto.
+Qed.
+
 Lemma ptyR_typed_closed gas ρ e :
   ptyR gas ρ e ->
   ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ.
@@ -291,3 +298,28 @@ Proof.
       rewrite htyR_measure_irrelevant; eauto. lia. lia.
 Qed.
 
+Definition tm_refine e e' :=
+  (* Alternatively, we may require [∅ ⊢t e ⋮t ⌊τ⌋] in [htyR_refine]. However, we
+  would need [wf_hty] as a side-condition (or some sort of validity of [hty]),
+  to make sure all components in intersection have the same erasure. This would
+  introduce a large set of naming lemmas about [wf_hty] (and consequently
+  everything it depends on). Annoying. *)
+  (forall T, ∅ ⊢t e' ⋮t T -> ∅ ⊢t e ⋮t T) /\
+  (forall α β (v : value), α ⊧ e ↪*{ β} v -> α ⊧ e' ↪*{ β} v).
+
+Lemma htyR_refine τ e1 e2 :
+  tm_refine e2 e1 ->
+  ⟦ τ ⟧ e1 ->
+  ⟦ τ ⟧ e2.
+Proof.
+  intros [Ht Hr].
+  assert (hty_measure τ <= hty_measure τ) by reflexivity.
+  revert H. generalize (hty_measure τ) at 2 3 4 as n.
+  intros n. revert Ht. revert τ.
+  induction n. easy.
+  simpl. intuition.
+  destruct τ; eauto.
+  simpl in *. intuition.
+  apply IHn; eauto. lia.
+  apply IHn; eauto. lia.
+Qed.

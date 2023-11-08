@@ -545,7 +545,11 @@ Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
 
-Ltac rewrite_msubst lem := rewrite lem in *; eauto using ctxRst_closed_env.
+Tactic Notation "rewrite_msubst" constr(lem) "in" hyp(H) :=
+  rewrite lem in H; eauto using ctxRst_closed_env.
+
+Tactic Notation "rewrite_msubst" constr(lem) :=
+  rewrite lem in *; eauto using ctxRst_closed_env.
 
 Lemma msubst_mk_top: forall (Γv: env) b,
     closed_env Γv ->
@@ -729,6 +733,27 @@ Proof.
   rewrite subst_commute_tm by my_set_solver.
   rewrite <- H0 by my_set_solver.
   by rewrite subst_open_tm_closed by qauto.
+Qed.
+
+Lemma msubst_intro_value: forall (Γv: env) (v: value) k (v_x: value) (x: atom),
+    closed_env Γv ->
+    closed_value v_x ->
+    map_Forall (fun _ v => lc (treturn v)) Γv ->
+    x ∉ dom Γv ∪ stale v ->
+    {k ~v> v_x} ((m{Γv}v) v) = (m{<[x:=v_x]> Γv}v) ({k ~v> x} v).
+Proof.
+  intros.
+  rewrite_msubst_insert.
+  2 : apply not_elem_of_dom; my_set_solver.
+  revert_all.
+  intros *.
+  msubst_tac.
+  rewrite map_fold_empty. rewrite open_subst_same_value. auto. my_set_solver.
+  rewrite_msubst_insert.
+  apply map_Forall_insert in H3; eauto.
+  rewrite subst_commute_value by my_set_solver.
+  rewrite <- H0 by my_set_solver.
+  by rewrite subst_open_value_closed by qauto.
 Qed.
 
 Lemma msubst_intro_hty: forall (Γv: env) e k (v_x: value) (x: atom),
@@ -1450,6 +1475,120 @@ Proof.
   hauto using value_reduction_refl.
 Qed.
 
+Lemma denotation_application_lam Tx T ρ τ e :
+  Tx ⤍ T = ⌊ ρ⇨τ ⌋ ->
+  ∅ ⊢t vlam Tx e ⋮t Tx ⤍ T ->
+  closed_pty ∅ (ρ⇨τ) ->
+  (forall (v_x : value),
+      p⟦ρ⟧ v_x ->
+      ⟦τ ^h^ v_x⟧ (e ^t^ v_x)) ->
+  (p⟦ρ⇨τ⟧) (vlam Tx e).
+Proof.
+  intros He Ht Hc H.
+  split; [| split]; eauto. sinvert He; eauto.
+  intros v_x HDv_x.
+  rewrite ptyR_measure_irrelevant in HDv_x; [ | lia | reflexivity ].
+  rewrite htyR_measure_irrelevant; [
+    | rewrite <- open_preserves_hty_measure; lia
+    | reflexivity ].
+  specialize (H v_x HDv_x).
+  eapply htyR_refine; cycle 1. eauto.
+
+  apply ptyR_typed_closed in HDv_x. simp_hyps. sinvert H0.
+  split; intros.
+  - eapply mk_app_e_v_has_type; eauto.
+    apply_eq Ht. sinvert He. f_equal.
+    apply htyR_typed_closed in H. destruct H as [H _].
+    eapply basic_typing_tm_unique in H0. 2: apply H. subst.
+    by rewrite <- hty_erase_open_eq.
+  - eapply reduction_letapplam; eauto using basic_typing_regular_value.
+Qed.
+
+Lemma denotation_application_fixed (Tx : base_ty) T ϕ τ e :
+  T = ⌊ τ ⌋ ->
+  ∅ ⊢t vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e) ⋮v Tx ⤍ T ->
+  closed_pty ∅ ({:Tx|ϕ}⇨τ) ->
+  (forall (v_x : value),
+      p⟦{:Tx | ϕ}⟧ v_x ->
+      p⟦({:Tx | (b0:v≺ v_x) & ϕ} ⇨ τ) ⇨ (τ ^h^ v_x)⟧
+        ((vlam (Tx ⤍ T) e) ^v^ v_x)) ->
+  p⟦{:Tx | ϕ}⇨τ⟧ (vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e)).
+Proof.
+  intros He Ht Hc Hlam.
+  split; [| split]; eauto. subst; eauto.
+  intros v_x HDc.
+  rewrite ptyR_measure_irrelevant in HDc; [ | lia | reflexivity ].
+  rewrite htyR_measure_irrelevant; [
+    | rewrite <- open_preserves_hty_measure; lia
+    | reflexivity ].
+  assert (exists c, v_x = vconst c) as H. {
+    apply ptyR_typed_closed in HDc.
+    destruct HDc as [H _]. sinvert H.
+    eauto using empty_basic_typing_base_const_exists.
+  }
+  destruct H as [c ->].
+  induction c using (well_founded_induction constant_lt_well_founded).
+  specialize (Hlam c HDc).
+  destruct Hlam as (HTlam&HClam&HDlam).
+  specialize (HDlam (vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e))).
+  rewrite htyR_measure_irrelevant in HDlam; [
+    | rewrite <- !open_preserves_hty_measure; lia
+    | reflexivity ].
+  rewrite open_hty_idemp in HDlam by eauto using lc.
+  eapply htyR_refine; cycle 1.
+  apply HDlam.
+  split; [| split].
+  simpl. cbn. unfold erase, hty_erase_ in He. rewrite <- He. eauto.
+  sinvert HClam. econstructor. sinvert H0. eauto. my_set_solver.
+  intros v_y HDv_y.
+  rewrite ptyR_measure_irrelevant in HDv_y; [
+    | lia
+    | reflexivity
+    ].
+  rewrite htyR_measure_irrelevant; [
+    | rewrite <- !open_preserves_hty_measure; lia
+    | reflexivity ].
+  assert (exists y, v_y = vconst y). {
+    apply ptyR_typed_closed in HDv_y.
+    destruct HDv_y as [HTv_y _]. sinvert HTv_y.
+    eauto using empty_basic_typing_base_const_exists.
+  }
+  destruct H0 as (y&->).
+  destruct HDv_y as (HTy&_&Hy).
+  ospecialize* (Hy _ []); eauto. destruct Hy as [_ Hy].
+  rewrite qualifier_and_open in Hy.
+  rewrite denote_qualifier_and in Hy.
+  simp_hyps.
+  apply H; eauto.
+  (* lemma? *)
+  apply ptyR_typed_closed in HDc. simp_hyps.
+  split; [| split]; eauto.
+  intros. apply value_reduction_refl in H4. simp_hyps.
+  intuition.
+
+  split; intros.
+  - eapply mk_app_e_v_has_type; eauto.
+    apply mk_app_e_v_has_type_inv in H0. simp_hyps.
+    eapply basic_typing_tm_unique in H1. 2: apply HTlam.
+    eapply basic_typing_value_unique in H2. 2: apply Ht.
+    cbn in H1. simplify_eq. econstructor.
+    apply_eq Ht. f_equal.
+    apply ptyR_typed_closed in HDc. destruct HDc as [HTc _].
+    sinvert HTc. sinvert H2. reflexivity.
+    rewrite <- hty_erase_open_eq. reflexivity.
+    apply lc_fix_iff_body.
+    sinvert H0.
+    apply basic_typing_regular_tm in H4.
+    hnf. eexists. intros.
+    eapply open_lc_respect_tm. qauto.
+    all: eauto using basic_typing_regular_value, lc.
+  - apply reduction_mk_app_e_v in H0.
+    sinvert H0. sinvert H1. simplify_list_eq.
+    apply reduction_mk_app_e_v' in H2.
+    eauto.
+    eauto using basic_typing_regular_value.
+Qed.
+
 (*
 Lemma denotation_application_base_arg:
   forall (b: base_ty) ϕ T A B (Tb: ty) e,
@@ -1500,74 +1639,6 @@ Proof.
   eauto.
 Qed.
 
-Lemma denotation_application_fixed:
-  forall (b: base_ty) ϕ T A B e,
-    ∅ ⊢t vfix (b ⤍ T) (vlam (b ⤍ T) e) ⋮t b ⤍ T ->
-    closed_pty ∅ (-:{:b|ϕ}⇨[:T|A▶B]) ->
-    (forall(v: value),
-        p⟦ {:b|ϕ} ⟧ v ->
-        p⟦ (-:-:({:b|(b0:v≺ v) & ϕ})⇨[:T|A▶B]⇨[:T|A ^a^ v▶B ^pa^ v]) ⟧
-          ((vlam (b ⤍ T) e) ^t^ v)) ->
-    p⟦ -: {:b|ϕ} ⇨[:T|A▶B] ⟧ (vfix (b ⤍ T) (vlam (b ⤍ T) e)).
-Proof.
-  intros * Ht Hc H.
-  repeat (split; eauto).
-  intros Hamlist v_x.
-  induction v_x using (well_founded_induction constant_lt_well_founded).
-  rename H0 into IH.
-  intros.
-  specialize (H _ H0).
-  destruct H as (Heq & Hta & Hca & H).
-  move H at bottom.
-  simpl pty_open in H.
-  cbn iota in H.
-  change (map _ B) with (pam_open 1 v_x B) in *.
-  change (pty_erase_ ?e) with (erase e) in *.
-  ospecialize (H _). {
-    eauto using amlist_typed_open.
-  }
-  specialize (H (vfix (b ⤍ T) (vlam (b ⤍ T) e))).
-  ospecialize (H _). {
-    split. eauto. split. eauto. split.
-    (* Should be a congruence lemma. *)
-    clear - Hca.
-    sinvert Hca.
-    econstructor. sinvert H. eauto.
-    sinvert H0. eauto. my_set_solver.
-
-    intros.
-    assert (v_x0 ≺ v_x /\ (p⟦{:b|ϕ}⟧) v_x0). {
-      clear - H0 H4.
-      apply ptyR_typed_closed in H0. destruct H0 as (_&_&H0).
-      cbn in H4. simp_hyps.
-      sinvert H1.
-      dup_hyp H6 (fun H => apply empty_basic_typing_base_const_exists in H).
-      simp_hyps. specialize (H2 c [] []). ospecialize* H2.
-      econstructor. econstructor.
-      unfold bpropR in H2.
-      rewrite !qualifier_and_open in H2.
-      rewrite denote_qualifier_and in H2.
-      simpl in H2. simp_hyps.
-      split; eauto.
-      split. eauto. split. econstructor. eauto.
-      split. eauto.
-      intros. apply value_reduction_refl in H3.
-      simp_hyps. unfold bpropR. eauto.
-    }
-    simp_hyps.
-    eauto.
-  }
-  (* lemma *)
-  apply reduction_mk_app_e_v in H2.
-  sinvert H2. 2: eauto using ptyR_closed_value.
-  sinvert H3. simplify_list_eq.
-  apply reduction_mk_app_e_v' in H4.
-  specialize (H _ _ _ H1 H4).
-  clear IH H0.
-  simp_hyps.
-  apply postam_open_in in H.
-  simp_hyps. subst. eauto.
-Qed.
 *)
 
 Lemma closed_bool_typed_value: forall v, ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
@@ -1713,13 +1784,14 @@ Proof.
     by rewrite H0.
   (* [TLam] *)
   - intros Γ Tx ρ e τ L HWF Ht HDe He Γv HΓv. repeat msubst_simp.
-    split; [| split]. {
+    eapply denotation_application_lam; eauto.
+    cbn. rewrite <- pty_erase_msubst_eq, <- hty_erase_msubst_eq. subst. eauto.
+    {
       assert (Γ ⊢ vlam Tx e ⋮v (ρ⇨τ)) by eauto using value_type_check.
       eapply value_typing_regular_basic_typing in H.
       eapply msubst_preserves_basic_typing_value_empty in H; eauto.
       repeat msubst_simp.
-      econstructor. apply_eq H. cbn.
-      by rewrite <- ?pty_erase_msubst_eq, <- ?hty_erase_msubst_eq.
+      econstructor. apply_eq H. cbn. subst. reflexivity.
     } {
       eapply_eq msubst_preserves_closed_pty_empty; eauto using wf_pty_closed.
       msubst_simp.
@@ -1730,7 +1802,6 @@ Proof.
       econstructor; eauto.
       econstructor; eauto using ctxRst_ok_ctx.
       sinvert HWF. eauto using wf_pty_closed. my_set_solver.
-      rewrite ptyR_measure_irrelevant. eauto. lia. lia.
     }
     rewrite <- msubst_intro_tm in HDe by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
@@ -1738,70 +1809,55 @@ Proof.
     rewrite <- msubst_intro_hty in HDe by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
-    rewrite htyR_measure_irrelevant; [
-      | rewrite <- open_preserves_hty_measure; lia
-      | reflexivity ].
-    admit.
-
-(*
-
+    eauto.
   (* [TLamFix] *)
-  - intros Γ Tx ϕ e T A B L HWF Hlam HDlam Γv HΓv. repeat msubst_simp.
-    eapply denotation_application_fixed. {
-      econstructor. econstructor.
-      instantiate_atom_listctx.
-      eapply value_typing_regular_basic_typing in Hlam.
-      eapply_eq msubst_preserves_basic_typing_value; eauto.
-      apply_eq Hlam.
-      rewrite ctx_erase_app. f_equal. cbn.
-      rewrite map_union_empty. eauto.
-      simpl. repeat msubst_simp.
-      rewrite <- msubst_open_var_tm; eauto using ctxRst_closed_env, ctxRst_lc.
-      simpl_fv; my_set_solver.
-    } {
+  - intros Γ Tx ϕ e τ T L HWF Hlam HDlam He Γv HΓv. repeat msubst_simp.
+    assert (∅ ⊢t vfix (Tx ⤍ T) (vlam (Tx ⤍ T) ((m{Γv}t) e)) ⋮v Tx ⤍ T) as HTfix. {
+      assert (Γ ⊢ vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e) ⋮v ({:Tx|ϕ}⇨τ))
+        by eauto using value_type_check.
+      eapply value_typing_regular_basic_typing in H.
+      eapply msubst_preserves_basic_typing_value_empty in H; eauto.
+      repeat msubst_simp.
+      apply_eq H. cbn. subst. eauto.
+    }
+    eapply denotation_application_fixed; eauto.
+    by rewrite <- hty_erase_msubst_eq. {
       eapply_eq msubst_preserves_closed_pty_empty; eauto using wf_pty_closed.
       repeat msubst_simp.
     }
-    auto_pose_fv x. repeat specialize_with x.
     intros v_x Hv_x.
-    assert (ctxRst (Γ ++ [(x, {:Tx|ϕ})]) (<[x := v_x]> Γv)) as HΓv'. {
+    auto_pose_fv x. repeat specialize_with x.
+    ospecialize* (HDlam (<[x:=v_x]>Γv)). {
       econstructor; eauto.
       econstructor; eauto using ctxRst_ok_ctx.
-      sinvert HWF. sinvert H4. eauto.
-      my_set_solver.
+      sinvert HWF. eauto using wf_pty_closed. my_set_solver.
       msubst_simp.
     }
-    specialize (HDlam _ HΓv').
-    simpl in HDlam.
-    repeat msubst_simp.
-    assert ((m{<[x:=v_x]> Γv}q) b0:x≺ x = b0:v≺ v_x) as Hq. {
-      change (b0:x≺ x) with ({1 ~q> x}(b0≺b1)).
-      rewrite <- msubst_intro_qualifier by
-          (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
-         simpl_fv; my_set_solver).
-      rewrite msubst_fresh_qualifier. reflexivity.
-      my_set_solver.
+    assert (closed_env (<[x:=v_x]> Γv)). {
+      (* lemma? *)
+      apply map_Forall_insert_2.
+      apply ptyR_typed_closed in Hv_x. simp_hyps.
+      sinvert H0. eauto using basic_typing_closed_value.
+      eapply ctxRst_closed_env; eauto.
     }
-    rewrite Hq in HDlam.
-    rewrite <- msubst_intro_tm in HDlam by
+    rewrite <- msubst_intro_value in HDlam by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
-    rewrite <- msubst_intro_am in HDlam by
+    repeat msubst_simp.
+    rewrite <- msubst_intro_hty in HDlam by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
-    rewrite <- msubst_intro_postam in HDlam by
-        (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
-         simpl_fv; my_set_solver).
+    rewrite msubst_insert_fresh_hty in HDlam by
+      (eauto using ctxRst_closed_env, ptyR_closed_value; simpl_fv; my_set_solver).
+    rewrite_msubst msubst_qualifier in HDlam.
     rewrite msubst_insert_fresh_qualifier in HDlam by
-        (eauto using ctxRst_closed_env, ptyR_closed_value;
-         simpl_fv; my_set_solver).
-    rewrite msubst_insert_fresh_am in HDlam by
-        (eauto using ctxRst_closed_env, ptyR_closed_value;
-         simpl_fv; my_set_solver).
-    rewrite msubst_insert_fresh_postam in HDlam by
-        (eauto using ctxRst_closed_env, ptyR_closed_value;
-         simpl_fv; my_set_solver).
-    eauto.
+      (eauto using ctxRst_closed_env, ptyR_closed_value; simpl_fv; my_set_solver).
+    apply_eq HDlam.
+    simpl. repeat msubst_simp.
+    clear. simplify_map_eq. eauto.
+
+(*
+
 
   (* [TValue] *)
   - intros Γ v ρ _ HDv Γv HΓv. specialize (HDv _ HΓv).

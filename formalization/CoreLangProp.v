@@ -1078,5 +1078,17 @@ Proof.
   rewrite open_swap_tm in * by eauto; eauto using open_lc_respect_tm.
 Qed.
 
+Lemma open_tm_idemp: forall u (v: value) (t: tm) (k: nat),
+    lc v ->
+    {k ~t> u} ({k ~t> v} t) = ({k ~t> v} t)
+with open_value_idemp: forall u (v: value) (t: value) (k: nat),
+    lc v ->
+    {k ~v> u} ({k ~v> v} t) = ({k ~v> v} t).
+Proof.
+  all: destruct t; intros; simpl; f_equal; eauto.
+  case_decide; subst; simpl.
+  rewrite open_rec_lc_value; eauto.
+  rewrite decide_False by auto. reflexivity.
+Qed.
 
 Global Hint Resolve lc_fresh_var_implies_body: core.

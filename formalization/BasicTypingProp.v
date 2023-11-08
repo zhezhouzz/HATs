@@ -85,6 +85,42 @@ Proof.
     | apply insert_commute; my_set_solver ].
 Qed.
 
+Lemma basic_typing_tm_unique: forall Γ e T1 T2,
+    Γ ⊢t e ⋮t T1 ->
+    Γ ⊢t e ⋮t T2 ->
+    T1 = T2.
+Proof.
+  intros * H. revert T2. revert_all.
+  apply (tm_has_type_mutual_rec
+           (fun Γ v T1 _ => ∀ T2, Γ ⊢t v ⋮v T2 → T1 = T2)
+           (fun Γ e T1 _ => ∀ T2, Γ ⊢t e ⋮t T2 → T1 = T2));
+    intros;
+    try match goal with
+      | H : _ ⊢t _ ⋮t _ |- _ => sinvert H
+      | H : _ ⊢t _ ⋮v _ |- _ => sinvert H
+      end; eauto;
+    try solve [ auto_pose_fv x; repeat specialize_with x; hauto ].
+  by simplify_map_eq.
+Qed.
+
+Lemma basic_typing_value_unique: forall Γ v T1 T2,
+    Γ ⊢t v ⋮v T1 ->
+    Γ ⊢t v ⋮v T2 ->
+    T1 = T2.
+Proof.
+  intros * H. revert T2. revert_all.
+  apply (value_has_type_mutual_rec
+           (fun Γ v T1 _ => ∀ T2, Γ ⊢t v ⋮v T2 → T1 = T2)
+           (fun Γ e T1 _ => ∀ T2, Γ ⊢t e ⋮t T2 → T1 = T2));
+    intros;
+    try match goal with
+      | H : _ ⊢t _ ⋮t _ |- _ => sinvert H
+      | H : _ ⊢t _ ⋮v _ |- _ => sinvert H
+      end; eauto;
+    try solve [ auto_pose_fv x; repeat specialize_with x; hauto ].
+  by simplify_map_eq.
+Qed.
+
 (* This statement can be generalized to taking a union of the context and a
 disjoint new context. *)
 Lemma basic_typing_strengthen_tm: forall Γ x Tx (v: tm) T,
@@ -106,6 +142,39 @@ Proof.
         | _ => my_set_solver
         end ].
   by rewrite lookup_insert_ne in * by my_set_solver.
+Qed.
+
+Lemma mk_app_e_v_has_type Γ e v T1 T2 :
+  Γ ⊢t e ⋮t T1 ⤍ T2 ->
+  Γ ⊢t v ⋮v T1 ->
+  Γ ⊢t mk_app_e_v e v ⋮t T2.
+Proof.
+  intros.
+  econstructor; eauto.
+  instantiate_atom_listctx.
+  simpl. econstructor. econstructor. simplify_map_eq. reflexivity.
+  rewrite open_rec_lc_value by eauto using basic_typing_regular_value.
+  apply basic_typing_weaken_insert_value; eauto. my_set_solver.
+  simpl. instantiate_atom_listctx. econstructor. econstructor. simplify_map_eq.
+  reflexivity.
+Qed.
+
+Lemma mk_app_e_v_has_type_inv Γ e v T2 :
+  Γ ⊢t mk_app_e_v e v ⋮t T2 ->
+  lc v ->
+  exists T1, Γ ⊢t e ⋮t T1 ⤍ T2 /\ Γ ⊢t v ⋮v T1.
+Proof.
+  intros.
+  sinvert H.
+  simpl in H6.
+  auto_pose_fv x. repeat specialize_with x.
+  rewrite open_rec_lc_value in H6 by auto.
+  sinvert H6. simpl in H10.
+  auto_pose_fv y. repeat specialize_with y.
+  sinvert H7. setoid_rewrite lookup_insert in H5. simplify_eq.
+  sinvert H10. sinvert H5. setoid_rewrite lookup_insert in H6. simplify_eq.
+  repeat esplit; eauto.
+  eapply basic_typing_strengthen_value; eauto. my_set_solver.
 Qed.
 
 (** perservation *)

@@ -748,6 +748,35 @@ Proof.
   eauto using open_rec_lc_value.
 Qed.
 
+Lemma open_qualifier_idemp: forall u (v: value) (ϕ: qualifier) (k: nat),
+    lc v ->
+    {k ~q> u} ({k ~q> v} ϕ) = ({k ~q> v} ϕ).
+Proof.
+  destruct ϕ; intros. simpl.
+  f_equal.
+  rewrite Vector.map_map.
+  apply Vector.map_ext_in.
+  eauto using open_value_idemp.
+Qed.
+
+Lemma open_am_idemp: forall u (v: value) (a: am) (k: nat),
+    lc v ->
+    {k ~a> u} ({k ~a> v} a) = ({k ~a> v} a).
+Proof.
+  induction a; intros; simpl; f_equal; eauto using open_qualifier_idemp.
+Qed.
+
+Lemma open_pty_idemp: forall u (v: value) (ρ: pty) (k: nat),
+    lc v ->
+    {k ~p> u} ({k ~p> v} ρ) = {k ~p> v} ρ
+with open_hty_idemp: forall u (v: value)  (τ: hty) (k: nat),
+    lc v ->
+    {k ~h> u} ({k ~h> v} τ) = {k ~h> v} τ.
+Proof.
+  destruct ρ; intros; simpl; f_equal; eauto using open_qualifier_idemp.
+  destruct τ; intros; simpl; f_equal; eauto using open_am_idemp.
+Qed.
+
 Lemma subst_intro_qualifier: forall (ϕ: qualifier) (x:atom) (w: value) (k: nat),
     x # ϕ ->
     lc w -> {x := w}q ({k ~q> x} ϕ) = ({k ~q> w} ϕ).
