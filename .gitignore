@@ -10,6 +10,7 @@
 *.cmxs
 *.cmxa
 *.log
+*.log2
 .stat.json
 
 # ocamlbuild working directory

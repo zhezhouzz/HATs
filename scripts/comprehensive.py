@@ -38,8 +38,18 @@ def load_benchmarks(path):
     files = [str(f) for f in pathlib.Path().glob("{}/*_*".format(path)) if Path.is_dir(f)]
     # files = [str(f) for f in pathlib.Path().glob("{}/*.sh".format(path))]
     files.sort()
+    files.reverse()
     # print(files)
     return files
+
+def show_table_cul0(paths):
+    for filename in paths:
+        path = filename.split('/')
+        method_str = path[-1]
+        datatype_name = method_str.split('_')[0]
+        lib_name = method_str.split('_')[1]
+        name = "\\textsf{" + "{}::{}".format(datatype_name, lib_name) + "}"
+        print("{} & & & & & & & & & \\\\".format(name))
 
 def show_benchmarks(verbose, paths):
     for path in paths:
@@ -79,6 +89,8 @@ if __name__ == '__main__':
         ntypecheck_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "ntyping-one" == sys.argv[2]:
         ntypecheck_one(verbose, sys.argv[3])
+    elif "show-table-cul0" == sys.argv[2]:
+        show_table_cul0(load_benchmarks(sys.argv[3]))
     elif "show" == sys.argv[2]:
         show_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "show-one" == sys.argv[2]:
