@@ -360,11 +360,31 @@ Proof.
           | apply subst_fresh_am; my_set_solver ].
 Qed.
 
+Lemma open_fv_am (a : am) (v : value) k :
+  am_fv ({k ~a> v} a) ⊆ am_fv a ∪ fv_value v.
+Proof.
+  induction a; simpl; eauto using open_fv_qualifier;
+    repeat my_set_solver.
+Qed.
+
 Lemma open_fv_am' (a : am) (v : value) k :
   am_fv a ⊆ am_fv ({k ~a> v} a).
 Proof.
   induction a; simpl; eauto using open_fv_qualifier';
     my_set_solver.
+Qed.
+
+Lemma open_fv_pty (ρ : pty) (v : value) k :
+  pty_fv ({k ~p> v} ρ) ⊆ pty_fv ρ ∪ fv_value v
+with open_fv_hty (τ : hty) (v : value) k :
+  hty_fv ({k ~h> v} τ) ⊆ hty_fv τ ∪ fv_value v.
+Proof.
+  all: revert k.
+  destruct ρ; simpl; intros; eauto using open_fv_qualifier.
+  etrans. apply union_mono; eauto. my_set_solver.
+  destruct τ; simpl; intros.
+  etrans. repeat apply union_mono; eauto using open_fv_am. my_set_solver.
+  etrans. repeat apply union_mono; eauto. my_set_solver.
 Qed.
 
 Lemma open_fv_pty' (ρ : pty) (v : value) k :

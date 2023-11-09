@@ -142,6 +142,19 @@ Proof.
   induction τ; simpl; lia.
 Qed.
 
+Lemma pty_measure_S ρ : exists n, pty_measure ρ = S n.
+Proof.
+  destruct (Nat.lt_exists_pred 0 (pty_measure ρ)).
+  pose proof (pty_measure_gt_0 ρ). lia.
+  intuition eauto.
+Qed.
+
+Lemma hty_measure_S τ : exists n, hty_measure τ = S n.
+  destruct (Nat.lt_exists_pred 0 (hty_measure τ)).
+  pose proof (hty_measure_gt_0 τ). lia.
+  intuition eauto.
+Qed.
+
 Lemma htyR_typed_closed gas τ e :
   htyR gas τ e ->
   ∅ ⊢t e ⋮t ⌊ τ ⌋ /\ closed_hty ∅ τ.

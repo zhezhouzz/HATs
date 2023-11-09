@@ -152,6 +152,15 @@ Proof.
   auto_apply. my_set_solver.
 Qed.
 
+Lemma open_fv_qualifier (ϕ : qualifier) (v : value) k :
+  qualifier_fv ({k ~q> v} ϕ) ⊆ qualifier_fv ϕ ∪ fv_value v.
+Proof.
+  destruct ϕ.
+  simpl. clear. induction vals; simpl. easy.
+  etrans. apply union_mono. apply open_fv_value.
+  reflexivity. my_set_solver.
+Qed.
+
 Lemma open_fv_qualifier' (ϕ : qualifier) (v : value) k :
   qualifier_fv ϕ ⊆ qualifier_fv ({k ~q> v} ϕ).
 Proof.
