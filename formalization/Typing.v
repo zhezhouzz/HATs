@@ -1516,11 +1516,11 @@ Proof.
 
   apply ptyR_typed_closed in HDv_x. simp_hyps. sinvert H0.
   split; intros.
-  - eapply mk_app_e_v_has_type; eauto.
-    apply_eq Ht. sinvert He. f_equal.
-    apply htyR_typed_closed in H. destruct H as [H _].
-    eapply basic_typing_tm_unique in H0. 2: apply H. subst.
-    by rewrite <- hty_erase_open_eq.
+  - apply htyR_typed_closed in H. destruct H as [H _].
+    repeat esplit. eauto.
+    rewrite <- hty_erase_open_eq.
+    sinvert He.
+    eapply mk_app_e_v_has_type; eauto.
   - eapply reduction_letapplam; eauto using basic_typing_regular_value.
 Qed.
 
@@ -1576,21 +1576,13 @@ Proof.
   intuition.
 
   split; intros.
-  - eapply mk_app_e_v_has_type; eauto.
-    apply mk_app_e_v_has_type_inv in H0. simp_hyps.
-    eapply basic_typing_tm_unique in H1. 2: apply HTlam.
-    eapply basic_typing_value_unique in H2. 2: apply Ht.
-    cbn in H1. simplify_eq. econstructor.
-    apply_eq Ht. f_equal.
+  - subst. cbn in HTlam.
+    repeat esplit.
+    eapply mk_app_e_v_has_type; eauto.
+    rewrite <- hty_erase_open_eq.
+    eapply mk_app_e_v_has_type; eauto.
     apply ptyR_typed_closed in HDc. destruct HDc as [HTc _].
-    sinvert HTc. sinvert H2. reflexivity.
-    rewrite <- hty_erase_open_eq. reflexivity.
-    apply lc_fix_iff_body.
-    sinvert H0.
-    apply basic_typing_regular_tm in H4.
-    hnf. eexists. intros.
-    eapply open_lc_respect_tm. qauto.
-    all: eauto using basic_typing_regular_value, lc.
+    sinvert HTc. eauto.
   - apply reduction_mk_app_e_v in H0.
     sinvert H0. sinvert H1. simplify_list_eq.
     apply reduction_mk_app_e_v' in H2.
@@ -2095,8 +2087,7 @@ Proof.
           (eauto using ctxRst_closed_env; simpl_fv; my_set_solver).
       eapply htyR_refine; eauto.
       split; eauto using reduction_matchb_true.
-      intros T HTe1'.
-      apply_eq HT. eapply basic_typing_tm_unique in HTe1'; eauto. clear HTe1'.
+      repeat esplit; eauto.
       apply htyR_typed_closed in HDe1. destruct HDe1 as [HTe1' _].
       rewrite <- hty_erase_msubst_eq in HTe1'. eauto.
     + ospecialize* HDe2; eauto.
@@ -2106,8 +2097,7 @@ Proof.
           (eauto using ctxRst_closed_env; simpl_fv; my_set_solver).
       eapply htyR_refine; eauto.
       split; eauto using reduction_matchb_false.
-      intros T HTe2'.
-      apply_eq HT. eapply basic_typing_tm_unique in HTe2'; eauto. clear HTe2'.
+      repeat esplit; eauto.
       apply htyR_typed_closed in HDe2. destruct HDe2 as [HTe2' _].
       rewrite <- hty_erase_msubst_eq in HTe2'. eauto.
 Qed.

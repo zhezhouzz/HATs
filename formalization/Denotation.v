@@ -331,7 +331,7 @@ Definition tm_refine e e' :=
   to make sure all components in intersection have the same erasure. This would
   introduce a large set of naming lemmas about [wf_hty] (and consequently
   everything it depends on). Annoying. *)
-  (forall T, ∅ ⊢t e' ⋮t T -> ∅ ⊢t e ⋮t T) /\
+  (exists T, ∅ ⊢t e' ⋮t T /\ ∅ ⊢t e ⋮t T) /\
   (forall α β (v : value), α ⊧ e ↪*{ β} v -> α ⊧ e' ↪*{ β} v).
 
 Lemma htyR_refine τ e1 e2 :
@@ -342,9 +342,10 @@ Proof.
   intros [Ht Hr].
   assert (hty_measure τ <= hty_measure τ) by reflexivity.
   revert H. generalize (hty_measure τ) at 2 3 4 as n.
-  intros n. revert Ht. revert τ.
+  intros n. revert τ.
   induction n. easy.
   simpl. intuition.
+  qauto using basic_typing_tm_unique.
   destruct τ; eauto.
   simpl in *. intuition.
   apply IHn; eauto. lia.
