@@ -598,6 +598,7 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }a (aconcat _ _) ] => rewrite msubst_aconcat
   | H: context [ m{ _ }a (aevent _ _) ] |- _ => rewrite msubst_aevent in H
   | |- context [ m{ _ }a (aevent _ _) ] => rewrite msubst_aevent
+  | H: context [ m{ _ }t (tlete _ _) ] |- _ => rewrite msubst_lete in H
   | |- context [ m{ _ }t (tlete _ _) ] => rewrite msubst_lete
   | H: context [ m{ _ }t (tleteffop _ _ _) ] |- _ => rewrite msubst_tleteffop in H
   | |- context [ m{ _ }t (tleteffop _ _ _) ] => rewrite msubst_tleteffop
@@ -676,6 +677,18 @@ Proof.
   apply map_Forall_insert in H2; eauto. simp_hyps.
   subst.
   by apply subst_open_pty.
+Qed.
+
+Lemma msubst_open_hty: forall (Γv: env) (τ: hty) k (v_x: value),
+    closed_env Γv ->
+    map_Forall (fun _ v => lc (treturn v)) Γv ->
+    (m{Γv}h) ({k ~h> v_x} τ) = {k ~h> (m{Γv}v v_x)} (m{Γv}h τ).
+Proof.
+  msubst_tac.
+  rewrite_msubst_insert.
+  apply map_Forall_insert in H2; eauto. simp_hyps.
+  subst.
+  by apply subst_open_hty.
 Qed.
 
 Lemma msubst_fresh_qualifier Γv ϕ :
@@ -1475,6 +1488,20 @@ Proof.
   hauto using value_reduction_refl.
 Qed.
 
+Ltac rewrite_measure_irrelevant :=
+  let t := (rewrite <- ?open_preserves_hty_measure,
+                    <- ?open_preserves_pty_measure; lia) in
+  match goal with
+  | H : context [ptyR _ _ _] |- _ =>
+      setoid_rewrite ptyR_measure_irrelevant' in H; [ | t .. ]
+  | H : context [htyR _ _ _] |- _ =>
+      setoid_rewrite htyR_measure_irrelevant' in H; [ | t .. ]
+  | |- context [ptyR _ _ _] =>
+      setoid_rewrite ptyR_measure_irrelevant'; [ | t .. ]
+  | |- context [htyR _ _ _] =>
+      setoid_rewrite htyR_measure_irrelevant'; [ | t .. ]
+  end.
+
 Lemma denotation_application_lam Tx T ρ τ e :
   Tx ⤍ T = ⌊ ρ⇨τ ⌋ ->
   ∅ ⊢t vlam Tx e ⋮t Tx ⤍ T ->
@@ -1487,10 +1514,7 @@ Proof.
   intros He Ht Hc H.
   split; [| split]; eauto. sinvert He; eauto.
   intros v_x HDv_x.
-  rewrite ptyR_measure_irrelevant in HDv_x; [ | lia | reflexivity ].
-  rewrite htyR_measure_irrelevant; [
-    | rewrite <- open_preserves_hty_measure; lia
-    | reflexivity ].
+  repeat rewrite_measure_irrelevant.
   specialize (H v_x HDv_x).
   eapply htyR_refine; cycle 1. eauto.
 
@@ -1517,10 +1541,7 @@ Proof.
   intros He Ht Hc Hlam.
   split; [| split]; eauto. subst; eauto.
   intros v_x HDc.
-  rewrite ptyR_measure_irrelevant in HDc; [ | lia | reflexivity ].
-  rewrite htyR_measure_irrelevant; [
-    | rewrite <- open_preserves_hty_measure; lia
-    | reflexivity ].
+  repeat rewrite_measure_irrelevant.
   assert (exists c, v_x = vconst c) as H. {
     apply ptyR_typed_closed in HDc.
     destruct HDc as [H _]. sinvert H.
@@ -1531,9 +1552,7 @@ Proof.
   specialize (Hlam c HDc).
   destruct Hlam as (HTlam&HClam&HDlam).
   specialize (HDlam (vfix (Tx ⤍ T) (vlam (Tx ⤍ T) e))).
-  rewrite htyR_measure_irrelevant in HDlam; [
-    | rewrite <- !open_preserves_hty_measure; lia
-    | reflexivity ].
+  repeat rewrite_measure_irrelevant.
   rewrite open_hty_idemp in HDlam by eauto using lc.
   eapply htyR_refine; cycle 1.
   apply HDlam.
@@ -1541,13 +1560,7 @@ Proof.
   simpl. cbn. unfold erase, hty_erase_ in He. rewrite <- He. eauto.
   sinvert HClam. econstructor. sinvert H0. eauto. my_set_solver.
   intros v_y HDv_y.
-  rewrite ptyR_measure_irrelevant in HDv_y; [
-    | lia
-    | reflexivity
-    ].
-  rewrite htyR_measure_irrelevant; [
-    | rewrite <- !open_preserves_hty_measure; lia
-    | reflexivity ].
+  repeat rewrite_measure_irrelevant.
   assert (exists y, v_y = vconst y). {
     apply ptyR_typed_closed in HDv_y.
     destruct HDv_y as [HTv_y _]. sinvert HTv_y.
@@ -1588,58 +1601,6 @@ Proof.
     eauto.
     eauto using basic_typing_regular_value.
 Qed.
-
-(*
-Lemma denotation_application_base_arg:
-  forall (b: base_ty) ϕ T A B (Tb: ty) e,
-    Tb = b ->
-    ∅ ⊢t vlam Tb e ⋮t Tb ⤍ T ->
-    closed_pty ∅ (-:{:b|ϕ}⇨[:T|A▶B]) ->
-    (forall(v: value), p⟦ {:b|ϕ} ⟧ v -> ⟦ [:T | A ^a^ v ▶ B ^pa^ v ] ⟧ (e ^t^ v)) ->
-    p⟦ -: {:b|ϕ} ⇨[:T|A▶B] ⟧ (vlam Tb e).
-Proof.
-  intros.
-  subst.
-  repeat (split; eauto).
-  intros.
-  dup_hyp H3 (fun H => apply H2 in H).
-  hnf in H6.
-  cbn in H6.
-  simp_hyps.
-  ospecialize* H9; eauto using amlist_typed_open.
-  eapply reduction_letapplam; eauto.
-  simp_hyps.
-  apply postam_open_in in H7. simp_hyps. subst.
-  repeat esplit; eauto.
-  apply_eq H11.
-  rewrite <- pty_erase_open_eq. eauto.
-Qed.
-
-Lemma denotation_application_arr_arg:
-  forall ρx (Tx: ty) Ax Bx T A B Te e,
-    Te = (⌊ ρx ⌋ ⤍ Tx) ->
-    ∅ ⊢t vlam Te e ⋮t Te ⤍ T ->
-    closed_pty ∅ (-: -: ρx ⇨[:Tx|Ax▶Bx] ⇨[:T|A▶B]) ->
-    (forall (v: value), p⟦ -: ρx ⇨[:Tx|Ax▶Bx] ⟧ v -> ⟦ [:T | A ▶ B ] ⟧ (e ^t^ v)) ->
-    p⟦ -: -: ρx ⇨[:Tx|Ax▶Bx] ⇨[:T|A▶B] ⟧ (vlam Te e).
-Proof.
-  intros.
-  subst.
-  repeat (split; eauto).
-  intros.
-  dup_hyp H3 (fun H => apply H2 in H).
-  hnf in H6.
-  cbn in H6.
-  simp_hyps.
-  ospecialize* H7; eauto using amlist_typed_open.
-  eapply reduction_letapplam; eauto using ptyR_lc.
-  simp_hyps.
-  repeat esplit; eauto.
-  apply_eq H11.
-  eauto.
-Qed.
-
-*)
 
 Lemma closed_bool_typed_value: forall v, ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
 Proof.
@@ -1798,11 +1759,12 @@ Proof.
     }
     intros v_x Hv_x.
     auto_pose_fv x. repeat specialize_with x.
-    ospecialize* (HDe (<[x:=v_x]>Γv)). {
+    assert (ctxRst (Γ ++ [(x, ρ)]) (<[x:=v_x]> Γv)) as HΓv'. {
       econstructor; eauto.
       econstructor; eauto using ctxRst_ok_ctx.
       sinvert HWF. eauto using wf_pty_closed. my_set_solver.
     }
+    ospecialize* HDe; eauto.
     rewrite <- msubst_intro_tm in HDe by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
@@ -1827,19 +1789,13 @@ Proof.
     }
     intros v_x Hv_x.
     auto_pose_fv x. repeat specialize_with x.
-    ospecialize* (HDlam (<[x:=v_x]>Γv)). {
+    assert (ctxRst (Γ ++ [(x, {:Tx|ϕ})]) (<[x:=v_x]> Γv)) as HΓv'. {
       econstructor; eauto.
       econstructor; eauto using ctxRst_ok_ctx.
       sinvert HWF. eauto using wf_pty_closed. my_set_solver.
       msubst_simp.
     }
-    assert (closed_env (<[x:=v_x]> Γv)). {
-      (* lemma? *)
-      apply map_Forall_insert_2.
-      apply ptyR_typed_closed in Hv_x. simp_hyps.
-      sinvert H0. eauto using basic_typing_closed_value.
-      eapply ctxRst_closed_env; eauto.
-    }
+    ospecialize* HDlam; eauto.
     rewrite <- msubst_intro_value in HDlam by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).

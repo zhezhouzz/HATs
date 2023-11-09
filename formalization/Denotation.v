@@ -298,6 +298,20 @@ Proof.
       rewrite htyR_measure_irrelevant; eauto. lia. lia.
 Qed.
 
+Lemma ptyR_measure_irrelevant' n ρ e :
+  pty_measure ρ <= n ->
+  ptyR n ρ e <-> p⟦ ρ ⟧ e.
+Proof.
+  intros. rewrite ptyR_measure_irrelevant; eauto.
+Qed.
+
+Lemma htyR_measure_irrelevant' n τ e :
+  hty_measure τ <= n ->
+  htyR n τ e <-> ⟦ τ ⟧ e.
+Proof.
+  intros. rewrite htyR_measure_irrelevant; eauto.
+Qed.
+
 Definition tm_refine e e' :=
   (* Alternatively, we may require [∅ ⊢t e ⋮t ⌊τ⌋] in [htyR_refine]. However, we
   would need [wf_hty] as a side-condition (or some sort of validity of [hty]),
