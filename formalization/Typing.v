@@ -1811,97 +1811,140 @@ Proof.
     apply_eq HDlam.
     simpl. repeat msubst_simp.
     clear. simplify_map_eq. eauto.
-
-(*
-
-
   (* [TValue] *)
-  - intros Γ v ρ _ HDv Γv HΓv. specialize (HDv _ HΓv).
-    repeat msubst_simp. rewrite <- denotation_value_pure. auto.
-
+  - intros Γ v ρ A HWF Hv HDv Γv HΓv. specialize (HDv _ HΓv).
+    repeat msubst_simp.
+    split; [| split]. {
+      eapply value_typing_regular_basic_typing in Hv.
+      eapply msubst_preserves_basic_typing_value_empty in Hv; eauto.
+      cbn. rewrite <- pty_erase_msubst_eq. eauto.
+    } {
+      eapply_eq msubst_preserves_closed_hty_empty; eauto using wf_hty_closed.
+      repeat msubst_simp.
+    }
+    intros. rewrite_measure_irrelevant.
+    apply value_reduction_refl in H0. simp_hyps. subst. simpl_list. eauto.
   (* [TSub] *)
   - intros Γ e τ1 τ2 HWFτ2 _ HDτ1 Hsub Γv HΓv. specialize (HDτ1 _ HΓv).
     apply Hsub in HDτ1; auto.
-
-  (* [TLetE] *)
-  - intros Γ e_x e Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ L HWFBρ HTe_x HDe_x Hin1 Hin2 Ht He Γv HΓv.
+  (* [TInter] *)
+  - intros Γ e τ1 τ2 HWF HT1 HD1 HT2 HD2 Γv HΓv. repeat msubst_simp.
     split; [| split]. {
-      eapply msubst_preserves_basic_typing_tm_empty; eauto.
-      econstructor. eauto using tm_typing_regular_basic_typing.
-      instantiate_atom_listctx.
-      sinvert HWFBρ.
-      simpl_Forall2.
-      eapply tm_typing_regular_basic_typing in Ht; eauto.
-      apply_eq Ht.
-      cbn. rewrite ctx_erase_app_r by my_set_solver.
-      repeat f_equal. apply tm_typing_regular_wf in HTe_x.
-      sinvert HTe_x. eauto.
-      cbn. by rewrite <- hty_erase_msubst_eq.
+      eapply tm_typing_regular_basic_typing in HT1.
+      eapply msubst_preserves_basic_typing_tm_empty in HT1; eauto.
+      cbn. rewrite <- hty_erase_msubst_eq. eauto.
     } {
-      eauto using msubst_preserves_closed_hty_empty, wf_hty_closed.
+      eapply_eq msubst_preserves_closed_hty_empty; eauto using wf_hty_closed.
+      repeat msubst_simp.
     }
-    repeat msubst_simp.
-    intros HBtyped α β v HDα Hstepv.
-    apply reduction_tlete in Hstepv. destruct Hstepv as (βx & βe & v_x & Htmp & Hstepv_x & Hstepv).
+    repeat rewrite_measure_irrelevant. eauto.
+  (* [TLetE] *)
+  - intros Γ e_x e ρx ρ A A' B L HWF HTe_x HDe_x HTe HDe Γv HΓv. repeat msubst_simp.
+    split; [| split]. {
+      assert (Γ ⊢ tlete e_x e ⋮t [:ρ|A▶B]) by eauto using term_type_check.
+      eapply tm_typing_regular_basic_typing in H.
+      eapply msubst_preserves_basic_typing_tm_empty in H; eauto.
+      repeat msubst_simp.
+      apply_eq H. cbn. eauto using pty_erase_msubst_eq.
+    } {
+      eapply_eq msubst_preserves_closed_hty_empty; eauto using wf_hty_closed.
+      repeat msubst_simp.
+    }
+    intros α β v HDα Hstepv.
+    apply reduction_tlete in Hstepv.
+    destruct Hstepv as (βx & βe & v_x & -> & Hstepv_x & Hstepv).
     auto_pose_fv x. repeat specialize_with x.
-    specialize (HDe_x _ HΓv). repeat msubst_simp.
-    destruct HDe_x as (Hte_x & Hclosede_x & HDe_x).
-    assert (amlist_typed ((m{Γv}pa) Bx_ρx) Tx) as HH1. {
-      clear - Hclosede_x.
-      sinvert Hclosede_x. sinvert H. eauto.
+    ospecialize* HDe_x; eauto. repeat msubst_simp.
+    destruct HDe_x as (_ & _ & HDe_x).
+    ospecialize* HDe_x; eauto. destruct HDe_x as [HDv_x HDα_βx].
+    assert (ctxRst (Γ ++ [(x, ρx)]) (<[x:=v_x]> Γv)) as HΓv'. {
+      econstructor; eauto.
+      econstructor; eauto using ctxRst_ok_ctx.
+      eapply tm_typing_regular_wf in HTe_x.
+      sinvert HTe_x. eauto using wf_pty_closed.
+      my_set_solver.
     }
-    specialize (HDe_x HH1 _ _ _ HDα Hstepv_x).
-    destruct HDe_x as (Bxi' & ρxi' & HinBx_ρx & Hβx & Hv_x).
-    apply postam_msubst_in in HinBx_ρx; eauto using ctxRst_closed_env.
-    destruct HinBx_ρx as (Bxi & ρxi & Htmp0 & Htmp1 & HinBx_ρx). subst.
-    rewrite msubst_intro_tm with (x:=x) in Hstepv by
+    ospecialize* HDe; eauto.
+    rewrite <- msubst_intro_tm in HDe by
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
+    repeat msubst_simp.
+    destruct HDe as (_ & _ & HDe).
+    rewrite msubst_insert_fresh_am in HDe by
+      (eauto using ctxRst_closed_env, ptyR_closed_value;
+       simpl_fv; my_set_solver).
+    ospecialize* HDe; eauto.
+    repeat rewrite_measure_irrelevant.
+    rewrite msubst_insert_fresh_pty in HDe by
+      (eauto using ctxRst_closed_env, ptyR_closed_value;
+       simpl_fv; my_set_solver).
+    rewrite msubst_insert_fresh_am in HDe by
+      (eauto using ctxRst_closed_env, ptyR_closed_value;
+       simpl_fv; my_set_solver).
+    clear - HDe.
+    by simplify_list_eq.
+  (* [TApp] *)
+  - intros Γ v1 v2 e ρ ρx ρ2 τ A A' B L HWF HTv2 HDv2 HTv1 HDv1 He HTe HDe Γv HΓv.
+    repeat msubst_simp.
+    split; [| split]. {
+      assert (Γ ⊢ tletapp v1 v2 e ⋮t [:ρ|A▶B]) by eauto using term_type_check.
+      eapply tm_typing_regular_basic_typing in H.
+      eapply msubst_preserves_basic_typing_tm_empty in H; eauto.
+      repeat msubst_simp.
+      apply_eq H. cbn. eauto using pty_erase_msubst_eq.
+    } {
+      eapply_eq msubst_preserves_closed_hty_empty; eauto using wf_hty_closed.
+      repeat msubst_simp.
+    }
+    intros α β v HDα Hstepv.
+    apply reduction_tletapp in Hstepv.
+    destruct Hstepv as (βx & βe & v_x & -> & Hstepv_x & Hstepv).
+    auto_pose_fv x. repeat specialize_with x.
+    ospecialize* HDv1; eauto.
+    ospecialize* HDv2; eauto.
+    repeat msubst_simp.
+    destruct HDv1 as (_ & _ & HDapp).
+    repeat rewrite_measure_irrelevant.
+    ospecialize* HDapp; eauto.
+    rewrite <- msubst_open_hty in HDapp by
+        (eauto using ctxRst_closed_env, ctxRst_lc).
+    rewrite He in HDapp.
+    repeat msubst_simp.
+    destruct HDapp as (_ & _ & HDapp).
+    ospecialize* HDapp; eauto.
+    destruct HDapp as [HDv_x HDα_βx].
+    assert (ctxRst (Γ ++ [(x, ρx)]) (<[x:=v_x]> Γv)) as HΓv'. {
+      econstructor; eauto.
+      econstructor; eauto using ctxRst_ok_ctx.
+      eapply value_typing_regular_wf in HTv1. sinvert HTv1.
+      eapply wf_pty_closed.
+      move He at bottom.
+      auto_pose_fv y. repeat specialize_with y.
+      apply wf_hty_closed in H4.
+      eauto using wf_pty_closed.
+      my_set_solver.
+    }
+    ospecialize* HDe; eauto.
+    rewrite <- msubst_intro_tm in HDe by
+        (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
+         simpl_fv; my_set_solver).
+    repeat msubst_simp.
+    destruct HDe as (_ & _ & HDe).
+    rewrite msubst_insert_fresh_am in HDe by
+      (eauto using ctxRst_closed_env, ptyR_closed_value;
+       simpl_fv; my_set_solver).
+    ospecialize* HDe; eauto.
+    repeat rewrite_measure_irrelevant.
+    rewrite msubst_insert_fresh_pty in HDe by
+      (eauto using ctxRst_closed_env, ptyR_closed_value;
+       simpl_fv; my_set_solver).
+    rewrite msubst_insert_fresh_am in HDe by
+      (eauto using ctxRst_closed_env, ptyR_closed_value;
+       simpl_fv; my_set_solver).
+    clear - HDe.
+    by simplify_list_eq.
 
-    assert (exists Bi ρi, In (Bxi, ρxi, Bi, ρi) Bx_ρx_B_ρ) as Hin. {
-      simpl_Forall2.
-      eauto.
-    }
-    destruct Hin as (Bi & ρi & Hin). clear Hin1.
-    assert (In ((aconcat Bxi Bi), ρi) BxB_ρ) as Hinii. {
-      simpl_Forall2.
-      eauto.
-    } clear Hin2.
-    assert (ctxRst (Γ ++ [(x, ρxi)]) (<[x:=v_x]> Γv)) as HH2. {
-      constructor; auto.
-      econstructor. eauto using ctxRst_ok_ctx. 2: my_set_solver.
-      eapply tm_typing_regular_wf in HTe_x.
-      sinvert HTe_x.
-      qauto using wf_pty_closed.
-    }
-    specialize (He _ _ _ _ Hin _ HH2). repeat msubst_simp.
-    destruct He as (Hte & Hclosede & He).
-    assert (amlist_typed ((m{<[x:=v_x]> Γv}pa) [(Bi, ρi)]) T) as HH3. {
-      apply msubst_amlist_typed.
-      clear - HWFBρ Hinii.
-      sinvert HWFBρ.
-      hnf in *.
-      qauto.
-    }
-    specialize (He HH3 (α ++ βx) βe v).
-    assert ((a⟦(m{<[x:=v_x]> Γv}a) (aconcat A Bxi)⟧) (α ++ βx)) as Hconcat.
-    { apply am_denotation_fv;
-        eauto using ctxRst_closed_env, ptyR_closed_value.
-      simpl_fv; my_set_solver.
-      repeat msubst_simp. apply am_concat; auto. } repeat msubst_simp.
-    specialize (He Hconcat Hstepv). destruct He as (Bi'' & ρi'' & Hini & Hβe & Hv).
-    apply postam_msubst_in in Hini; eauto using ctxRst_closed_env.
-    destruct Hini as (Bi' & ρi' & Htmp0 & Htmp1 & Hini); subst.
-    apply in_singleton in Hini. mydestr; subst.
-    exists (m{<[x:=v_x]> Γv}a (aconcat Bxi Bi)), (m{<[x:=v_x]> Γv}p ρi).
-    repeat split. 3: auto.
-    + eapply_eq postam_in_msubst. eauto using ctxRst_closed_env. eauto.
-      apply msubst_insert_fresh_postam; eauto using ctxRst_closed_env, ptyR_closed_value.
-      simpl_fv; my_set_solver.
-    + repeat msubst_simp.
-      apply am_concat; auto.
-      apply am_denotation_fv; eauto using ctxRst_closed_env, ptyR_closed_value.
-      simpl_fv; my_set_solver.
+(*
 
   (* [TApp] *)
   - intros Γ v1 v2 e ρ Tx A T Bx_ρx BxB_ρ Bx_ρx_B_ρ L HWF Hv2 HDv2 Hv1 HDv1 Hin1 Hin2 Ht He Γv HΓv.
