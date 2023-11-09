@@ -219,26 +219,13 @@ Inductive closed_hty (d: aset) (ρ: hty): Prop :=
 
 (* Type context *)
 
-Fixpoint remove_arr_pty (Γ: listctx pty) :=
-  match Γ with
-  | [] => []
-  | (x, {: B | ϕ}) :: Γ => (x, {: B | ϕ}) :: remove_arr_pty Γ
-  | (x, _) :: Γ => remove_arr_pty Γ
-  end.
-
-(* langledot *)
-Notation "'⦑' x '⦒'" := (remove_arr_pty x) (at level 5, format "⦑ x ⦒", x constr).
-
 Inductive ok_ctx: listctx pty -> Prop :=
 | ok_ctx_nil: ok_ctx []
 | ok_ctx_cons: forall (Γ: listctx pty)(x: atom) (ρ: pty),
     ok_ctx Γ ->
-    closed_pty (ctxdom ⦑ Γ ⦒) ρ ->
+    closed_pty (ctxdom Γ) ρ ->
     x ∉ ctxdom Γ ->
     ok_ctx (Γ ++ [(x, ρ)]).
-
-Definition ctx_closed_pty (Γ: listctx pty) :=
-  forall Γ1 (x: atom) (ρ: pty) Γ2, Γ = Γ1 ++ [(x, ρ)] ++ Γ2 -> closed_pty (ctxdom ⦑ Γ1 ⦒) ρ.
 
 Lemma ok_ctx_ok: forall Γ, ok_ctx Γ -> ok Γ.
 Proof.
@@ -397,35 +384,6 @@ Proof.
     repeat apply union_mono; eauto.
   destruct τ; simpl; intros;
     repeat apply union_mono; eauto using open_fv_am'.
-Qed.
-
-Lemma remove_arr_pty_ctx_dom_union Γ Γ' :
-  ctxdom ⦑ Γ ++ Γ' ⦒ = ctxdom ⦑ Γ ⦒ ∪ ctxdom ⦑ Γ' ⦒.
-Proof.
-  induction Γ; intros; simpl.
-  my_set_solver.
-  destruct a. case_split; eauto.
-  simpl. rewrite <- union_assoc_L. f_equal. eauto.
-Qed.
-
-Lemma remove_arr_pty_ctx_dom_app_commute Γ Γ' :
-  ctxdom ⦑ Γ ++ Γ' ⦒ = ctxdom ⦑ Γ' ++ Γ ⦒.
-Proof.
-  rewrite !remove_arr_pty_ctx_dom_union.
-  my_set_solver.
-Qed.
-
-Lemma remove_arr_pty_ctx_dom_singleton x v :
-  ctxdom ⦑ [(x, v)] ⦒ ⊆ {[x]}.
-Proof.
-  simpl. case_split; simpl; my_set_solver.
-Qed.
-
-Lemma remove_arr_pty_ctx_dom_subseteq Γ :
-  ctxdom ⦑ Γ ⦒ ⊆ ctxdom Γ.
-Proof.
-  induction Γ; intros; simpl. my_set_solver.
-  repeat case_split; simpl; my_set_solver.
 Qed.
 
 Lemma open_subst_same_qualifier: forall x y (ϕ : qualifier) k,
@@ -608,56 +566,41 @@ Proof.
   - rewrite <- subst_open_var_pty by (eauto; my_set_solver); eauto.
 Qed.
 
-Lemma fv_of_subst_qualifier:
+Lemma fv_of_subst_qualifier_closed:
   forall x (u : value) (ϕ: qualifier),
-    qualifier_fv ({x := u }q ϕ) ⊆ (qualifier_fv ϕ ∖ {[x]}) ∪ fv_value u.
+    closed_value u ->
+    qualifier_fv ({x := u }q ϕ) = qualifier_fv ϕ ∖ {[x]}.
 Proof.
-  destruct ϕ; simpl. clear. induction vals; simpl.
+  destruct ϕ; simpl. clear. induction vals; simpl; intros.
   my_set_solver.
-  etrans.
-  apply union_mono_r.
-  apply fv_of_subst_value.
+  rewrite fv_of_subst_value_closed by eauto.
   my_set_solver.
 Qed.
 
-Lemma fv_of_subst_am:
+Lemma fv_of_subst_am_closed:
   forall x (u : value) (a: am),
-    am_fv ({x := u }a a) ⊆ (am_fv a ∖ {[x]}) ∪ fv_value u.
+    closed_value u ->
+    am_fv ({x := u }a a) = (am_fv a ∖ {[x]}).
 Proof.
-  induction a; simpl; eauto using fv_of_subst_qualifier; my_set_solver.
-Qed.
-
-Lemma fv_of_subst_pty:
-  forall x (u : value) (ρ: pty),
-    pty_fv ({x := u }p ρ) ⊆ (pty_fv ρ ∖ {[x]}) ∪ fv_value u
-with fv_of_subst_hty:
-  forall x (u : value) (τ: hty),
-    hty_fv ({x := u }h τ) ⊆ (hty_fv τ ∖ {[x]}) ∪ fv_value u.
-Proof.
-  destruct ρ; simpl; intros; eauto using fv_of_subst_qualifier.
-  etrans. apply union_mono; eauto. my_set_solver.
-  destruct τ; simpl; intros.
-  etrans. repeat apply union_mono; eauto using fv_of_subst_am. my_set_solver.
-  etrans. repeat apply union_mono; eauto using fv_of_subst_am. my_set_solver.
+  induction a; simpl; eauto using fv_of_subst_qualifier_closed; my_set_solver.
 Qed.
 
 Lemma fv_of_subst_pty_closed:
   forall x (u : value) (ρ: pty),
     closed_value u ->
-    pty_fv ({x := u }p ρ) ⊆ (pty_fv ρ ∖ {[x]}).
-Proof.
-  intros.
-  rewrite fv_of_subst_pty.
-  my_set_solver.
-Qed.
-
-Lemma fv_of_subst_hty_closed:
+    pty_fv ({x := u }p ρ) = (pty_fv ρ ∖ {[x]})
+with fv_of_subst_hty_closed:
   forall x (u : value) (τ: hty),
     closed_value u ->
-    hty_fv ({x := u }h τ) ⊆ (hty_fv τ ∖ {[x]}).
+    hty_fv ({x := u }h τ) = (hty_fv τ ∖ {[x]}).
 Proof.
-  intros.
-  rewrite fv_of_subst_hty.
+  destruct ρ; simpl; intros; eauto using fv_of_subst_qualifier_closed.
+  rewrite !fv_of_subst_hty_closed, !fv_of_subst_pty_closed by eauto.
+  my_set_solver.
+  destruct τ; simpl; intros.
+  rewrite !fv_of_subst_am_closed, !fv_of_subst_pty_closed by eauto.
+  my_set_solver.
+  rewrite !fv_of_subst_hty_closed by eauto.
   my_set_solver.
 Qed.
 
