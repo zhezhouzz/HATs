@@ -187,10 +187,10 @@ let make_tab addtional_global_lits regex =
   let global_args =
     List.slow_rm_dup (fun x y -> L.eq_lit x.x y.x) global_args
   in
-  let () =
-    Printf.printf "global_args: %s\n"
-      (List.split_by_comma (fun x -> layout_lit x.x) global_args)
-  in
+  (* let () = *)
+  (*   Printf.printf "global_args: %s\n" *)
+  (*     (List.split_by_comma (fun x -> layout_lit x.x) global_args) *)
+  (* in *)
   let euf_constraints = build_euf global_args in
   let global_lits =
     List.slow_rm_dup (fun x y -> L.eq_lit x y)

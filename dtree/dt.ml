@@ -6,6 +6,8 @@ module type Predictable = sig
   val mk_false : prop
   val mk_lit : lit -> prop
   val mk_ite : lit -> prop -> prop -> prop
+  val mk_and : lit -> prop -> prop
+  val mk_not_lit_and : lit -> prop -> prop
   val layout_lit : lit -> string
 end
 
@@ -18,9 +20,87 @@ module F (P : Predictable) = struct
   type features = lit array
   type label = Pos | Neg | MayNeg
   type fvtab = (bool list, label) Hashtbl.t
-  type t = T | F | Leaf of int | Node of int * t * t
+  type t = T | F | Node of int * t * t
 
   let layout_label = function Pos -> "pos" | Neg -> "neg" | MayNeg -> "mayneg"
+
+  let refine_dt_under_prop (sat_checker : prop -> bool) prop (features, dt) =
+    let rec aux prop dt =
+      if not (sat_checker prop) then F
+      else
+        match dt with
+        | T -> T
+        | F -> F
+        | Node (idx, dt_t, dt_f) ->
+            let lit = features.(idx) in
+            let prop_t = mk_and lit prop in
+            let prop_f = mk_not_lit_and lit prop in
+            Node (idx, aux prop_t dt_t, aux prop_f dt_f)
+    in
+    aux prop dt
+
+  let mk_complete_dt features =
+    let rec aux idx =
+      if idx >= Array.length features then T
+      else Node (idx, aux (idx + 1), aux (idx + 1))
+    in
+    aux 0
+
+  let dynamic_classify (sat_checker : prop -> bool) features =
+    let dt = mk_complete_dt features in
+    refine_dt_under_prop sat_checker mk_true (features, dt)
+
+  let lits_to_tab l =
+    let tab = Hashtbl.create (List.length l) in
+    List.iter (fun (lit, b) -> Hashtbl.add tab lit b) l;
+    tab
+
+  let dt_to_tab (features, dt) =
+    let rec aux prefix dt =
+      match dt with
+      | T -> [ prefix ]
+      | F -> []
+      | Node (idx, dt_t, dt_f) ->
+          let lit = features.(idx) in
+          aux ((lit, true) :: prefix) dt_t @ aux ((lit, false) :: prefix) dt_f
+    in
+    let res = aux [] dt in
+    let res = List.mapi (fun idx x -> (idx, lits_to_tab x)) res in
+    res
+
+  (* let dt_to_tab (features, dt) = *)
+  (*   let rec aux prop dt = *)
+  (*     match dt with *)
+  (*     | T -> [ prop ] *)
+  (*     | F -> [] *)
+  (*     | Node (idx, dt_t, dt_f) -> *)
+  (*         let lit = features.(idx) in *)
+  (*         aux (mk_and lit prop) dt_t @ aux (mk_not_lit_and lit prop) dt_f *)
+  (*   in *)
+  (*   let res = aux  dt in *)
+  (*   let res = List.mapi (fun idx x -> (idx, lits_to_tab x)) res in *)
+  (*   res *)
+
+  (* let rec lift_dt (n : int) dt = *)
+  (*   match dt with *)
+  (*   | T -> T *)
+  (*   | F -> F *)
+  (*   | Node (idx, dt_t, dt_f) -> Node (idx + n, lift_dt n dt_t, lift_dt n dt_f) *)
+
+  (* let merge (sat_checker : prop -> bool) (feature1, dt1) (feature2, dt2) = *)
+  (*   let features = Array.concat [ feature1; feature2 ] in *)
+  (*   let dt2 = lift_dt (Array.length feature1) dt2 in *)
+  (*   let rec aux prop dt1 = *)
+  (*     match dt1 with *)
+  (*     | F -> F *)
+  (*     | T -> refine_dt_under_prop sat_checker prop (feature, dt2) *)
+  (*     | Node (idx, dt_t, dt_f) -> *)
+  (*         let lit = features.(idx) in *)
+  (*         let prop_t = mk_and lit prop in *)
+  (*         let prop_f = mk_not_lit_and lit prop in *)
+  (*         Node (idx, aux prop_t dt_t, aux prop_f dt_f) *)
+  (*   in *)
+  (*   (features, aux mk_true dt1) *)
 
   let eq_label a b =
     match (a, b) with
@@ -101,7 +181,7 @@ module F (P : Predictable) = struct
       match dt with
       | T -> mk_true
       | F -> mk_false
-      | Leaf id -> mk_lit (Array.get features id)
+      (* | Leaf id -> mk_lit (Array.get features id) *)
       | Node (id, dt_l, dt_r) ->
           let dt_l, dt_r = map2 aux (dt_l, dt_r) in
           mk_ite (Array.get features id) dt_l dt_r
@@ -146,7 +226,7 @@ module F (P : Predictable) = struct
       match dt with
       | T -> true
       | F -> false
-      | Leaf id -> Array.get fv id
+      (* | Leaf id -> Array.get fv id *)
       | Node (id, l, r) -> if Array.get fv id then aux l else aux r
     in
     aux dt

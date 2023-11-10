@@ -13,6 +13,32 @@ type inputs = {
       (* source_code : string; *)
 }
 
+type ri_inputs = {
+  dir : string;
+  dt : string;
+  lib : string;
+  ri_file : string;
+  interface_file : string;
+}
+
+let dummy_ri_input =
+  { dir = ""; dt = "None"; lib = "None"; ri_file = ""; interface_file = "" }
+
+let mk_ri_inputs source_file =
+  let source_file' = String.split source_file ~on:'/' in
+  let dir, interface_file =
+    match Zzdatatype.Datatype.List.last_destruct_opt source_file' with
+    | Some (dir, name) -> (String.concat ~sep:"/" dir, name)
+    | None -> failwith "wrong path"
+  in
+  let ri_names = String.split dir ~on:'/' in
+  let ri_name = List.nth_exn ri_names (List.length ri_names - 1) in
+  let names' = String.split ri_name ~on:'_' in
+  let dt = List.nth_exn names' 0 in
+  let lib = List.nth_exn names' 1 in
+  let ri_file = sprintf "%s/ri.ml" dir in
+  { dir; dt; lib; ri_file; interface_file }
+
 let mk_inputs_setting meta_config_file =
   let () = Env.load_meta meta_config_file in
   {
@@ -137,7 +163,9 @@ let ntyped_ (setting, code) =
   in
   (setting, code)
 
-let normalized_ (setting, code) =
+open Stat
+
+let normalized_ ri_input (setting, code) =
   let normalized = Normalize.get_normalized_code code in
   let () =
     Env.show_debug_preprocess @@ fun _ ->
@@ -147,49 +175,46 @@ let normalized_ (setting, code) =
         Pp.printf "%s:\n%s\n" name (Denormalize.layout_comp_omit_type e))
       normalized
   in
-  (setting, code, normalized)
-
-let ntype_check_ s source_file =
-  let setting, code, normalized =
-    normalized_ @@ ntyped_ @@ print_source_code_ s source_file
+  let stats =
+    List.map
+      ~f:(fun (interface, code) ->
+        let numBranch = TypedCoreEff.stat_count_comp_branchs code in
+        let numVars = TypedCoreEff.stat_count_comp_vars code in
+        { interface; numBranch; numVars })
+      normalized
   in
-  ()
+  (setting, code, normalized, stats)
 
-let type_check_ s source_file =
-  let setting, code, normalized =
-    normalized_ @@ ntyped_ @@ print_source_code_ s source_file
+let ntype_check_ (ri_input, s) source_file =
+  let setting, code, normalized, interfaceDynamic =
+    normalized_ ri_input @@ ntyped_ @@ print_source_code_ s source_file
+  in
+  interfaceDynamic
+
+let type_check_ (ri_input, s) source_file =
+  let setting, code, normalized, interfaceDynamic =
+    normalized_ ri_input @@ ntyped_ @@ print_source_code_ s source_file
   in
   (* let () = *)
   (*   Printf.printf "\n>>>>Top Operation Rty Context:\n"; *)
   (*   ROpTypectx.pretty_print_lines setting.oprctx *)
   (* in *)
+  let () = Stat.init_interfaceDynamic ri_input.interface_file in
   let ress = Typecheck.check (setting.oprctx, setting.rctx) code normalized in
   let () =
     Env.show_log "result" @@ fun _ -> List.iter ~f:Typecheck.pprint_res_one ress
+  in
+  let () =
+    Stat.update_dt_dynamic_stat
+      (ri_input.dt, ri_input.lib, !Stat.local_interface_dynamic_stat)
   in
   (* let () = Stat.dump default_stat_file ress in *)
   let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in
   ()
 
-(* let ri_type_check_ source_dir method_name = *)
-(*   let source_file = sprintf "%s/%s.ml" source_dir method_name in *)
-(*   let ri_file = sprintf "%s/ri.ml" source_dir method_name in *)
-(*   let normalop_file = sprintf "%s/lib.ml" source_dir method_name in *)
-(*   let rop_file = sprintf "%s/lib_rty.ml" source_dir method_name in *)
-(*   let oprctx, rctx, code, normalized = *)
-(*     print_typed_normalized_source_code_ source_file *)
-(*   in *)
-(*   let ress = Typecheck.check (oprctx, rctx) code normalized in *)
-(*   let () = *)
-(*     Env.show_log "result" @@ fun _ -> List.iter ~f:Typecheck.pprint_res_one ress *)
-(*   in *)
-(*   (\* let () = Stat.dump default_stat_file ress in *\) *)
-(*   let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in *)
-(*   () *)
-
-let subtype_check_ s source_file =
-  let setting, code, normalized =
-    normalized_ @@ ntyped_ @@ print_source_code_ s source_file
+let subtype_check_ (ri_input, s) source_file =
+  let setting, code, normalized, _ =
+    normalized_ ri_input @@ ntyped_ @@ print_source_code_ s source_file
   in
   (* let opctx, rctx = ROpTypectx.from_code code in *)
   (* let opctx = opctx @ opctx' in *)
@@ -206,6 +231,66 @@ let subtype_check_ s source_file =
       (Rty.layout_rty rty1) (Rty.layout_rty rty2) res
   in
   ()
+
+let stat_ri s ri_file =
+  let setting = init_setting s in
+  let code = load_raw_code_from_file ri_file in
+  (* let () = Printf.printf "len(code) = %i\n" (List.length code) in *)
+  let open StructureRaw in
+  let code =
+    StructureRaw.inline_ltlf_pred_keep @@ setting.automata_preds @ code
+  in
+  let code =
+    List.filter_map
+      ~f:(fun entry ->
+        match entry with
+        | LtlfPred { name; args; ltlf_body } when String.equal name "rI" ->
+            Some (args, ltlf_body)
+        | _ -> None)
+      code
+  in
+  let args, rI =
+    match code with
+    | [ (args, rI) ] -> (args, rI)
+    | _ -> failwith "bad representation invaraint"
+  in
+  (* let preds = *)
+  (*   List.filter_map *)
+  (*     ~f:(fun entry -> *)
+  (*       match entry with *)
+  (*       | LtlfPred { name; args; ltlf_body } -> Some (name, args, ltlf_body) *)
+  (*       | _ -> None) *)
+  (*     setting.automata_preds *)
+  (* in *)
+  (* let rI = *)
+  (*   List.fold_left ~f:(fun rI pred -> R.LTLf.apply_pred pred rI) ~init:rI preds *)
+  (* in *)
+  let rI = R.LTLf.to_srl rI in
+  (* let () = Printf.printf "%s\n" (R. rI) in *)
+  (* let () = failwith "end" in *)
+  let numGhost, sizeI = (List.length args, R.SRL.stat_size rI) in
+  (numGhost, sizeI)
+
+let prepare_ri meta_config_file source_file =
+  let s = mk_inputs_setting meta_config_file in
+  let ri_input = mk_ri_inputs source_file in
+  let { dir; dt; lib; ri_file; interface_file } = ri_input in
+  (* let ri_file = sprintf "%s/ri.ml" dir in *)
+  let pred_file = sprintf "%s/automata_preds.ml" dir in
+  (* let source_file = sprintf "%s/%s" dir name in *)
+  let libntyfile = sprintf "%s/lib_nty.ml" dir in
+  let librtyfile = sprintf "%s/lib_rty.ml" dir in
+  let s =
+    {
+      s with
+      automata_pred_files = s.automata_pred_files @ [ pred_file ];
+      opeffnctx_files = s.opeffnctx_files @ [ libntyfile ];
+      opeffrctx_files = s.opeffrctx_files @ [ librtyfile ];
+    }
+  in
+  let numGhost, sizeRI = stat_ri s ri_file in
+  let dt_stat = { dt; lib; numGhost; sizeRI; interfaceStatStatic = [] } in
+  (ri_input, s, dt_stat)
 
 let typecheck_cmds =
   [
@@ -230,49 +315,27 @@ let typecheck_cmds =
           in
           ()) );
     ( "ri-type-check",
-      cmd_config_ir_source "type check" (fun meta_config_file dir name () ->
-          let s = mk_inputs_setting meta_config_file in
-          let ri_file = sprintf "%s/ri.ml" dir in
-          let pred_file = sprintf "%s/automata_preds.ml" dir in
-          let source_file = sprintf "%s/%s" dir name in
-          let libntyfile = sprintf "%s/lib_nty.ml" dir in
-          let librtyfile = sprintf "%s/lib_rty.ml" dir in
-          let s =
-            {
-              s with
-              automata_pred_files = s.automata_pred_files @ [ pred_file ];
-              opeffnctx_files = s.opeffnctx_files @ [ libntyfile ];
-              opeffrctx_files = s.opeffrctx_files @ [ librtyfile ];
-            }
-          in
-          let x = type_check_ s [ ri_file; source_file ] in
+      cmd_config_source "type check" (fun meta_config_file source_file () ->
+          let ri_input, s, dt_stat = prepare_ri meta_config_file source_file in
+          let x = type_check_ (ri_input, s) [ ri_input.ri_file; source_file ] in
           ()) );
     ( "ri-ntype-check",
-      cmd_config_ir_source "type check" (fun meta_config_file dir name () ->
-          let s = mk_inputs_setting meta_config_file in
-          let ri_file = sprintf "%s/ri.ml" dir in
-          let pred_file = sprintf "%s/automata_preds.ml" dir in
-          let source_file = sprintf "%s/%s" dir name in
-          let libntyfile = sprintf "%s/lib_nty.ml" dir in
-          let librtyfile = sprintf "%s/lib_rty.ml" dir in
-          let s =
-            {
-              s with
-              automata_pred_files = s.automata_pred_files @ [ pred_file ];
-              opeffnctx_files = s.opeffnctx_files @ [ libntyfile ];
-              opeffrctx_files = s.opeffrctx_files @ [ librtyfile ];
-            }
+      cmd_config_source "type check" (fun meta_config_file source_file () ->
+          let ri_input, s, dt_stat = prepare_ri meta_config_file source_file in
+          let interfaceStatStatic =
+            ntype_check_ (ri_input, s) [ ri_input.ri_file; source_file ]
           in
-          let x = ntype_check_ s [ ri_file; source_file ] in
+          let dt_stat = { dt_stat with interfaceStatStatic } in
+          let () = update_dt_static_stat dt_stat in
           ()) );
     ( "type-check",
       cmd_config_source "type check" (fun meta_config_file source_file () ->
           let s = mk_inputs_setting meta_config_file in
-          let x = type_check_ s [ source_file ] in
+          let x = type_check_ (dummy_ri_input, s) [ source_file ] in
           ()) );
     ( "subtype-check",
       cmd_config_source "subtype check" (fun meta_config_file source_file () ->
           let s = mk_inputs_setting meta_config_file in
-          let x = subtype_check_ s [ source_file ] in
+          let x = subtype_check_ (dummy_ri_input, s) [ source_file ] in
           ()) );
   ]

@@ -59,6 +59,8 @@ module StructureRaw = struct
   let layout_structure = To_structure.layout
 end
 
+module RawRty = StructureRaw.R
+
 module Rty = struct
   include Rty
 
@@ -393,6 +395,8 @@ module Predictable = struct
   let mk_false = Rty.P.mk_false
   let mk_lit lit = Rty.P.Lit lit
   let mk_ite cond bencht benchf = Rty.P.Ite (Rty.P.Lit cond, bencht, benchf)
+  let mk_and lit prop = Rty.P.(smart_add_to (Lit lit) prop)
+  let mk_not_lit_and lit prop = Rty.P.(smart_add_to (Not (Lit lit)) prop)
   let layout_lit = Rty.layout_lit
 end
 

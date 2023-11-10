@@ -18,6 +18,19 @@ module T = struct
   open Sugar
   open Zzdatatype.Datatype
 
+  let stat_size regex =
+    let rec aux regex =
+      match regex with
+      | Any | Empt | Epsilon | Minterm _ -> 1
+      | Union ts -> List.fold_left (fun num t -> num + 1 + aux t) 0 ts
+      | Diff (t1, t2) -> 1 + aux t1 + aux t2
+      | Intersect ts -> List.fold_left (fun num t -> num + 1 + aux t) 0 ts
+      | Concat ts -> List.fold_left (fun num t -> num + 1 + aux t) 0 ts
+      | Star t -> 1 + aux t
+      | Complement t -> 1 + aux t
+    in
+    aux regex
+
   let reg_to_string reg =
     let rec aux reg =
       match reg with

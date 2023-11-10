@@ -6,14 +6,14 @@ module RtyRaw = StructureRaw.R
 module LRtyRaw = StructureRaw.LR
 (* module QualifierRaw = RtyRaw.P *)
 
-(* module OptTypedCoreEff = struct *)
-(*   include Corelang.F (LRaw) *)
-(* end *)
-
 module Nt = Lit.Ty
 module L = Lit.Lit
 module Structure = Structure.F (L)
 module Rty = Structure.R
+
+module TypedCorelang = struct
+  include Corelang.F (L)
+end
 
 (* module Qualifier = Rty.P *)
 

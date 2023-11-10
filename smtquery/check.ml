@@ -91,6 +91,7 @@ let smt_solve ctx assertions =
   let _ =
     stat_smt_query_time_record := !stat_smt_query_time_record @ [ runtime ]
   in
+  let () = Stat.numQueryPlus1 () in
   res
 
 let smt_neg_and_solve ctx vc =

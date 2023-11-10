@@ -19,6 +19,7 @@ type meta_config = {
   max_printing_size : int;
   logfile : string;
   resfile : string;
+  statfile : string;
   prim_path : prim_path;
 }
 [@@deriving sexp]
@@ -49,6 +50,7 @@ let show_debug_stat = show_log "stat"
 let show_debug_info = show_log "info"
 let show_debug_debug = show_log "debug"
 let get_resfile () = (get_meta ()).resfile
+let get_statfile () = (get_meta ()).statfile
 let get_prim_path () = (get_meta ()).prim_path
 let get_uninterops () = (get_meta ()).uninterops
 
@@ -85,6 +87,7 @@ let load_meta meta_fname =
   in
   let max_printing_size = metaj |> member "max_printing_size" |> to_int in
   let resfile = metaj |> member "resfile" |> to_string in
+  let statfile = metaj |> member "statfile" |> to_string in
   let logfile = metaj |> member "logfile" |> to_string in
   let p = metaj |> member "prim_path" in
   let uninterops =
@@ -102,4 +105,13 @@ let load_meta meta_fname =
     }
   in
   meta_config :=
-    Some { mode; max_printing_size; prim_path; logfile; resfile; uninterops }
+    Some
+      {
+        mode;
+        max_printing_size;
+        prim_path;
+        logfile;
+        resfile;
+        statfile;
+        uninterops;
+      }

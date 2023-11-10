@@ -54,6 +54,19 @@ module F (L : Lit.T) = struct
     in
     aux [] entrys
 
+  let inline_ltlf_pred_keep entrys =
+    let rec aux res entrys =
+      match entrys with
+      | [] -> res
+      | LtlfPred { name; args; ltlf_body } :: entrys ->
+          let entrys =
+            List.map (inline_ltlf_pred_one (name, args, ltlf_body)) entrys
+          in
+          LtlfPred { name; args; ltlf_body } :: aux res entrys
+      | entry :: entrys -> aux (res @ [ entry ]) entrys
+    in
+    aux [] entrys
+
   let ltlf_to_srl_ entry =
     match entry with
     | LtlfPred { name; args; ltlf_body } ->

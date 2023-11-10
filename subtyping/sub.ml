@@ -90,33 +90,11 @@ and sub_srl_bool rctx (srl1, srl2) =
   in
   res
 
-and sub_srl_bool_aux rctx (srl1, srl2) =
-  let () =
-    Env.show_debug_info @@ fun _ ->
-    Printf.printf "sub_srl_bool_aux R: %s\n" (RTypectx.layout_typed_l rctx)
-  in
-  let runtime, (ctx, mts) =
-    Sugar.clock (fun () -> Desymbolic.ctx_ctx_init rctx (LorA (srl1, srl2)))
-  in
-  let () =
-    Env.show_debug_stat @@ fun _ ->
-    Printf.printf "Desymbolic.ctx_init: %f\n" runtime
-  in
-  (* let filter_sat_mts mts = *)
-  (*   NRegex.mts_filter_map *)
-  (*     (fun mt -> *)
-  (*       let () = *)
-  (*         Env.show_debug_queries @@ fun _ -> *)
-  (*         Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt) *)
-  (*       in *)
-  (*       let b = *)
-  (*         Desymbolic.minterm_verify_bool *)
-  (*           (fun bindings (tau1, tau2) -> *)
-  (*             sub_rty_bool (RTypectx.new_to_rights rctx bindings) (tau1, tau2)) *)
-  (*           ctx mt *)
-  (*       in *)
-  (*       if b then Some mt.NRegex.local_embedding else None) *)
-  (*     mts *)
+and do_desymbolic rctx (srl1, srl2) =
+  let ctx, mts = Desymbolic.ctx_ctx_init rctx (LorA (srl1, srl2)) in
+  (* let () = *)
+  (*   Env.show_debug_stat @@ fun _ -> *)
+  (*   Printf.printf "Desymbolic.ctx_init: %f\n" runtime *)
   (* in *)
   let mts =
     Desymbolic.filter_sat_mts ctx
@@ -125,18 +103,25 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
       mts
   in
   let () = Env.show_debug_queries @@ fun _ -> NRegex.pprint_mts mts in
-  let runtime1, srl1 =
-    Sugar.clock (fun () -> Desymbolic.desymbolic ctx mts srl1)
+  let srl1 = Desymbolic.desymbolic ctx mts srl1 in
+  let srl2 = Desymbolic.desymbolic ctx mts srl2 in
+  let res = _safe_combine __FILE__ __LINE__ srl1 srl2 in
+  res
+
+and sub_srl_bool_aux rctx (srl1, srl2) =
+  let () =
+    Env.show_debug_info @@ fun _ ->
+    Printf.printf "sub_srl_bool_aux R: %s\n" (RTypectx.layout_typed_l rctx)
   in
-  let runtime2, srl2 =
-    Sugar.clock (fun () -> Desymbolic.desymbolic ctx mts srl2)
-  in
+  let tTrans, res = Sugar.clock (fun () -> do_desymbolic rctx (srl1, srl2)) in
+  let tTrans = tTrans /. float_of_int (List.length res) in
   let check (srl1, srl2) =
-    let () =
-      Env.show_debug_stat @@ fun _ ->
-      Printf.printf "Desymbolic.desymbolic r1: %f\n" runtime1;
-      Printf.printf "Desymbolic.desymbolic r2: %f\n" runtime2
-    in
+    let sizeA = 1 + NRegex.stat_size srl1 + NRegex.stat_size srl1 in
+    (* let () = *)
+    (*   Env.show_debug_stat @@ fun _ -> *)
+    (*   Printf.printf "Desymbolic.desymbolic r1: %f\n" runtime1; *)
+    (*   Printf.printf "Desymbolic.desymbolic r2: %f\n" runtime2 *)
+    (* in *)
     let () =
       Env.show_debug_info @@ fun _ ->
       Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n"
@@ -147,31 +132,32 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
       Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
         (NRegex.reg_to_string srl2)
     in
-    let res = Smtquery.check_inclusion_counterexample (srl1, srl2) in
-    (* let () = *)
-    (*   if 1 == !debug_counter then failwith "end" *)
-    (*   else debug_counter := !debug_counter + 1 *)
-    (* in *)
+    let tInclusion, res =
+      Sugar.clock (fun () ->
+          Smtquery.check_inclusion_counterexample (srl1, srl2))
+    in
     let res =
       match res with
       | None -> true
-      | Some mt_list ->
+      | Some _ ->
           let () =
             Env.show_log "smt_regex" @@ fun _ ->
             Printf.printf "sub_srl_bool_aux R: %s\n"
               (RTypectx.layout_typed_l rctx)
           in
-          ( Env.show_debug_debug @@ fun _ ->
-            Desymbolic.display_trace rctx ctx mt_list );
+          (* ( Env.show_debug_debug @@ fun _ -> *)
+          (*   Desymbolic.display_trace rctx ctx mt_list ); *)
           false
     in
     let () =
       Env.show_debug_queries @@ fun _ ->
       Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res
     in
+    let stat = Stat.{ sizeA; tTrans; tInclusion } in
+    let () = Stat.appendInclusionStat stat in
     res
   in
-  let res = List.for_all check @@ _safe_combine __FILE__ __LINE__ srl1 srl2 in
+  let res = List.for_all check res in
   res
 
 let is_bot_hty rctx = function

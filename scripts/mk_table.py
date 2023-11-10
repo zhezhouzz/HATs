@@ -4,67 +4,67 @@ import os
 import json
 from tabulate import tabulate
 
-headers = ["", "Recursive", "#LocalVar" , "#OP" , "#Q_{SMT}" , "#Q_{automata}" , "(max. Char, Size)" ,
-           "smt total (avg. time)(s)", "automata total (avg. time)(s)"]
+# headers = ["", "Recursive", "#LocalVar" , "#OP" , "#Q_{SMT}" , "#Q_{automata}" , "(max. Char, Size)" ,
+#            "smt total (avg. time)(s)", "automata total (avg. time)(s)"]
 
-latex_headers = ["", "\\#Branch", "\\#LVar" , "\\#Event", "\\#Lit", "\\#Query" , "avg. \\#Mt", "avg. size$_{A}$" ,
+latex_headers = ["Datatype", "Library",
+                 "\\#Ghost", "size$_{I}$",
+                 "\\#Branch", "\\#Var" ,
+                 "\\#SAT" , "\\#Inclusion", "avg. size$_{A}$" ,
                  "time$_{\\text{trans}}$ (s) ", "time$_{A}$ (s)"]
 
-def show_source(source, name):
-    tab = {"Protocols": "⬦", "Algebraic Effects": "*",  "Datatypes": "◯", "leonidas": "★", "stlc": ""}
-    return "{} {}".format(name, tab[source])
+def print_header(head):
+    print(" & ".join(head) + "\\\\")
 
-def show_is_rec(is_rec, branches):
-    if is_rec:
-        return [branches, "✓"]
-    else:
-        return [branches, ""]
+def mk_col (dt: str, lib: str, numBranch: int, numVars: int,
+            numGhost: int, sizeRI: int, numQuery: int, numInclusion: int, sizeA: int,
+            tTrans: float, tInclusion: float):
+    return {"dt": dt, "lib": lib,
+            "numGhost": numGhost, "sizeRI": sizeRI,
+            "numBranch": numBranch, "numVars": numVars,
+            "numQuery": numQuery, "numInclusion": numInclusion, "sizeA": sizeA,
+            "tTrans":tTrans, "tInclusion":tInclusion }
 
-def show_is_rec_latex(is_rec):
-    if is_rec:
-        return "$\\checkmark$"
-    else:
-        return ""
+# def show_source(source, name):
+#     tab = {"Okisaki": "*", "Miltner": "★", "ours": ""}
+#     return "{} {}".format(name, tab[source])
 
-def show_data(data):
-    print("\n")
-    lines = []
-    for (source, is_rec, res) in data:
-        res = [show_source(source, res[0])] + show_is_rec(is_rec, res[1]) + res[2:]
-        lines.append(res)
-    print(tabulate(lines, headers, tablefmt='orgtbl', numalign="left"))
+def textsf(content: str):
+    return "\\textsf{" + content + "}"
 
-def latex_name(name):
-    name = name.replace("_", "\_")
-    name = "\\textsf{" + name + "}"
-    # print(name)
-    return name
+def multirow(num: int, content: str):
+    return "\\multirow{" + str(num) + "}{*}{" + content + "}"
 
-def show_latex_tab(data):
-    print("\n")
-    header_str = " & ".join(latex_headers)
-    print("""
-\\toprule
- {}\\\\
-\\midrule""".format(header_str))
-    for name, stat in data.items():
-        line = "{} & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ & ${}$ \\\\".format(
-            latex_name(name),
-            # show_is_rec_latex(stat["is_rec"]),
-            stat["code_branchs"],
-            stat["code_size"],
-            stat["rty_events"],
-            stat["rty_lits"],
-            # stat["code_effects"],
-            # stat["num_pty"],
-            stat["num_am"],
-            stat["avg_num_candicate_minterm"],
-            # stat["max_num_candicate_minterm"],
-            # stat["max_inclusion_alphabet"],
-            stat["avg_inclusion_automaton_size"],
-            # stat["max_inclusion_automaton_size"],
-            stat["time_filter"],
-            stat["time_am_without_filter"]
-        )
-        print(line)
-    print("\\bottomrule")
+def print_col(print_dt_num: int, col):
+    dt_str = ""
+    if print_dt_num > 0:
+        print("\\midrule")
+        dt_str = multirow(print_dt_num, textsf(col["dt"]))
+    lib_str = textsf(col["lib"])
+    res = "{} & {} & {} & {} & {} & {} & {} & {} & {} & {:.2f} & {:.2f} \\\\".format(
+        dt_str, lib_str, col["numBranch"], col["numVars"], col["numGhost"],
+        col["sizeRI"], col["numQuery"], col["numInclusion"], col["sizeA"],
+        col["tTrans"], col["tInclusion"])
+    print(res)
+    return
+
+def analysis_col_dts(cols):
+    cur_dt = None
+    res = [0] * len(cols)
+    for i in range(len(cols) - 1, -1, -1):
+        # print(cur_dt)
+        col = cols[i]
+        if cur_dt is None or cur_dt != col["dt"]:
+            cur_dt = col["dt"]
+            res[i] = 1
+        else:
+            res[i] = 1 + res[i + 1]
+            res[i + 1] = 0
+    return res
+
+def print_cols(cols):
+    print_header(latex_headers)
+    nums = analysis_col_dts(cols)
+    for i in range(len(cols)):
+        print_col(nums[i], cols[i])
+    return

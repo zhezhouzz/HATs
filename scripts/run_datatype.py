@@ -50,6 +50,10 @@ def ntypecheck_datatype(config, verbose):
     for path in config["methods"]:
         marple_interface.ri_ntype_check(path, verbose)
 
+def typecheck_datatype(config, verbose):
+    for path in config["methods"]:
+        marple_interface.ri_type_check(path, verbose)
+
 if __name__ == '__main__':
     try:
         if sys.argv[2] == "verbose":

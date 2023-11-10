@@ -270,9 +270,9 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
   let comp_htriple_check_letapp typectx (lhs, appf, apparg, letbody) hty =
     let rulename = "LetApp" in
     let () = before_info __LINE__ rulename in
-    let () = Printf.printf "before appf_rty\n" in
+    (* let () = Printf.printf "before appf_rty\n" in *)
     let* appf_rty = value_type_infer typectx appf in
-    let () = Printf.printf "appf_rty:%s\n" (layout_rty appf_rty) in
+    (* let () = Printf.printf "appf_rty:%s\n" (layout_rty appf_rty) in *)
     let gvars, appf_rty = destruct_gvars_rty appf_rty in
     let appf_rty =
       match gvars with

@@ -12,9 +12,11 @@ from pathlib import Path
 import pathlib
 import run_datatype
 import marple_interface
+import mk_table
+import analyze
 
 meta_config_file = "meta-config.json"
-stat_file = ".stat.json"
+stat_file = ".stat"
 
 def load_stat (source):
     with open (stat_file) as f:
@@ -42,14 +44,23 @@ def load_benchmarks(path):
     # print(files)
     return files
 
-def show_table_cul0(paths):
-    for filename in paths:
-        path = filename.split('/')
-        method_str = path[-1]
-        datatype_name = method_str.split('_')[0]
-        lib_name = method_str.split('_')[1]
-        name = "\\textsf{" + "{}::{}".format(datatype_name, lib_name) + "}"
-        print("{} & & & & & & & & & \\\\".format(name))
+def show_table(paths):
+    with open (stat_file) as f:
+        j = json.load(f)
+    # with open (stat_file) as f:
+    #     j = json.load(f)
+    #     static_j = j["static"]
+    #     dynamic_j = j["dynamic"]
+    #     for filename in paths:
+    #         dt, lib = filename_to_dt_lib(filename)
+    #         # print(static_j)
+    #         # print(dt, lib)
+    #         matches = [x for x in static_j if x["dt"] == dt and x["lib"] == lib]
+    #         stat = matches[0]
+    #         col = mk_table.mk_col(dt, lib, 0, 0, stat["numGhost"], stat["sizeRI"], 0, 0, 0, 0.0, 0.0)
+    #         cols.append(col)
+    cols = analyze.analyze_stat(paths, j)
+    mk_table.print_cols(cols)
 
 def show_benchmarks(verbose, paths):
     for path in paths:
@@ -64,6 +75,13 @@ def ntypecheck_benchmarks(verbose, paths):
 
 def ntypecheck_one(verbose, path):
     run_datatype.ntypecheck_datatype(run_datatype.load_datatype(path), verbose)
+
+def typecheck_benchmarks(verbose, paths):
+    for path in paths:
+        run_datatype.typecheck_datatype(run_datatype.load_datatype(path), verbose)
+
+def typecheck_one(verbose, path):
+    run_datatype.typecheck_datatype(run_datatype.load_datatype(path), verbose)
 
 def make_table(verbose, bench_name):
     tab = benchs.load_benchmarks()
@@ -85,12 +103,16 @@ if __name__ == '__main__':
     marple_interface.build_marple(verbose)
     if "benchmarks" == sys.argv[2]:
         load_benchmarks(sys.argv[3])
+    elif "typing" == sys.argv[2]:
+        typecheck_benchmarks(verbose, load_benchmarks(sys.argv[3]))
+    elif "typing-one" == sys.argv[2]:
+        typecheck_one(verbose, sys.argv[3])
     elif "ntyping" == sys.argv[2]:
         ntypecheck_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "ntyping-one" == sys.argv[2]:
         ntypecheck_one(verbose, sys.argv[3])
-    elif "show-table-cul0" == sys.argv[2]:
-        show_table_cul0(load_benchmarks(sys.argv[3]))
+    elif "show-table" == sys.argv[2]:
+        show_table(load_benchmarks(sys.argv[3]))
     elif "show" == sys.argv[2]:
         show_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "show-one" == sys.argv[2]:

@@ -11,8 +11,6 @@ type format = Raw | Typed | MonadicNormalForm
 
 open Language
 
-let default_stat_file = ".stat.json"
-
 let load_raw_code_from_file qfile =
   let code = Ocaml5_parser.Frontend.parse ~sourcefile:qfile in
   let code = List.map ~f:To_structure.ocaml_structure_to_structure code in

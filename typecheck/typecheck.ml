@@ -22,22 +22,16 @@ open Sugar
 let pprint_res_one (id, res, timef) =
   match res with
   | Some _ ->
-      Pp.printf
-        "@{<bold>Task %i:@} exec time @{<bold>%f(s)@}, @{<bold>@{<yellow>type \
-         check succeeded@}@}\n"
-        id timef
+      Printf.printf "Task %i: exec time %f(s), type check succeeded\n" id timef
   | None ->
-      Pp.printf
-        "@{<bold>Task %i:@} exec time @{<bold>%f(s)@}, @{<bold>@{<red>type \
-         check failed@}@}\n"
-        id timef
+      Printf.printf "Task %i: exec time %f(s), type check failed\n" id timef
 
 (* let pprint_res = List.iter pprint_res_one *)
 
 let check (opctx', rctx') structure normalized_structure =
-  let () =
-    Printf.printf "Structure:\n%s\n" @@ Structure.layout_structure structure
-  in
+  (* let () = *)
+  (*   Printf.printf "Structure:\n%s\n" @@ Structure.layout_structure structure *)
+  (* in *)
   let opctx, rctx = ROpCtx.from_code structure in
   (* let () = Printf.printf "%s\n" @@ RTypectx.layout_typed_l rctx in *)
   (* let () = failwith "end" in *)
@@ -79,6 +73,9 @@ let check (opctx', rctx') structure normalized_structure =
             (* let () = Printf.printf "%s\n" @@ R.layout_rty rty in *)
             (* let () = failwith "end" in *)
             (* let () = do_stat comp rty in *)
+            (* let () = Smtquery.stat_init () in *)
+            (* let () = Baux.stat_init () in *)
+            (* let () = Desymbolic.stat_init () in *)
             let typecheck_time, res =
               Sugar.clock (fun () ->
                   Bidirectional.comp_type_check
@@ -90,10 +87,14 @@ let check (opctx', rctx') structure normalized_structure =
             (*     (Smtquery.stat_get_cur ()) (Baux.stat_get_cur ()) *)
             (*     (Desymbolic.stat_get_cur ()) *)
             (* in *)
+            let if_type_checked =
+              match res with Some () -> true | None -> false
+            in
             let () =
               Env.show_debug_typing @@ fun _ ->
               pprint_res_one (id, res, typecheck_time)
             in
+            let () = Stat.settTypeCheck (if_type_checked, typecheck_time) in
             (* let elrond_stat_record = Infer_ghost.get_stat () in *)
             (* let () = *)
             (*   Printf.printf "len: %i\n" (List.length elrond_stat_record); *)
