@@ -54,30 +54,23 @@ let[@libRty] write ?l:(idx = (true : [%v: Elem.t])) =
     newadding = lastL && Write ((idx [@d]), v, true);
   }
 
-let[@libRty] isWritten ((a : Elem.t) [@ghost]) ?l:(u = (true : [%v: unit])) =
+let[@libRty] isWritten ?l:(u = (true : [%v: unit])) =
   [|
     {
-      pre = writtenP a;
+      pre = _F (Write (x_0, v, true));
       res = (v : [%v: bool]);
       newadding = lastL && IsWritten (x_0, v, v);
     };
     {
-      pre = not (writtenP a);
+      pre = not (_F (Write (x_0, v, true)));
       res = (not v : [%v: bool]);
       newadding = lastL && IsWritten (x_0, v, not v);
     };
   |]
 
 let[@libRty] read ((a : Elem.t) [@ghost]) ?l:(u = (true : [%v: unit])) =
-  [|
-    {
-      pre = writtenP a;
-      res = (v == a : [%v: Elem.t]);
-      newadding = lastL && Read (x_0, v, v == a);
-    };
-    {
-      pre = not (writtenP a);
-      res = (true : [%v: Elem.t]);
-      newadding = lastL && Read (x_0, v, true);
-    };
-  |]
+  {
+    pre = writtenP a;
+    res = (v == a : [%v: Elem.t]);
+    newadding = lastL && Read (x_0, v, v == a);
+  }

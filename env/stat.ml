@@ -165,6 +165,7 @@ let dump_dt_dynamic_stat stat =
     ]
 
 let load_dt_dynamic_stat j =
+  (* let () = Printf.printf "??:%s\n" (j |> member "dtDynamic" |> to_string) in *)
   {
     dtDynamic = j |> member "dtDynamic" |> to_string;
     libDynamic = j |> member "libDynamic" |> to_string;

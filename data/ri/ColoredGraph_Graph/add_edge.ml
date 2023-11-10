@@ -2,9 +2,13 @@ let add_edge (st : Node.t) (en : Node.t) : unit =
   if isNode st then
     if isNode en then
       if isConnected st en then ()
-      else (
-        connect st en;
-        ())
+      else
+        let (c1 : Color.t) = getNodeColor st in
+        let (c2 : Color.t) = getNodeColor en in
+        if color_eq c1 c2 then ()
+        else (
+          connect st en;
+          ())
     else ()
   else ()
 

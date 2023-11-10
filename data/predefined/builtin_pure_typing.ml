@@ -64,3 +64,7 @@ let[@libRty] elem_eq ?l:(a = (true : [%v: Elem.t]) [@over])
 let[@libRty] elem_lt ?l:(a = (true : [%v: Elem.t]) [@over])
     ?l:(b = (true : [%v: Elem.t]) [@over]) : [%v: bool] =
   iff v (elem_lt a b)
+
+let[@libRty] color_eq ?l:(a = (true : [%v: Color.t]) [@over])
+    ?l:(b = (true : [%v: Color.t]) [@over]) : [%v: bool] =
+  iff v (a == b)

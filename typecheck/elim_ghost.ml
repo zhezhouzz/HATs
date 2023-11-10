@@ -108,6 +108,9 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
     (rpre : regex) =
   let gathered = SRL.gather lpre in
   let lits = gathered_lit_to_atom_lit gathered in
+  let lits =
+    List.slow_rm_dup (fun (_, lit1) (_, lit2) -> eq_lit lit1 lit2) lits
+  in
   let () =
     Env.show_log "elim_ghost" @@ fun _ ->
     Printf.printf "lits:\n%s\n"
@@ -127,7 +130,6 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
     Printf.printf "type_safe_lits:\n%s\n"
     @@ List.split_by "\n" (fun lit -> spf "%s" (layout_lit lit)) type_safe_lits
   in
-  let () = _failatwith __FILE__ __LINE__ "end" in
   let features = Array.of_list type_safe_lits in
   let fvtab = DT.init_fvtab features in
   let () = DT.pprint_fvtab features fvtab in
@@ -141,6 +143,7 @@ let ghost_infer_one typectx (lpre : regex) (gvar : string Nt.typed)
     subtyping_srl_bool __FILE__ __LINE__ typectx (lpre, rpre)
   in
   let res = elrond verifier features fvtab in
+  let () = _failatwith __FILE__ __LINE__ "end" in
   match res with
   | None -> _failatwith __FILE__ __LINE__ "die"
   | Some phi -> mk_from_prop gvar.Nt.ty (fun _ -> phi)

@@ -29,6 +29,10 @@ val has_child : Bytes.t -> bool
 (* elem *)
 val elem_lt : Elem.t -> Elem.t -> bool
 val elem_eq : Elem.t -> Elem.t -> bool
+
+(* color *)
+val color_eq : Color.t -> Color.t -> bool
+
 (* eff operator **)
 
 (* set *)

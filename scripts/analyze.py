@@ -43,7 +43,7 @@ def analyze_interface_dynamic(stat):
 
 def analyze_dynamic(stats):
     res = [ analyze_interface_dynamic(s) for s in stats]
-    res.sort(key=lambda x: x["tTypeCheck"])
+    res.sort(key=lambda x: x["tTypeCheck"], reverse=True)
     # print(res)
     return res[0]
 

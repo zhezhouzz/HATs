@@ -162,6 +162,27 @@ let build_euf vars =
   in
   res
 
+let build_partial_one partial_func vars =
+  let tys, _ = Nt.destruct_arr_tp partial_func.ty in
+  let ty = List.nth tys 0 in
+  let vars = List.filter (fun lit -> Nt.eq lit.ty ty) vars in
+  let pairs = List.combination_l vars 2 in
+  let plits = List.map (fun l -> L.AAppOp (partial_func, l)) pairs in
+  plits
+
+let build_partial partial_funcs vars =
+  List.concat @@ List.map (fun f -> build_partial_one f vars) partial_funcs
+
+let get_partail_op lits =
+  let lits = List.concat @@ StrMap.to_value_list @@ StrMap.map snd lits in
+  let aux = function
+    | AAppOp (f, l) when not (String.equal (Op.to_string f.x) "==") -> (
+        match l with [ a; b ] when Nt.eq a.ty b.ty -> Some f | _ -> None)
+    | _ -> None
+  in
+  let res = List.filter_map aux lits in
+  List.slow_rm_dup (fun a b -> Op.eq a.x b.x) res
+
 let make_tab addtional_global_lits regex =
   let g = gather regex in
   (* let num_lits = num_lits g in *)
@@ -192,9 +213,17 @@ let make_tab addtional_global_lits regex =
   (*     (List.split_by_comma (fun x -> layout_lit x.x) global_args) *)
   (* in *)
   let euf_constraints = build_euf global_args in
+  let pops = get_partail_op local_lits in
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    Printf.printf "pops: %s\n"
+    @@ List.split_by_comma (fun x -> Op.to_string x.x) pops
+  in
+  let partial_constraints = build_partial pops global_args in
   let global_lits =
     List.slow_rm_dup (fun x y -> L.eq_lit x y)
-    @@ global_lits @ euf_constraints @ addtional_global_lits
+    @@ global_lits @ euf_constraints @ partial_constraints
+    @ addtional_global_lits
   in
   let global_tab = litlist_to_tab ([], global_lits) in
   let local_tab = StrMap.map litlist_to_tab local_lits in

@@ -6,11 +6,12 @@ let rec minset_insert (x : Elem.t) : unit =
       if exists k then (
         minset_insert x;
         ())
-      else (
-        put k x;
+      else
         let (min : Elem.t) = read () in
-        if elem_lt x min then write x;
-        ())
+        if elem_lt x min then ()
+        else (
+          put k x;
+          ())
   else ()
 
 let[@assertRty] minset_insert ((m : Elem.t) [@ghost])

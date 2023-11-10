@@ -35,7 +35,8 @@
         "is_root",
         "is_deleted",
         "elem_eq",
-        "elem_lt"
+        "elem_lt",
+        "color_eq"
     ],
     "prim_path": {
         "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",
