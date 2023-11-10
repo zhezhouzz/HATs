@@ -12,7 +12,7 @@ Reserved Notation "α '⊧' t1 '↪{' β '}' t2" (at level 60, t1 constr, β con
 
 (** the small step operational semantics *)
 Inductive step : list evop -> tm -> list evop -> tm -> Prop :=
-| STEffOp: forall (α β: list evop) op (c1 c: constant) e,
+| STEffOp: forall (α: list evop) op (c1 c: constant) e,
     body e -> lc c1 -> lc c ->
     α ⊧{ op ~ c1 }⇓{ c } ->
     α ⊧ (tleteffop op c1 e) ↪{ [ev{ op ~ c1 := c}] } (e ^t^ c)
