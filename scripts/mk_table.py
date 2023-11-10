@@ -8,7 +8,7 @@ from tabulate import tabulate
 #            "smt total (avg. time)(s)", "automata total (avg. time)(s)"]
 
 latex_headers = ["Datatype", "Library",
-                 "\\#Ghost", "size$_{I}$",
+                 "\\#Method", "\\#Ghost", "size$_{I}$",
                  "\\#Branch", "\\#Var" ,
                  "\\#SAT" , "\\#Inclusion", "avg. size$_{A}$" ,
                  "time$_{\\text{trans}}$ (s) ", "time$_{A}$ (s)"]
@@ -16,12 +16,13 @@ latex_headers = ["Datatype", "Library",
 def print_header(head):
     print(" & ".join(head) + "\\\\")
 
-def mk_col (dt: str, lib: str, numGhost: int, sizeRI: int,
+def mk_col (dt: str, lib: str, numMethod: int,
+            numGhost: int, sizeRI: int,
             numBranch: int, numVars: int,
             numQuery: int, numInclusion: int, sizeA: int,
             tTrans: float, tInclusion: float):
     return {"dt": dt, "lib": lib,
-            "numGhost": numGhost, "sizeRI": sizeRI,
+            "numMethod": numMethod, "numGhost": numGhost, "sizeRI": sizeRI,
             "numBranch": numBranch, "numVars": numVars,
             "numQuery": numQuery, "numInclusion": numInclusion, "sizeA": sizeA,
             "tTrans":tTrans, "tInclusion":tInclusion }
@@ -42,9 +43,9 @@ def print_col(print_dt_num: int, col):
         print("\\midrule")
         dt_str = multirow(print_dt_num, textsf(col["dt"]))
     lib_str = textsf(col["lib"])
-    res = "{} & {} & {} & {} & {} & {} & {} & {} & {} & {:.2f} & {:.2f} \\\\".format(
+    res = "{} & {} & {} & {} & {} & {} & {} & {} & {} & {} & {:.2f} & {:.2f} \\\\".format(
         dt_str, lib_str,
-        col["numGhost"], col["sizeRI"],
+        col["numMethod"], col["numGhost"], col["sizeRI"],
         col["numBranch"], col["numVars"],
         col["numQuery"], col["numInclusion"], col["sizeA"],
         col["tTrans"], col["tInclusion"])

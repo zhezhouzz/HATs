@@ -67,7 +67,7 @@ def analyze_stat(paths, j):
         # print(static_stat)
         numBranch, numVars = analyze_interface_static(static_stat["interfaceStatStatic"])
         col = mk_table.mk_col(dt, lib,
-                              static_stat["numGhost"], static_stat["sizeRI"],
+                              len(static_stat["interfaceStatStatic"]), static_stat["numGhost"], static_stat["sizeRI"],
                               numBranch, numVars,
                               0, 0, 0, 0.0, 0.0)
         matches = [x for x in dynamic_j if x["dtDynamic"] == dt and x["libDynamic"] == lib]
