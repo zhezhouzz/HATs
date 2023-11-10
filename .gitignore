@@ -11,6 +11,7 @@
 *.cmxa
 *.log*
 *.stat*
+log
 
 # ocamlbuild working directory
 _build/

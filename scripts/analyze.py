@@ -64,6 +64,7 @@ def analyze_stat(paths, j):
         dt, lib = filename_to_dt_lib(filename)
         matches = [x for x in static_j if x["dt"] == dt and x["lib"] == lib]
         static_stat = matches[0]
+        # print(static_stat)
         numBranch, numVars = analyze_interface_static(static_stat["interfaceStatStatic"])
         col = mk_table.mk_col(dt, lib,
                               static_stat["numGhost"], static_stat["sizeRI"],

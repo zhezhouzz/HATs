@@ -16,8 +16,9 @@ latex_headers = ["Datatype", "Library",
 def print_header(head):
     print(" & ".join(head) + "\\\\")
 
-def mk_col (dt: str, lib: str, numBranch: int, numVars: int,
-            numGhost: int, sizeRI: int, numQuery: int, numInclusion: int, sizeA: int,
+def mk_col (dt: str, lib: str, numGhost: int, sizeRI: int,
+            numBranch: int, numVars: int,
+            numQuery: int, numInclusion: int, sizeA: int,
             tTrans: float, tInclusion: float):
     return {"dt": dt, "lib": lib,
             "numGhost": numGhost, "sizeRI": sizeRI,
@@ -42,8 +43,10 @@ def print_col(print_dt_num: int, col):
         dt_str = multirow(print_dt_num, textsf(col["dt"]))
     lib_str = textsf(col["lib"])
     res = "{} & {} & {} & {} & {} & {} & {} & {} & {} & {:.2f} & {:.2f} \\\\".format(
-        dt_str, lib_str, col["numBranch"], col["numVars"], col["numGhost"],
-        col["sizeRI"], col["numQuery"], col["numInclusion"], col["sizeA"],
+        dt_str, lib_str,
+        col["numGhost"], col["sizeRI"],
+        col["numBranch"], col["numVars"],
+        col["numQuery"], col["numInclusion"], col["sizeA"],
         col["tTrans"], col["tInclusion"])
     print(res)
     return

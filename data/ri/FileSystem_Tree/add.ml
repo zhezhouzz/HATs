@@ -4,7 +4,7 @@ let add (path : Path.t) (content : Bytes.t) : bool =
     let (parent_path : Path.t) = getParent path in
     let (bytes' : Bytes.t) = get parent_path in
     if isDir bytes' then (
-      connect_child parent_path path;
+      connectChild parent_path path;
       put path content;
       put parent_path (addChild bytes' path);
       true)

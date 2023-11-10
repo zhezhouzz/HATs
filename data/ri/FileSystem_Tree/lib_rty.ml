@@ -7,12 +7,12 @@ let[@libRty] init ?l:(p1 = (true : [%v: Path.t])) =
     newadding = lastL && Init ((p1 [@d]), v, true);
   }
 
-let[@libRty] connect_child ?l:(p1 = (true : [%v: Path.t]))
+let[@libRty] connectChild ?l:(p1 = (true : [%v: Path.t]))
     ?l:(p2 = (true : [%v: Path.t])) =
   {
     pre = memP p1;
     res = (true : [%v: unit]);
-    newadding = lastL && Connect_child ((p1 [@d]), (p2 [@d]), v, true);
+    newadding = lastL && ConnectChild ((p1 [@d]), (p2 [@d]), v, true);
   }
 
 let[@libRty] mem ?l:(k = (true : [%v: Path.t])) =
