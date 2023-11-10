@@ -1,5 +1,3 @@
-(* kvstore *)
-
 let[@pred] storedP (k : Path.t) (value : Bytes.t) =
   _F
     (Put ((k [@d]), (value [@d]), v, true)

@@ -186,13 +186,13 @@ let normalized_ ri_input (setting, code) =
   (setting, code, normalized, stats)
 
 let ntype_check_ (ri_input, s) source_file =
-  let setting, code, normalized, interfaceDynamic =
+  let setting, code, normalized, interfaceStaic =
     normalized_ ri_input @@ ntyped_ @@ print_source_code_ s source_file
   in
-  interfaceDynamic
+  interfaceStaic
 
 let type_check_ (ri_input, s) source_file =
-  let setting, code, normalized, interfaceDynamic =
+  let setting, code, normalized, interfaceStaic =
     normalized_ ri_input @@ ntyped_ @@ print_source_code_ s source_file
   in
   (* let () = *)
@@ -210,7 +210,7 @@ let type_check_ (ri_input, s) source_file =
   in
   (* let () = Stat.dump default_stat_file ress in *)
   let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in
-  ()
+  interfaceStaic
 
 let subtype_check_ (ri_input, s) source_file =
   let setting, code, normalized, _ =
@@ -317,7 +317,11 @@ let typecheck_cmds =
     ( "ri-type-check",
       cmd_config_source "type check" (fun meta_config_file source_file () ->
           let ri_input, s, dt_stat = prepare_ri meta_config_file source_file in
-          let x = type_check_ (ri_input, s) [ ri_input.ri_file; source_file ] in
+          let interfaceStatStatic =
+            type_check_ (ri_input, s) [ ri_input.ri_file; source_file ]
+          in
+          let dt_stat = { dt_stat with interfaceStatStatic } in
+          let () = update_dt_static_stat dt_stat in
           ()) );
     ( "ri-ntype-check",
       cmd_config_source "type check" (fun meta_config_file source_file () ->
