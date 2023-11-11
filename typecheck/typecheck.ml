@@ -54,7 +54,8 @@ let check (opctx', rctx') structure normalized_structure =
             (fun (name', _) -> String.equal name name')
             normalized_structure
         with
-        | None -> _failatwith __FILE__ __LINE__ ""
+        | None ->
+            failwith "cannot find the implemetation of the given assertion"
         | Some (_, comp) ->
             let () =
               if not (Nt.eq comp.ty (R.erase_rty rty)) then
