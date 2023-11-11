@@ -157,7 +157,9 @@ let build_euf vars =
   let res =
     Hashtbl.fold
       (fun ty vars res ->
-        if List.length vars > 1 then aux ty vars @ res else res)
+        if List.length vars > 1 && not (Nt.eq ty (Nt.Ty_uninter "Bytes.t")) then
+          aux ty vars @ res
+        else res)
       space []
   in
   res
@@ -276,4 +278,5 @@ let ctx_ctx_init _ regex =
   let () = Env.show_log "desymbolic" @@ fun _ -> pprint_head tab in
   let mts = mk_mts tab in
   let () = Env.show_log "desymbolic" @@ fun _ -> NRegex.pprint_mts mts in
+  (* let () = failwith "end" in *)
   (tab, mts)
