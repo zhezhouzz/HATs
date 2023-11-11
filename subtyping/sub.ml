@@ -54,9 +54,9 @@ and sub_hty_bool rctx (hty1, hty2) =
       else sub_srl_bool rctx (pre2, post2)
   | ( Htriple { pre = pre1; resrty = rty1; post = post1 },
       Htriple { pre = pre2; resrty = rty2; post = post2 } ) ->
-      if not (sub_rty_bool rctx (rty1, rty2)) then
-        not (sub_srl_bool rctx (pre1, EmptyA))
-      else if not (sub_srl_bool rctx (pre2, pre1)) then false
+      if not (sub_srl_bool rctx (pre2, pre1)) then false
+      else if not (sub_rty_bool rctx (rty1, rty2)) then
+        sub_srl_bool rctx (pre1, EmptyA)
       else
         let post1' = LandA (SeqA (pre2, StarA AnyA), post1) in
         sub_srl_bool rctx (post1', post2)

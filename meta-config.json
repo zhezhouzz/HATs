@@ -3,13 +3,13 @@
   "max_printing_size": 1000,
   "debug_tags": [
     // "preprocess",
-    // "ntyping",
+    "ntyping",
     "typing",
     // "subtyping",
-    // "minterms",
-    // "desymbolic",
-    // "queries",
-    // "smt_regex",
+    "minterms",
+    "desymbolic",
+    "queries",
+    "smt_regex",
     // "solving",
     // "stat",
     // "info",
@@ -37,7 +37,8 @@
         "elem_eq",
         "elem_lt",
         "color_eq",
-        "node_eq"
+        "node_eq",
+        "cell_eq"
     ],
     "prim_path": {
         "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",

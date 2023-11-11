@@ -36,6 +36,9 @@ val color_eq : Color.t -> Color.t -> bool
 (* node *)
 val node_eq : Node.t -> Node.t -> bool
 
+(* cell *)
+val cell_eq : Cell.t -> Cell.t -> bool
+
 (* eff operator **)
 
 (* set *)

@@ -72,3 +72,7 @@ let[@libRty] color_eq ?l:(a = (true : [%v: Color.t]) [@over])
 let[@libRty] node_eq ?l:(a = (true : [%v: Node.t]) [@over])
     ?l:(b = (true : [%v: Node.t]) [@over]) : [%v: bool] =
   iff v (a == b)
+
+let[@libRty] cell_eq ?l:(a = (true : [%v: Cell.t]) [@over])
+    ?l:(b = (true : [%v: Cell.t]) [@over]) : [%v: bool] =
+  iff v (a == b)
