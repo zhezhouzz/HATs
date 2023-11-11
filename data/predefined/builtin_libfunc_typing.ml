@@ -19,17 +19,18 @@ let[@libRty] delChild ?l:(a = (true : [%v: Bytes.t]) [@over])
   v == a
 
 let[@libRty] getChild ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: Path.t] =
-  is_child a v
+  true
 
 let[@libRty] hasChild ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
-  iff v (has_child a)
+  true
 
-let[@libRty] isDeleted ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
-  v == is_deleted a
+(* let[@libRty] isDeleted ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] = *)
+(*   v == is_deleted a *)
 
 let[@libRty] setDeleted ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: Bytes.t]
     =
-  is_deleted v
+  not (is_dir v)
+(* is_deleted v *)
 
 let[@libRty] isDir ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
   v == is_dir a
