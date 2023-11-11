@@ -368,11 +368,16 @@ and comp_htriple_check (typectx : typectx) (comp : comp typed) (hty : hty) :
   | CVal v -> (
       match hty with
       | Rty rty -> value_type_check typectx v #: comp.ty rty
-      | Htriple { pre; resrty; post } ->
-          let* () = value_type_check typectx v #: comp.ty resrty in
-          if subtyping_srl_bool __FILE__ __LINE__ typectx (pre, post) then
-            Some ()
-          else None
+      | Htriple { pre; resrty; post } -> (
+          match value_type_check typectx { x = v; ty = comp.ty } resrty with
+          | None ->
+              if subtyping_srl_bool __FILE__ __LINE__ typectx (pre, EmptyA) then
+                Some ()
+              else None
+          | Some () ->
+              if subtyping_srl_bool __FILE__ __LINE__ typectx (pre, post) then
+                Some ()
+              else None)
       | _ -> _failatwith __FILE__ __LINE__ "die")
   | CLetE { lhs; rhs; letbody } -> (
       match rhs.x with

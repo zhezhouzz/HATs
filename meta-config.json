@@ -4,7 +4,7 @@
   "debug_tags": [
     // "preprocess",
     // "ntyping",
-    // "typing",
+    "typing",
     // "subtyping",
     // "minterms",
     // "desymbolic",
