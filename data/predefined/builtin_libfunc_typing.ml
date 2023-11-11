@@ -12,11 +12,11 @@ let[@libRty] fileInit ?l:(a = (true : [%v: unit]) [@over]) : [%v: Bytes.t] =
 
 let[@libRty] addChild ?l:(a = (true : [%v: Bytes.t]) [@over])
     ?l:(b = (true : [%v: Path.t]) [@over]) : [%v: Bytes.t] =
-  v == add_child a b
+  v == a
 
 let[@libRty] delChild ?l:(a = (true : [%v: Bytes.t]) [@over])
     ?l:(b = (true : [%v: Path.t]) [@over]) : [%v: Bytes.t] =
-  v == del_child a b
+  v == a
 
 let[@libRty] getChild ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: Path.t] =
   is_child a v
