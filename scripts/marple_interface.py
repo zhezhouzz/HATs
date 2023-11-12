@@ -14,7 +14,7 @@ workdir = ""
 
 meta_config_file = "meta-config.json"
 
-timeout_in_seconds = 600
+timeout_in_seconds = 3600
 
 def invoc_cmd(verbose, cmd, output_file, cwd=None):
     if_timeout = False
