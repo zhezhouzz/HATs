@@ -58,35 +58,43 @@ let check_inclusion (r1, r2) = Check.inclusion_query ctx r1 r2
 (* open Zzdatatype.Datatype *)
 
 let check_inclusion_bool (r1, r2) =
-  let runtime, res = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
+  let runtime, (size, res) = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
   let () =
     Env.show_log "smt_regex" @@ fun _ ->
     Printf.printf "check_inclusion_bool: %f\n" runtime
   in
-  match res with
-  | None -> true
-  (* | Some _ -> *)
-  | Some mt_list ->
-      (* ( Env.show_debug_queries @@ fun _ -> *)
-      (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
-      ( Env.show_log "smt_regex" @@ fun _ ->
-        Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
-          (Check.layout_counterexample mt_list) );
-      false
+  let res =
+    match res with
+    | None -> true
+    (* | Some _ -> *)
+    | Some mt_list ->
+        (* ( Env.show_debug_queries @@ fun _ -> *)
+        (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
+        ( Env.show_log "smt_regex" @@ fun _ ->
+          Pp.printf
+            "@{<orange>counterexample word of language inclusion:@} %s\n"
+            (Check.layout_counterexample mt_list) );
+        false
+  in
+  (size, res)
 
 let check_inclusion_counterexample (r1, r2) =
-  let runtime, res = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
+  let runtime, (size, res) = Sugar.clock (fun () -> check_inclusion (r1, r2)) in
   let () =
     Env.show_debug_stat @@ fun _ ->
     Printf.printf "check_inclusion_counterexample: %f\n" runtime
   in
-  match res with
-  | None -> None
-  | Some mt_list ->
-      ( Env.show_log "smt_regex" @@ fun _ ->
-        Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n"
-          (Check.layout_counterexample mt_list) );
-      Some mt_list
+  let res =
+    match res with
+    | None -> None
+    | Some mt_list ->
+        ( Env.show_log "smt_regex" @@ fun _ ->
+          Pp.printf
+            "@{<orange>counterexample word of language inclusion:@} %s\n"
+            (Check.layout_counterexample mt_list) );
+        Some mt_list
+  in
+  (size, res)
 
 let stat_init = Check.stat_init
 let stat_get_cur = Check.stat_get_cur

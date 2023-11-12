@@ -8,7 +8,7 @@
     // "subtyping",
     "minterms",
     "desymbolic",
-    "queries",
+    // "queries",
     "smt_regex",
     // "solving",
     // "stat",

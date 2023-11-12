@@ -210,33 +210,36 @@ let inclusion_query ctx r1 r2 =
     stat_inclusion_query_time_record :=
       !stat_inclusion_query_time_record @ [ runtime ]
   in
-  match res with
-  | None ->
-      ( Env.show_debug_queries @@ fun _ ->
-        Pp.printf "@{<orange>inclusion is valid [%f(s)]:@}\n" runtime );
-      (* let () = *)
-      (*   if 1 == !debug_counter then failwith "end" *)
-      (*   else debug_counter := !debug_counter + 1 *)
-      (* in *)
-      None
-  | Some model ->
-      (* let () = *)
-      (*   if 1 == !debug_counter then failwith "end" *)
-      (*   else debug_counter := !debug_counter + 1 *)
-      (* in *)
-      (* ( Env.show_log "smt_regex" @@ fun _ -> *)
-      (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
-      let str =
-        match Z3aux.get_string_by_name model sequence_name with
-        | Some str -> str
-        | None -> _failatwith __FILE__ __LINE__ "die"
-      in
-      let mt_list = Regencoding.RegZ3.code_trace encoding str in
-      (* ( Env.show_debug_queries @@ fun _ -> *)
-      (*   Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n" *)
-      (*     (layout_counterexample mt_list) ); *)
-      (* let () = *)
-      (*   if 1 == !debug_counter then failwith "end" *)
-      (*   else debug_counter := !debug_counter + 1 *)
-      (* in *)
-      Some mt_list
+  let res =
+    match res with
+    | None ->
+        ( Env.show_log "smt_regex" @@ fun _ ->
+          Pp.printf "@{<orange>inclusion is valid [%f(s)]:@}\n" runtime );
+        (* let () = *)
+        (*   if 1 == !debug_counter then failwith "end" *)
+        (*   else debug_counter := !debug_counter + 1 *)
+        (* in *)
+        None
+    | Some model ->
+        (* let () = *)
+        (*   if 1 == !debug_counter then failwith "end" *)
+        (*   else debug_counter := !debug_counter + 1 *)
+        (* in *)
+        (* ( Env.show_log "smt_regex" @@ fun _ -> *)
+        (*   Printf.printf "model:\n%s\n" (Z3.Model.to_string model) ); *)
+        let str =
+          match Z3aux.get_string_by_name model sequence_name with
+          | Some str -> str
+          | None -> _failatwith __FILE__ __LINE__ "die"
+        in
+        let mt_list = Regencoding.RegZ3.code_trace encoding str in
+        (* ( Env.show_debug_queries @@ fun _ -> *)
+        (*   Pp.printf "@{<orange>counterexample word of language inclusion:@} %s\n" *)
+        (*     (layout_counterexample mt_list) ); *)
+        (* let () = *)
+        (*   if 1 == !debug_counter then failwith "end" *)
+        (*   else debug_counter := !debug_counter + 1 *)
+        (* in *)
+        Some mt_list
+  in
+  (encoded_size, res)

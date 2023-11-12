@@ -117,12 +117,7 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
   let tTrans, res = Sugar.clock (fun () -> do_desymbolic rctx (srl1, srl2)) in
   let tTrans = tTrans /. float_of_int (List.length res) in
   let check (srl1, srl2) =
-    let sizeA = 1 + NRegex.stat_size srl1 + NRegex.stat_size srl1 in
-    (* let () = *)
-    (*   Env.show_debug_stat @@ fun _ -> *)
-    (*   Printf.printf "Desymbolic.desymbolic r1: %f\n" runtime1; *)
-    (*   Printf.printf "Desymbolic.desymbolic r2: %f\n" runtime2 *)
-    (* in *)
+    (* let sizeA = 1 + NRegex.stat_size srl1 + NRegex.stat_size srl1 in *)
     let () =
       Env.show_debug_info @@ fun _ ->
       Pp.printf "@{<bold>Symbolic Automton 1:@} %s\n"
@@ -133,7 +128,7 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
       Pp.printf "@{<bold>Symbolic Automton 2:@} %s\n"
         (NRegex.reg_to_string srl2)
     in
-    let tInclusion, res =
+    let tInclusion, (sizeRawA, res) =
       Sugar.clock (fun () ->
           Smtquery.check_inclusion_counterexample (srl1, srl2))
     in
@@ -154,7 +149,7 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
       Env.show_debug_queries @@ fun _ ->
       Pp.printf "@{<bold>Inclusion Check Result:@} %b\n" res
     in
-    let stat = Stat.{ sizeA; tTrans; tInclusion } in
+    let stat = Stat.{ sizeA = sizeRawA; tTrans; tInclusion } in
     let () = Stat.appendInclusionStat stat in
     res
   in
