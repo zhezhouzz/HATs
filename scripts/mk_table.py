@@ -9,9 +9,9 @@ from tabulate import tabulate
 
 latex_headers = ["Datatype", "Library",
                  "\\#Method", "\\#Ghost", "size$_{I}$",
-                 "\\#Branch", "\\#Var" ,
-                 "\\#SAT" , "\\#Inclusion", "avg. size$_{A}$" ,
-                 "time$_{\\text{trans}}$ (s) ", "time$_{A}$ (s)"]
+                 "\\#Br", "\\#Var" ,
+                 "\\#SAT" , "\\#Incl", "avg. size$_{A}$" ,
+                 "t$_{\\text{trans}}$ (s) ", "t$_{A}$ (s)"]
 
 def print_header(head):
     print(" & ".join(head) + "\\\\")

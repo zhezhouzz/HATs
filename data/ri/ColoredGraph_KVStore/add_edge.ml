@@ -1,10 +1,14 @@
 let add_edge (st : Node.t) (en : Node.t) : unit =
-  let (c1 : Color.t) = getC st in
-  let (c2 : Color.t) = getC en in
-  if color_eq c1 c2 then ()
-  else (
-    putE st en;
-    ())
+  if existsC st then
+    if existsC en then
+      let (c1 : Color.t) = getC st in
+      let (c2 : Color.t) = getC en in
+      if color_eq c1 c2 then ()
+      else (
+        putE st en;
+        ())
+    else ()
+  else ()
 
 let[@assertRty] add_edge ((s1 : Node.t) [@ghost]) ((s2 : Node.t) [@ghost])
     ((c : Color.t) [@ghost]) ?l:(st = (true : [%v: Node.t]))
