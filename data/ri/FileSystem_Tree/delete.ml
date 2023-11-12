@@ -2,7 +2,6 @@ let delete (path : Path.t) : bool =
   if not (mem path) then false
   else
     let (bytes : Bytes.t) = get path in
-    if isDir bytes then deleteChildren path;
     let (parent_path : Path.t) = getParent path in
     let (bytes' : Bytes.t) = get parent_path in
     put path (setDeleted bytes);
