@@ -91,30 +91,17 @@ and sub_srl_bool rctx (srl1, srl2) =
   in
   res
 
-and do_desymbolic rctx (srl1, srl2) =
-  let ctx, mts = Desymbolic.ctx_ctx_init rctx (LorA (srl1, srl2)) in
-  (* let () = *)
-  (*   Env.show_debug_stat @@ fun _ -> *)
-  (*   Printf.printf "Desymbolic.ctx_init: %f\n" runtime *)
-  (* in *)
-  let mts =
-    Desymbolic.filter_sat_mts ctx
-      (fun bindings (tau1, tau2) ->
-        sub_rty_bool (RTypectx.new_to_rights rctx bindings) (tau1, tau2))
-      mts
-  in
-  let () = Env.show_debug_queries @@ fun _ -> NRegex.pprint_mts mts in
-  let srl1 = Desymbolic.desymbolic ctx mts srl1 in
-  let srl2 = Desymbolic.desymbolic ctx mts srl2 in
-  let res = _safe_combine __FILE__ __LINE__ srl1 srl2 in
-  res
-
 and sub_srl_bool_aux rctx (srl1, srl2) =
   let () =
     Env.show_debug_info @@ fun _ ->
     Printf.printf "sub_srl_bool_aux R: %s\n" (RTypectx.layout_typed_l rctx)
   in
-  let tTrans, res = Sugar.clock (fun () -> do_desymbolic rctx (srl1, srl2)) in
+  let checker bindings (tau1, tau2) =
+    sub_rty_bool (RTypectx.new_to_rights rctx bindings) (tau1, tau2)
+  in
+  let tTrans, res =
+    Sugar.clock (fun () -> Desymbolic_opt.do_desymbolic checker (srl1, srl2))
+  in
   let tTrans = tTrans /. float_of_int (List.length res) in
   let check (srl1, srl2) =
     (* let sizeA = 1 + NRegex.stat_size srl1 + NRegex.stat_size srl1 in *)

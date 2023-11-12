@@ -1,7 +1,7 @@
 (library
  (name subtyping)
  (wrapped true)
- (libraries utils language core env smtquery desymbolic)
+ (libraries utils language core env smtquery desymbolic desymbolic_opt)
  (modules
    subcty
    sub

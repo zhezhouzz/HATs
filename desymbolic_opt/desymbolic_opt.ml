@@ -1,66 +1,12 @@
 include Head
 open Zzdatatype.Datatype
 open Language
-
-(* open Rty *)
 open Sugar
-
-(* let minterm_to_op_model { global_tab; local_tab } *)
-(*     NRegex.{ op; global_embedding; local_embedding } = *)
-(*   let global_m = tab_i_to_b global_tab global_embedding in *)
-(*   let m = StrMap.find "minterm_to_op_model" local_tab op in *)
-(*   let local_m = tab_i_to_b m local_embedding in *)
-(*   (global_m, local_m) *)
-
-(* let display_trace rctx ctx mt_list = *)
-(*   match List.last_destruct_opt mt_list with *)
-(*   | Some (mt_list, ret_mt) -> *)
-(*       let global_m, _ = minterm_to_op_model ctx ret_mt in *)
-(*       let mt_list = *)
-(*         List.map *)
-(*           (fun mt -> *)
-(*             let _, m = minterm_to_op_model ctx mt in *)
-(*             m) *)
-(*           mt_list *)
-(*       in *)
-(*       let () = Printf.printf "Gamma:\n" in *)
-(*       let () = Printf.printf "%s\n" @@ RTypectx.layout_typed_l rctx in *)
-(*       let () = Printf.printf "Global:\n" in *)
-(*       let () = pprint_bool_tab global_m in *)
-(*       let () = *)
-(*         List.iteri *)
-(*           (fun idx m -> *)
-(*             let () = Printf.printf "[<%i>]:\n" idx in *)
-(*             let () = pprint_bool_tab m in *)
-(*             ()) *)
-(*           mt_list *)
-(*       in *)
-(*       () *)
-(*   | None -> Printf.printf "Empty trace ϵ\n" *)
-
-(* let stat_filter_time_record = ref [] *)
-(* let stat_num_candicate_minterm_record = ref [] *)
-(* let candicate_minterm_counter = ref 0 *)
-
-(* let stat_init () = *)
-(*   stat_filter_time_record := []; *)
-(*   stat_num_candicate_minterm_record := []; *)
-(*   candicate_minterm_counter := 0 *)
-
-(* let stat_counter_reset () = candicate_minterm_counter := 0 *)
-
-(* let stat_update runtime = *)
-(*   stat_filter_time_record := !stat_filter_time_record @ [ runtime ]; *)
-(*   stat_num_candicate_minterm_record := *)
-(*     !stat_num_candicate_minterm_record @ [ !candicate_minterm_counter ]; *)
-(*   candicate_minterm_counter := 0 *)
-
-(* let stat_get_cur () = *)
-(*   (!stat_num_candicate_minterm_record, !stat_filter_time_record) *)
+open Rty
 
 let model_verify_bool sub_rty_bool (vs, prop) =
   let bindings =
-    let vs = List.map (fun {x; ty} -> {rx = x; rty = Rty.mk_top ty}) vs in
+    let vs = List.map (fun { x; ty } -> { rx = x; rty = Rty.mk_top ty }) vs in
     let rty = Rty.mk_unit_rty_from_prop prop in
     let binding = { rx = Rename.unique "a"; rty } in
     vs @ [ binding ]
@@ -77,10 +23,6 @@ let model_verify_bool sub_rty_bool (vs, prop) =
       (Rty.layout_rty lhs_rty) (Rty.layout_rty rhs_rty) b
   in
   b
-
-(* let minterm_verify_bool sub_rty_bool ctx mt = *)
-(*   let model = minterm_to_op_model ctx mt in *)
-(*   model_verify_bool sub_rty_bool model *)
 
 open Rty
 
@@ -226,40 +168,110 @@ let all_to_tab { global_features; local_features } { global_dt; local_dts } =
   (* let local_tabs = IntMap.to_value_list local_tabs in *)
   { global_tab; local_tabs }
 
-let desymbolic { global_tab; local_tabs } regex =
-  List.map
-    (fun (global_embedding, global_m) ->
-       let regex' = partial_evaluate_regex global_m regex in
-       let dts = IntMap.find "desymbolic" local_tabs global_embedding in
-       desymbolic_local global_embedding dts regex')
-    global_tab
+let tab_to_prop tab =
+  let res =
+    Hashtbl.fold
+      (fun lit b res -> if b then Lit lit :: res else Not (Lit lit) :: res)
+      tab []
+  in
+  And res
 
-let mk_mt_tab sat_checker { global_features; local_features } =
-  let global_dt = DT.dynamic_classify sat_checker global_features in
-  let local_dts = StrMap.map (fun (vs, features) ->
-      DT.dynamic_classify sat_checker features
-    ) local_features in
+let print_opt_stat (num, test_num) features =
+  let total_fv = Sugar.pow 2 (Array.length features) in
+  Printf.printf "valid(%i/%i); cost(%i/%i = %f)\n" num total_fv test_num
+    total_fv
+    (float_of_int test_num /. float_of_int total_fv)
+
+let mk_mt_tab sub_rty_bool { global_features; local_features } =
+  (* let local_features_array = *)
+  (*   StrMap.map (fun (_, features) -> Array.of_list features) local_features *)
+  (* in *)
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    Printf.printf "[Global DT]:\n";
+    Head.pprint_tab global_features
+  in
+  let test_num, global_dt =
+    DT.dynamic_classify
+      (fun prop -> model_verify_bool sub_rty_bool ([], prop))
+      global_features
+  in
   let global_tab = DT.dt_to_tab (global_features, global_dt) in
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    Printf.printf "[Global DT]\n";
+    print_opt_stat (List.length global_tab, test_num) global_features
+  in
+  let local_dts =
+    StrMap.mapi
+      (fun op (vs, features) ->
+        let () =
+          Env.show_log "desymbolic" @@ fun _ ->
+          Printf.printf "[%s DT]:\n" op;
+          Head.pprint_tab features
+        in
+        let test_num, dt =
+          DT.dynamic_classify
+            (fun prop -> model_verify_bool sub_rty_bool (vs, prop))
+            features
+        in
+        let () =
+          Env.show_log "desymbolic" @@ fun _ ->
+          Printf.printf "[%s DT]\n" op;
+          print_opt_stat (0, test_num) features
+        in
+        (vs, dt))
+      local_features
+  in
+  let global_tab_with_local =
+    List.map
+      (fun (idx, tab) ->
+        let prop = tab_to_prop tab in
+        let dts =
+          StrMap.mapi
+            (fun op (vs, dt) ->
+              let features = snd @@ StrMap.find "mk_mt_tab" local_features op in
+              let () =
+                Env.show_log "desymbolic" @@ fun _ ->
+                Printf.printf "[Refine %s DT]:\n[Under]:%s\n" op
+                  (layout_prop prop);
+                Head.pprint_tab features
+              in
+              let test_num, dt =
+                DT.refine_dt_under_prop
+                  (fun prop -> model_verify_bool sub_rty_bool (vs, prop))
+                  prop (features, dt)
+              in
+              let dt = DT.dt_to_tab (features, dt) in
+              let () =
+                Env.show_log "desymbolic" @@ fun _ ->
+                Printf.printf "[Refine %s DT]\n" op;
+                print_opt_stat (List.length dt, test_num) features
+              in
+              dt)
+            local_dts
+        in
+        (idx, tab, dts))
+      global_tab
+  in
+  global_tab_with_local
 
+let desymbolic_under_global (global_embedding, global_m, dts) regex =
+  let regex' = partial_evaluate_regex global_m regex in
+  desymbolic_local global_embedding dts regex'
 
-(* let filter_sat_mts_ ctx sub_rty_bool_with_binding mts = *)
-(*   NRegex.mts_filter_map *)
-(*     (fun mt -> *)
-(*       let () = *)
-(*         Env.show_log "desymbolic" @@ fun _ -> *)
-(*         Pp.printf "@{<bold>Minterm Check:@} %s\n" (NRegex.mt_to_string mt) *)
-(*       in *)
-(*       let b = minterm_verify_bool sub_rty_bool_with_binding ctx mt in *)
-(*       if b then Some mt.NRegex.local_embedding else None) *)
-(*     mts *)
+(* let filter_mts sub_rty_bool head = *)
+(*   let tab = mk_mt_tab sub_rty_bool head in *)
+(*   List.map (fun tab -> desymbolic_under_global tab regex) tab *)
 
-(* let filter_sat_mts ctx sub_rty_bool_with_binding mts = *)
-(*   let _ = stat_counter_reset () in *)
-(*   let runtime, mts = *)
-(*     Sugar.clock (fun () -> filter_sat_mts_ ctx sub_rty_bool_with_binding mts) *)
-(*   in *)
-(*   let () = stat_update runtime in *)
-(*   let () = *)
-(*     Env.show_debug_stat @@ fun _ -> Printf.printf "filter_sat_mts: %f\n" runtime *)
-(*   in *)
-(*   mts *)
+let desymbolic tab regex =
+  List.map (fun tab -> desymbolic_under_global tab regex) tab
+
+let do_desymbolic checker (srl1, srl2) =
+  let head = ctx_ctx_init (LorA (srl1, srl2)) in
+  let () = Env.show_log "desymbolic" @@ fun _ -> Head.pprint_head head in
+  let mt_tab = mk_mt_tab checker head in
+  let srl1 = desymbolic mt_tab srl1 in
+  let srl2 = desymbolic mt_tab srl2 in
+  let res = _safe_combine __FILE__ __LINE__ srl1 srl2 in
+  res

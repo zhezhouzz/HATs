@@ -25,6 +25,11 @@ module F (P : Predictable) = struct
   let layout_label = function Pos -> "pos" | Neg -> "neg" | MayNeg -> "mayneg"
 
   let refine_dt_under_prop (sat_checker : prop -> bool) prop (features, dt) =
+    let counter = ref 0 in
+    let sat_checker prop =
+      counter := !counter + 1;
+      sat_checker prop
+    in
     let rec aux prop dt =
       if not (sat_checker prop) then F
       else
@@ -37,7 +42,8 @@ module F (P : Predictable) = struct
             let prop_f = mk_not_lit_and lit prop in
             Node (idx, aux prop_t dt_t, aux prop_f dt_f)
     in
-    aux prop dt
+    let res = aux prop dt in
+    (!counter, res)
 
   let mk_complete_dt features =
     let rec aux idx =

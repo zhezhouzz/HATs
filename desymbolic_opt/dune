@@ -1,0 +1,8 @@
+(library
+ (name desymbolic_opt)
+ (wrapped true)
+ (libraries utils language core env)
+ (modules
+   head
+   desymbolic_opt
+))
