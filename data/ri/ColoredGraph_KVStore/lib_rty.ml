@@ -35,13 +35,13 @@ let[@libRty] putE ?l:(k = (true : [%v: Node.t])) ?l:(a = (true : [%v: Node.t]))
     newadding = lastL && PutE ((k [@d]), (a [@d]), v, true);
   }
 
-let[@libRty] delE ?l:(k = (true : [%v: Node.t])) ?l:(a = (true : [%v: Node.t]))
-    =
-  {
-    pre = existsEP k a;
-    res = (true : [%v: unit]);
-    newadding = lastL && DelE ((k [@d]), (a [@d]), v, true);
-  }
+(* let[@libRty] delE ?l:(k = (true : [%v: Node.t])) ?l:(a = (true : [%v: Node.t])) *)
+(*     = *)
+(*   { *)
+(*     pre = existsEP k a; *)
+(*     res = (true : [%v: unit]); *)
+(*     newadding = lastL && DelE ((k [@d]), (a [@d]), v, true); *)
+(*   } *)
 
 let[@libRty] existsE ?l:(k = (true : [%v: Node.t]))
     ?l:(a = (true : [%v: Node.t])) =

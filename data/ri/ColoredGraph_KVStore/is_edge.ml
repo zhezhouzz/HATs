@@ -1,7 +1,5 @@
 let is_edge (st : Node.t) (en : Node.t) : bool =
-  if existsC st then
-    if existsC en then if existsE st en then true else false else false
-  else false
+  if existsE st en then true else false
 
 let[@assertRty] is_edge ((s1 : Node.t) [@ghost]) ((s2 : Node.t) [@ghost])
     ((c : Color.t) [@ghost]) ?l:(st = (true : [%v: Node.t]))

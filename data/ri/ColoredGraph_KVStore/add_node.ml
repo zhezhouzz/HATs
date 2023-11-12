@@ -1,7 +1,7 @@
 let add_node (x : Node.t) (color : Color.t) : bool =
-  if isNode x then false
+  if existsC x then false
   else (
-    addNode x color;
+    putC x color;
     true)
 
 let[@assertRty] add_node ((s1 : Node.t) [@ghost]) ((s2 : Node.t) [@ghost])

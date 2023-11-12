@@ -213,7 +213,7 @@ let inclusion_query ctx r1 r2 =
   match res with
   | None ->
       ( Env.show_debug_queries @@ fun _ ->
-        Pp.printf "@{<orange>inclusion is valid:@}\n" );
+        Pp.printf "@{<orange>inclusion is valid [%f(s)]:@}\n" runtime );
       (* let () = *)
       (*   if 1 == !debug_counter then failwith "end" *)
       (*   else debug_counter := !debug_counter + 1 *)

@@ -29,6 +29,9 @@ def analyze_interface_dynamic(stat):
     numInclusion = len(stat["totalInclusionStat"])
     tTrans = sum([float(s["tTrans"]) for s in stat["totalInclusionStat"]])
     tInclusion = sum([float(s["tInclusion"]) for s in stat["totalInclusionStat"]])
+    # xx = [s for s in stat["totalInclusionStat"]]
+    # xx.sort(key=lambda x: x["tInclusion"])
+    # print(xx)
     print("tTrans:{}(s) tInclusion:{}(s) tTypeCheck:{}(s) tOthers:{}(s)".format(
         tTrans, tInclusion, tTypeCheck, (tTypeCheck - tInclusion - tTrans)
     ))
@@ -73,6 +76,7 @@ def analyze_stat(paths, j):
         matches = [x for x in dynamic_j if x["dtDynamic"] == dt and x["libDynamic"] == lib]
         if len(matches) == 1:
             stat = matches[0]
+            print(dt, lib)
             res = analyze_dynamic(stat["interfaceStatDynamic"])
             col["numQuery"] = res["numQuery"]
             col["numInclusion"] = res["numInclusion"]

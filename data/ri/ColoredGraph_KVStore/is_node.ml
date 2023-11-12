@@ -1,5 +1,5 @@
 let is_node (x : Node.t) : bool =
-  let (res : bool) = isNode x in
+  let (res : bool) = existsC x in
   res
 
 let[@assertRty] is_node ((s1 : Node.t) [@ghost]) ((s2 : Node.t) [@ghost])
