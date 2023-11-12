@@ -343,11 +343,12 @@ module F (L : Lit.T) = struct
   let stat_size regex =
     let rec aux regex =
       match regex with
-      | AnyA | EmptyA | EpsilonA | EventA _ -> 1
-      | LorA (t1, t2) -> 1 + aux t1 + aux t2
+      | EmptyA | EpsilonA -> 0
+      | AnyA | EventA _ -> 1
+      | LorA (t1, t2) -> aux t1 + aux t2
       | SetMinusA (t1, t2) -> 1 + aux t1 + aux t2
       | LandA (t1, t2) -> 1 + aux t1 + aux t2
-      | SeqA (t1, t2) -> 1 + aux t1 + aux t2
+      | SeqA (t1, t2) -> aux t1 + aux t2
       | StarA t -> 1 + aux t
       | ComplementA t -> 1 + aux t
     in
