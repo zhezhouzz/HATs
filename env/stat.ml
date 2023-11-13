@@ -209,16 +209,24 @@ let save_stat statfile (static_stat, dynamic_stat) =
 
 open Zzdatatype.Datatype
 
-let merge_dt_static_interfaces a b =
+let merge_dt_static_interfaces a old =
   let la = a.interfaceStatStatic in
-  let lb = b.interfaceStatStatic in
+  let lb = old.interfaceStatStatic in
   let interfaceStatStatic =
-    List.slow_rm_dup
-      (fun a b ->
-        (* Printf.printf "%s ?= %s\n" a.interface b.interface; *)
-        String.equal a.interface b.interface)
-      (la @ lb)
+    List.fold_left
+      (fun res old ->
+        if List.exists (fun a -> String.equal a.interface old.interface) res
+        then res
+        else old :: res)
+      la lb
   in
+  (* let interfaceStatStatic = *)
+  (*   List.slow_rm_dup *)
+  (*     (fun a b -> *)
+  (*       (\* Printf.printf "%s ?= %s\n" a.interface b.interface; *\) *)
+  (*       String.equal a.interface b.interface) *)
+  (*     (la @ lb) *)
+  (* in *)
   (* let () = *)
   (*   Printf.printf "len(interfaceStatStatic): %i\n" (List.length interfaceStatStatic) *)
   (* in *)
@@ -251,7 +259,8 @@ let update_dt_dynamic_interfaces old one_b =
   in
   { old with interfaceStatDynamic }
 
-(* open Sugar *)
+open Sugar
+
 let update_dt_static_stat (stat : dt_static_stat) =
   let statfile = Env.get_statfile () in
   let static_stat, dynamic_stat = load_create statfile in

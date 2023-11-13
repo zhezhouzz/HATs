@@ -25,11 +25,11 @@ def multirow(num: int, content: str):
 latex_headers_map = {
     "dt": "Datatype",
     "lib": "Library",
-    "numMethod": "\\#M",
-    "numGhost": "\\#Gh",
+    "numMethod": "\\#Method",
+    "numGhost": "\\#Ghost",
     "sizeRI": "s$_{I}$",
     "GhsizeRI": "(\\#Gh, s$_{I})$",
-    "numBranch": "\\#Br",
+    "numBranch": "\\#Branch",
     "numVars": "\\#Var",
     "numApp": "\\#App",
     "numParam": "\\#Par",
@@ -45,16 +45,16 @@ latex_headers_map = {
 }
 
 # format_header = "\n\n\\begin{tabular}{ccc|cc|c||ccc|ccc|cc}\n\\toprule"
-format_header = "\n\n\\begin{tabular}{cc|cc|c||c|cccccc}\n\\toprule"
+format_header = "\n\n\\begin{tabular}{cc|ccc|c||cc|ccc|cc}\n\\toprule"
 
 header = ["dt", "lib", "numMethod",
-          # "numGhost", "sizeRI",
-          "GhsizeRI",
+          "numGhost", "sizeRI",
+          # "GhsizeRI",
           "tTotal",
-          # "numBranch", "numParam", "numApp",
-          "numBrParApp",
+          "numBranch", "numApp",
+          # "numBrParApp",
           "numQuery", "numInclusion", "sizeA",
-          "tTrans", "tInclusion", "tOther"]
+          "tTrans", "tInclusion"]
 
 # latex_headers = ["Datatype", "Library",
 #                  "\\#Method", "\\#Ghost", "size$_{I}$",

@@ -8,3 +8,13 @@ let[@pred] existsP (k : Path.t) = _F (Put ((k [@d]), x_1, v, true))
 let[@pred] mkdirP (p : Path.t) =
   Put ((p [@d]), x_1, v, is_dir x_1)
   && _X (_G (not (Put ((p [@d]), x_1, v, not (is_dir x_1)))))
+
+let[@pred] dirP (p : Path.t) =
+  _F
+    (Put ((p [@d]), x_1, v, is_dir x_1)
+    && _X (_G (not (Put ((p [@d]), x_1, v, not (is_dir x_1))))))
+
+let[@pred] aliveP (p : Path.t) =
+  _F
+    (Put ((p [@d]), x_1, v, not (is_del x_1))
+    && _X (_G (not (Put ((p [@d]), x_1, v, is_del x_1)))))

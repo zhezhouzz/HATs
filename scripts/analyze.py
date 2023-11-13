@@ -49,8 +49,7 @@ def analyze_interface_dynamic(stat):
 
 def analyze_dynamic(stats):
     res = [ analyze_interface_dynamic(s) for s in stats]
-    res.sort(key=lambda x: x["tTypeCheck"], reverse=True)
-    # print(res)
+    res.sort(key=lambda x: float(x["tTypeCheck"]), reverse=True)
     return res[0]
 
 def get_prog_stat_by_name(stats, name):
@@ -69,11 +68,13 @@ def get_total_time(names, stat):
         name = s["interface"] + ".ml"
         # print(name)
         # print(stat)
-        matches = [x for x in stat if x["interfaceDynamic"] == name]
-        if len(matches) == 1:
-            time = time + float(matches[0]["tTypeCheck"])
-        else:
-            return "??"
+        matches_a = [x for x in stat if x["interfaceDynamic"] == name]
+        if len(matches_a) == 1:
+            time = time + float(matches_a[0]["tTypeCheck"])
+        # else:
+            # print(name, matches_a)
+            # exit(0)
+            # return "??"
     return "{:.2f}".format(time)
 
 def analyze_for_display(col):
@@ -106,7 +107,8 @@ def analyze_stat(paths, j):
         static_stat = matches[0]
         # print(static_stat)
         # numBranch, numVars = analyze_interface_static(static_stat["interfaceStatStatic"])
-        col = static_stat
+        # print(static_stat)
+        col = static_stat.copy()
         col["dt"] = dt
         col["lib"] = lib
         col["numMethod"] = str(len(static_stat["interfaceStatStatic"]))
@@ -114,19 +116,22 @@ def analyze_stat(paths, j):
         # col["numVars"] = numVars
         matches = [x for x in dynamic_j if x["dtDynamic"] == dt and x["libDynamic"] == lib]
         if len(matches) == 1:
-            stat = matches[0]
-            # print(stat)
-            col["tTotal"] = get_total_time(static_stat["interfaceStatStatic"], stat["interfaceStatDynamic"])
+            stat_d = matches[0]["interfaceStatDynamic"]
+            # print( stat_d)
             # print(dt, lib)
-            res = analyze_dynamic(stat["interfaceStatDynamic"])
-            col.update(res)
+            col["tTotal"] = get_total_time(static_stat["interfaceStatStatic"],  stat_d)
+            res_a = analyze_dynamic( stat_d)
+            # print(res_a)
+            col.update(res_a)
             # col["numQuery"] = res["numQuery"]
             # col["numInclusion"] = res["numInclusion"]
             # col["sizeA"] = res["sizeA"]
             # col["tTrans"] = res["tTrans"]
             # col["tInclusion"] = res["tInclusion"]
-            s = get_prog_stat_by_name(static_stat["interfaceStatStatic"], res["interfaceDynamic"])
-            col.update(s)
+            # print(dt, lib)
+            # print(static_stat)
+            res_s = get_prog_stat_by_name(static_stat["interfaceStatStatic"], res_a["interfaceDynamic"])
+            col.update(res_s)
             # col["numBranch"] = numBranch
             # col["numVars"] = numVars
             analyze_for_display(col)

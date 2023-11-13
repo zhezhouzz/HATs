@@ -182,6 +182,40 @@ let print_opt_stat (num, test_num) features =
     total_fv
     (float_of_int test_num /. float_of_int total_fv)
 
+let print_local_fv gidx (op, features) l =
+  List.iter
+    (fun (idx, tab) ->
+      let pos, neg =
+        Array.fold_left
+          (fun (pos, neg) lit ->
+            if Hashtbl.find tab lit then (lit :: pos, neg) else (pos, lit :: neg))
+          ([], []) features
+      in
+      let () =
+        Printf.printf "%s_%i_%i:: POS [%s]  NEG [%s]\n" op gidx idx
+          (List.split_by_comma layout_lit pos)
+          (List.split_by_comma layout_lit neg)
+      in
+      ())
+    l
+
+let print_global_fv features l =
+  List.iter
+    (fun (idx, tab) ->
+      let pos, neg =
+        Array.fold_left
+          (fun (pos, neg) lit ->
+            if Hashtbl.find tab lit then (lit :: pos, neg) else (pos, lit :: neg))
+          ([], []) features
+      in
+      let () =
+        Printf.printf "global_%i:: POS [%s]  NEG [%s]\n" idx
+          (List.split_by_comma layout_lit pos)
+          (List.split_by_comma layout_lit neg)
+      in
+      ())
+    l
+
 let mk_mt_tab sub_rty_bool { global_features; local_features } =
   (* let local_features_array = *)
   (*   StrMap.map (fun (_, features) -> Array.of_list features) local_features *)
@@ -201,6 +235,10 @@ let mk_mt_tab sub_rty_bool { global_features; local_features } =
     Env.show_log "desymbolic" @@ fun _ ->
     Printf.printf "[Global DT]\n";
     print_opt_stat (List.length global_tab, test_num) global_features
+  in
+  let () =
+    Env.show_log "desymbolic" @@ fun _ ->
+    print_global_fv global_features global_tab
   in
   let local_dts =
     StrMap.mapi
@@ -247,6 +285,10 @@ let mk_mt_tab sub_rty_bool { global_features; local_features } =
                 Env.show_log "desymbolic" @@ fun _ ->
                 Printf.printf "[Refine %s DT]\n" op;
                 print_opt_stat (List.length dt, test_num) features
+              in
+              let () =
+                Env.show_log "desymbolic" @@ fun _ ->
+                print_local_fv idx (op, features) dt
               in
               dt)
             local_dts
