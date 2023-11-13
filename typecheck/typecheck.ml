@@ -19,12 +19,14 @@ open Sugar
 (*   let () = Desymbolic.stat_init () in *)
 (*   () *)
 
-let pprint_res_one (id, res, timef) =
+let pprint_res_one (id, name, res, timef) =
   match res with
   | Some _ ->
-      Printf.printf "Task %i: exec time %f(s), type check succeeded\n" id timef
+      Printf.printf "Task %i(%s): exec time %f(s), type check succeeded\n" id
+        name timef
   | None ->
-      Printf.printf "Task %i: exec time %f(s), type check failed\n" id timef
+      Printf.printf "Task %i(%s): exec time %f(s), type check failed\n" id name
+        timef
 
 (* let pprint_res = List.iter pprint_res_one *)
 
@@ -93,7 +95,7 @@ let check (opctx', rctx') structure normalized_structure =
             in
             let () =
               Env.show_debug_typing @@ fun _ ->
-              pprint_res_one (id, res, typecheck_time)
+              pprint_res_one (id, name, res, typecheck_time)
             in
             let () = Stat.settTypeCheck (if_type_checked, typecheck_time) in
             (* let elrond_stat_record = Infer_ghost.get_stat () in *)
@@ -102,7 +104,7 @@ let check (opctx', rctx') structure normalized_structure =
             (*   failwith "end" *)
             (* in *)
             (* let stat = Stat.update_elrond stat elrond_stat_record in *)
-            (id, res, typecheck_time))
+            (id, name, res, typecheck_time))
       tasks
   in
   ress

@@ -204,7 +204,12 @@ let type_check_ (ri_input, s) source_file =
   let () = Stat.init_interfaceDynamic ri_input.interface_file in
   let ress = Typecheck.check (setting.oprctx, setting.rctx) code normalized in
   let () =
-    Env.show_log "result" @@ fun _ -> List.iter ~f:Typecheck.pprint_res_one ress
+    Env.show_log "result" @@ fun _ ->
+    List.iter
+      ~f:(fun res ->
+        Printf.printf "DT(%s)  " ri_input.dt;
+        Typecheck.pprint_res_one res)
+      ress
   in
   let () =
     Stat.update_dt_dynamic_stat
