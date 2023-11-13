@@ -40,6 +40,7 @@ latex_headers_map = {
     "tTrans": "t$_{\\text{SAT}}$ (s)",
     "tInclusion": "t$_{\\text{Inc}}$ (s)",
     "tInclusionAvg": "avg. t$_{\\text{Inc}}$ (s)",
+    "tOther": "t$_{\\text{other}}$ (s)",
     "tTotal": "t$_{\\text{total}}$ (s)"
 }
 
@@ -53,7 +54,7 @@ header = ["dt", "lib", "numMethod",
           # "numBranch", "numParam", "numApp",
           "numBrParApp",
           "numQuery", "numInclusion", "sizeA",
-          "tTrans", "tInclusionAvg", "tInclusion"]
+          "tTrans", "tInclusion", "tOther"]
 
 # latex_headers = ["Datatype", "Library",
 #                  "\\#Method", "\\#Ghost", "size$_{I}$",

@@ -32,9 +32,10 @@ def analyze_interface_dynamic(stat):
     # xx = [s for s in stat["totalInclusionStat"]]
     # xx.sort(key=lambda x: x["tInclusion"])
     # print(xx)
-    print("tTrans:{}(s) tInclusion:{}(s) tTypeCheck:{}(s) tOthers:{}(s)".format(
-        tTrans, tInclusion, tTypeCheck, (tTypeCheck - tInclusion - tTrans)
-    ))
+    tOther = (tTypeCheck - tInclusion - tTrans)
+    # print("tTrans:{}(s) tInclusion:{}(s) tTypeCheck:{}(s) tOthers:{}(s)".format(
+    #     tTrans, tInclusion, tTypeCheck, tOther
+    # ))
     return {
         "interfaceDynamic": stat["interfaceDynamic"],
         "numQuery": str(numQuery),
@@ -42,7 +43,8 @@ def analyze_interface_dynamic(stat):
         "sizeA": str(sizeA),
         "tTrans": "{:.2f}".format(tTrans),
         "tInclusion": "{:.2f}".format(tInclusion),
-        "tTypeCheck": "{:.2f}".format(tTypeCheck)
+        "tTypeCheck": "{:.2f}".format(tTypeCheck),
+        "tOther": "{:.2f}".format(tOther)
     }
 
 def analyze_dynamic(stats):
@@ -91,6 +93,7 @@ def analyze_for_display(col):
         numInclusion = int(col["numInclusion"])
         tInclusion = float(col["tInclusion"])
         col["tInclusionAvg"] = "{:.2f}".format((tInclusion / numInclusion))
+        # print(tInclusion, numInclusion, col["tInclusionAvg"])
     return
 
 def analyze_stat(paths, j):
