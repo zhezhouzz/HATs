@@ -1,7 +1,10 @@
 (env
  (dev
   (flags (:standard -w -32 -w -35 -w -27 -w -33 -w -26)))
-)
+ (release
+  (flags (:standard -w -32-35-27-33-26))
+  (ocamlopt_flags (:standard -unsafe -noassert -inline 100))))
+
 (executable
  (name main)
  (modules main)

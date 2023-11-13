@@ -180,7 +180,9 @@ let normalized_ ri_input (setting, code) =
       ~f:(fun (interface, code) ->
         let numBranch = TypedCoreEff.stat_count_comp_branchs code in
         let numVars = TypedCoreEff.stat_count_comp_vars code in
-        { interface; numBranch; numVars })
+        let numApp = TypedCoreEff.stat_count_comp_apps code in
+        let numParam = TypedCoreEff.stat_count_comp_params code in
+        { interface; numBranch; numVars; numApp; numParam })
       normalized
   in
   (setting, code, normalized, stats)

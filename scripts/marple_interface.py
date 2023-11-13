@@ -44,7 +44,7 @@ def invoc_cmd(verbose, cmd, output_file, cwd=None):
     return if_timeout
 
 def build_marple(verbose):
-    cmd = ["dune", "build"]
+    cmd = ["dune", "build", "--profile", "release"]
     return invoc_cmd(verbose, cmd, None)
 
 # def ri_type_check(filename, verbose):

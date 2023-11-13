@@ -37,12 +37,13 @@ def analyze_interface_dynamic(stat):
     ))
     return {
         "interfaceDynamic": stat["interfaceDynamic"],
-        "numQuery": numQuery,
-        "numInclusion": numInclusion,
-        "sizeA": sizeA,
-        "tTrans": tTrans,
-        "tInclusion": tInclusion,
-        "tTypeCheck": tTypeCheck}
+        "numQuery": str(numQuery),
+        "numInclusion": str(numInclusion),
+        "sizeA": str(sizeA),
+        "tTrans": "{:.2f}".format(tTrans),
+        "tInclusion": "{:.2f}".format(tInclusion),
+        "tTypeCheck": "{:.2f}".format(tTypeCheck)
+    }
 
 def analyze_dynamic(stats):
     res = [ analyze_interface_dynamic(s) for s in stats]
@@ -55,9 +56,42 @@ def get_prog_stat_by_name(stats, name):
     # print(name)
     for s in stats:
         if s["interface"] + ".ml" == name:
-            return (s["numBranch"], s["numVars"])
+            return (s)
     print("never happen")
     exit(1)
+
+def get_total_time(names, stat):
+    # print(names)
+    time = 0.0
+    for s in names:
+        name = s["interface"] + ".ml"
+        # print(name)
+        # print(stat)
+        matches = [x for x in stat if x["interfaceDynamic"] == name]
+        if len(matches) == 1:
+            time = time + float(matches[0]["tTypeCheck"])
+        else:
+            return "??"
+    return "{:.2f}".format(time)
+
+def analyze_for_display(col):
+    br = col.get("numBranch", " ")
+    par = col.get("numParam", " ")
+    app = col.get("numApp", " ")
+    # br = '{:2d}'.format(int(col.get("numBranch", "0")))
+    # par = '{:2d}'.format(int(col.get("numParam", "0")))
+    # app = '{:2d}'.format(int(col.get("numApp", "0")))
+    col["numBrParApp"] = "({}, {}, {})".format(br, par, app)
+    gh = col.get("numGhost", " ")
+    sizeI = col.get("sizeRI", " ")
+    col["GhsizeRI"] = "({}, {})".format(gh, sizeI)
+    gh = col.get("numGhost", " ")
+    sizeI = col.get("sizeRI", " ")
+    if "numInclusion" in col.keys():
+        numInclusion = int(col["numInclusion"])
+        tInclusion = float(col["tInclusion"])
+        col["tInclusionAvg"] = "{:.2f}".format((tInclusion / numInclusion))
+    return
 
 def analyze_stat(paths, j):
     cols = []
@@ -68,24 +102,31 @@ def analyze_stat(paths, j):
         matches = [x for x in static_j if x["dt"] == dt and x["lib"] == lib]
         static_stat = matches[0]
         # print(static_stat)
-        numBranch, numVars = analyze_interface_static(static_stat["interfaceStatStatic"])
-        col = mk_table.mk_col(dt, lib,
-                              len(static_stat["interfaceStatStatic"]), static_stat["numGhost"], static_stat["sizeRI"],
-                              numBranch, numVars,
-                              0, 0, 0, 0.0, 0.0)
+        # numBranch, numVars = analyze_interface_static(static_stat["interfaceStatStatic"])
+        col = static_stat
+        col["dt"] = dt
+        col["lib"] = lib
+        col["numMethod"] = str(len(static_stat["interfaceStatStatic"]))
+        # col["numBranch"] = numBranch
+        # col["numVars"] = numVars
         matches = [x for x in dynamic_j if x["dtDynamic"] == dt and x["libDynamic"] == lib]
         if len(matches) == 1:
             stat = matches[0]
-            print(dt, lib)
+            # print(stat)
+            col["tTotal"] = get_total_time(static_stat["interfaceStatStatic"], stat["interfaceStatDynamic"])
+            # print(dt, lib)
             res = analyze_dynamic(stat["interfaceStatDynamic"])
-            col["numQuery"] = res["numQuery"]
-            col["numInclusion"] = res["numInclusion"]
-            col["sizeA"] = res["sizeA"]
-            col["tTrans"] = res["tTrans"]
-            col["tInclusion"] = res["tInclusion"]
-            numBranch, numVars = get_prog_stat_by_name(static_stat["interfaceStatStatic"], res["interfaceDynamic"])
-            col["numBranch"] = numBranch
-            col["numVars"] = numVars
+            col.update(res)
+            # col["numQuery"] = res["numQuery"]
+            # col["numInclusion"] = res["numInclusion"]
+            # col["sizeA"] = res["sizeA"]
+            # col["tTrans"] = res["tTrans"]
+            # col["tInclusion"] = res["tInclusion"]
+            s = get_prog_stat_by_name(static_stat["interfaceStatStatic"], res["interfaceDynamic"])
+            col.update(s)
+            # col["numBranch"] = numBranch
+            # col["numVars"] = numVars
+            analyze_for_display(col)
         elif len(matches) > 1:
             print("bad dynamic")
             exit(1)

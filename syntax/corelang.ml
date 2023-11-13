@@ -65,6 +65,10 @@ module type T = sig
   val stat_count_value_branchs : value typed -> int
   val stat_count_comp_vars : comp typed -> int
   val stat_count_value_vars : value typed -> int
+  val stat_count_comp_params : comp typed -> int
+  val stat_count_value_params : value typed -> int
+  val stat_count_comp_apps : comp typed -> int
+  val stat_count_value_apps : value typed -> int
   val stat_is_rec : comp typed -> bool
 end
 
@@ -143,6 +147,29 @@ struct
     in
     aux comp
 
+  let rec stat_count_comp_apps comp =
+    let rec aux comp =
+      match comp.x with
+      | CErr -> 0
+      | CApp _ | CAppOp _ -> 1
+      | CVal v -> stat_count_value_apps v #: comp.ty
+      | CLetDeTu { letbody; _ } -> 1 + aux letbody
+      | CMatch { match_cases; _ } ->
+          let bs = List.map (fun { exp; _ } -> aux exp) match_cases in
+          List.fold_left (fun sum n -> sum + n) 0 bs
+      | CLetE { rhs; letbody; _ } -> aux rhs + aux letbody
+    in
+    aux comp
+
+  and stat_count_value_apps comp =
+    let aux v =
+      match v.x with
+      | VVar _ | VConst _ | VTu _ -> 0
+      | VLam { lambody; _ } -> stat_count_comp_apps lambody
+      | VFix { fixbody; _ } -> stat_count_comp_apps fixbody
+    in
+    aux comp
+
   let rec stat_count_comp_vars comp =
     let rec aux comp =
       match comp.x with
@@ -166,6 +193,23 @@ struct
       | VVar _ | VConst _ | VTu _ -> 1
       | VLam { lambody; _ } -> stat_count_comp_vars lambody
       | VFix { fixbody; _ } -> stat_count_comp_vars fixbody
+    in
+    aux comp
+
+  let rec stat_count_comp_params comp =
+    let aux comp =
+      match comp.x with
+      | CVal v -> stat_count_value_params v #: comp.ty
+      | _ -> 0
+    in
+    aux comp
+
+  and stat_count_value_params comp =
+    let aux v =
+      match v.x with
+      | VVar _ | VConst _ | VTu _ -> 0
+      | VLam { lambody; _ } -> 1 + stat_count_comp_params lambody
+      | VFix { fixbody; _ } -> 1 + stat_count_comp_params fixbody
     in
     aux comp
 

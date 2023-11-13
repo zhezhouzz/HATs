@@ -4,6 +4,8 @@ type interface_static_stat = {
   interface : string;
   numBranch : int;
   numVars : int;
+  numApp : int;
+  numParam : int;
 }
 
 let dump_interface_static_stat stat =
@@ -12,13 +14,17 @@ let dump_interface_static_stat stat =
       ("interface", `String stat.interface);
       ("numBranch", `Int stat.numBranch);
       ("numVars", `Int stat.numVars);
+      ("numApp", `Int stat.numApp);
+      ("numParam", `Int stat.numParam);
     ]
 
 let load_dt_static_stat j =
   {
     interface = j |> member "interface" |> to_string;
     numBranch = j |> member "numBranch" |> to_int;
-    numVars = j |> member "numVars" |> to_int;
+    numVars = (try j |> member "numVars" |> to_int with _ -> 0);
+    numApp = (try j |> member "numApp" |> to_int with _ -> 0);
+    numParam = (try j |> member "numParam" |> to_int with _ -> 0);
   }
 
 type dt_static_stat = {
@@ -218,19 +224,32 @@ let merge_dt_static_interfaces a b =
   (* in *)
   { a with interfaceStatStatic }
 
-let merge_dt_dynamic_interfaces a lb =
-  let la = a.interfaceStatDynamic in
+(* let merge_dt_dynamic_interfaces a lb = *)
+(*   let la = a.interfaceStatDynamic in *)
+(*   let interfaceStatDynamic = *)
+(*     List.slow_rm_dup *)
+(*       (fun a b -> *)
+(*         (\* Printf.printf "%s ?= %s\n" a.interface b.interface; *\) *)
+(*         String.equal a.interfaceDynamic b.interfaceDynamic) *)
+(*       (la @ lb) *)
+(*   in *)
+(*   (\* let () = *\) *)
+(*   (\*   Printf.printf "len(interfaceStatStatic): %i\n" (List.length interfaceStatStatic) *\) *)
+(*   (\* in *\) *)
+(*   { a with interfaceStatDynamic } *)
+
+let update_dt_dynamic_interfaces old one_b =
+  let a = old.interfaceStatDynamic in
   let interfaceStatDynamic =
-    List.slow_rm_dup
-      (fun a b ->
-        (* Printf.printf "%s ?= %s\n" a.interface b.interface; *)
-        String.equal a.interfaceDynamic b.interfaceDynamic)
-      (la @ lb)
+    if
+      List.exists
+        (fun one_a ->
+          String.equal one_a.interfaceDynamic one_b.interfaceDynamic)
+        a
+    then a
+    else one_b :: a
   in
-  (* let () = *)
-  (*   Printf.printf "len(interfaceStatStatic): %i\n" (List.length interfaceStatStatic) *)
-  (* in *)
-  { a with interfaceStatDynamic }
+  { old with interfaceStatDynamic }
 
 (* open Sugar *)
 let update_dt_static_stat (stat : dt_static_stat) =
@@ -264,7 +283,7 @@ let update_dt_dynamic_stat (dt, lib, stat) =
     | [ old ] -> old
     | _ -> { dtDynamic = dt; libDynamic = lib; interfaceStatDynamic = [] }
   in
-  let stat = merge_dt_dynamic_interfaces old [ stat ] in
+  let stat = update_dt_dynamic_interfaces old stat in
   let dynamic_stat = stat :: rest in
   save_stat statfile (static_stat, dynamic_stat)
 
