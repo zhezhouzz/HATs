@@ -29,8 +29,9 @@ let[@libRty] hasChild ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
 
 let[@libRty] setDeleted ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: Bytes.t]
     =
-  (* not (is_dir v) *)
-  is_del v
+  is_dir v
+(* not (is_dir v) *)
+(* is_del v *)
 
 let[@libRty] isDir ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
   v == is_dir a
