@@ -154,7 +154,11 @@ let ghost_infer_aux typectx (lpre : regex) (gvars : string Nt.typed list)
   | [] -> []
   (* | [ x ] -> [ ghost_infer_one typectx lpre x rpre ] *)
   | [ x ] ->
-      if true then [ mk_from_prop x.Nt.ty (fun _ -> mk_true) ]
+      if true then
+        let rty = mk_from_prop x.Nt.ty (fun _ -> mk_true) in
+        let typectx' = typectx_new_to_right typectx { rx = x.x; rty } in
+        let _ = subtyping_srl_bool __FILE__ __LINE__ typectx' (lpre, rpre) in
+        [ mk_from_prop x.Nt.ty (fun _ -> mk_true) ]
       else [ ghost_infer_one typectx lpre x rpre ]
   | _ -> _failatwith __FILE__ __LINE__ "unimp"
 
