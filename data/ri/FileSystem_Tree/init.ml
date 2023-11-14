@@ -1,5 +1,6 @@
 let init (u : unit) : unit =
-  let (_ : unit) = put (getRoot ()) (fileInit ()) in
+  init (getRoot ());
+  put (getRoot ()) (fileInit ());
   ()
 
 let[@assertRty] init ((p : Path.t) [@ghost]) ?l:(u = (true : [%v: unit])) =
