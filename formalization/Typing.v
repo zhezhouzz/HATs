@@ -1716,19 +1716,17 @@ Proof.
   my_set_solver.
 Qed.
 
-Theorem fundamental:
+Theorem fundamental_combined:
   well_formed_builtin_typing ->
-  forall (Γ: listctx pty) (e: tm) (τ: hty),
+  (forall (Γ: listctx pty) (v: value) (ρ: pty),
+    Γ ⊢ v ⋮v ρ ->
+    forall Γv, ctxRst Γ Γv -> p⟦ m{Γv}p ρ ⟧ (m{Γv}v v)) /\
+  (forall (Γ: listctx pty) (e: tm) (τ: hty),
     Γ ⊢ e ⋮t τ ->
-    forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }h τ ⟧ (m{ Γv }t e).
+    forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }h τ ⟧ (m{ Γv }t e)).
 Proof.
   intros HWFbuiltin.
-  apply (term_value_type_check_ind
-           (fun Γ (v: value) ρ =>
-              forall Γv, ctxRst Γ Γv -> p⟦ m{Γv}p ρ ⟧ (m{Γv}v v))
-           (fun Γ e (τ: hty) =>
-              forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}h τ ⟧ (m{Γv}t e))
-        ).
+  apply value_term_type_check_mutind.
   (* [TVSub] *)
   - intros Γ v ρ1 ρ2 HWFρ2 _ HDρ1 Hsub Γv HΓv. specialize (HDρ1 _ HΓv).
     apply Hsub in HDρ1; auto.
@@ -2096,6 +2094,59 @@ Proof.
       rewrite <- hty_erase_msubst_eq in HTe2'. eauto.
 Qed.
 
+Theorem fundamental_value:
+  well_formed_builtin_typing ->
+  forall (Γ: listctx pty) (v: value) (ρ: pty),
+    Γ ⊢ v ⋮v ρ ->
+    forall Γv, ctxRst Γ Γv -> p⟦ m{Γv}p ρ ⟧ (m{Γv}v v).
+Proof.
+  qauto using fundamental_combined.
+Qed.
+
+Theorem fundamental:
+  well_formed_builtin_typing ->
+  forall (Γ: listctx pty) (e: tm) (τ: hty),
+    Γ ⊢ e ⋮t τ ->
+    forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }h τ ⟧ (m{ Γv }t e).
+Proof.
+  qauto using fundamental_combined.
+Qed.
+
 Transparent msubst.
 
-Print Assumptions fundamental.
+Corollary soundness' :
+  well_formed_builtin_typing ->
+  forall (e : tm) (ρ : pty) (A : am),
+    [] ⊢ e ⋮t [:ρ | A ▶ A] ->
+    forall (v : value) α α',
+      a⟦ A ⟧ α ->
+      α ⊧ e ↪*{ α' } v ->
+      a⟦ A ⟧ (α ++ α').
+Proof.
+  intros HWF * HT * HDα Hstepv.
+  eapply fundamental in HT; eauto using ctxRst.
+  unfold msubst in HT. rewrite !map_fold_empty in HT.
+  eapply HT; eauto.
+Qed.
+
+Corollary soundness :
+  well_formed_builtin_typing ->
+  forall (v_f: value) (Bx By: base_ty) (ρ: pty) (A: am),
+    [] ⊢ v_f ⋮v (Bx⇢(mk_top By)⇨[:ρ | A ▶ A]) ->
+    forall v_x v_y,
+      ∅ ⊢t v_x ⋮v Bx ->
+      ∅ ⊢t v_y ⋮v By ->
+      forall (v : value) α α',
+        a⟦ {0 ~a> v_y} ({1 ~a> v_x} A) ⟧ α ->
+        α ⊧ (mk_app_e_v v_f v_y) ↪*{ α' } v ->
+        a⟦ {0 ~a> v_y} ({1 ~a> v_x} A) ⟧ (α ++ α').
+Proof.
+  intros HWF * HT * HTv_x HTv_y * HDα Hstepv.
+  eapply fundamental_value in HT; eauto using ctxRst.
+  unfold msubst in HT. rewrite !map_fold_empty in HT.
+  eapply HT; eauto.
+  rewrite_measure_irrelevant.
+  apply mk_top_denote_pty; eauto.
+Qed.
+
+Print Assumptions soundness.
