@@ -16,7 +16,13 @@ let[@libRty] deleteChildren ((p : Path.t) [@ghost])
     res = (true : [%v: unit]);
     post =
       rI p
-      && not (_F (Put (x_0, x_1, v, path == parent x_0 && not (is_del x_1))))
+      && not
+           (_F
+              (Put
+                 ( x_0,
+                   x_1,
+                   v,
+                   (p == parent x_0 || x_0 == parent p) && not (is_del x_1) )))
       (* post = *)
       (* rI p *)
       (* && not *)
