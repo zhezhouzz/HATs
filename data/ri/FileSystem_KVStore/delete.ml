@@ -1,5 +1,6 @@
 let delete (path : Path.t) : bool =
-  if not (exists path) then false
+  if isRoot path then false
+  else if not (exists path) then false
   else
     let (bytes : Bytes.t) = get path in
     if isDir bytes then deleteChildren path;
