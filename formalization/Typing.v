@@ -2121,12 +2121,12 @@ Corollary soundness' :
     forall (v : value) α α',
       a⟦ A ⟧ α ->
       α ⊧ e ↪*{ α' } v ->
-      a⟦ A ⟧ (α ++ α').
+      p⟦ ρ ⟧ v /\ a⟦ A ⟧ (α ++ α').
 Proof.
   intros HWF * HT * HDα Hstepv.
   eapply fundamental in HT; eauto using ctxRst.
   unfold msubst in HT. rewrite !map_fold_empty in HT.
-  eapply HT; eauto.
+  qauto using HT.
 Qed.
 
 Corollary soundness :
@@ -2139,14 +2139,19 @@ Corollary soundness :
       forall (v : value) α α',
         a⟦ {0 ~a> v_y} ({1 ~a> v_x} A) ⟧ α ->
         α ⊧ (mk_app_e_v v_f v_y) ↪*{ α' } v ->
-        a⟦ {0 ~a> v_y} ({1 ~a> v_x} A) ⟧ (α ++ α').
+        p⟦ {0 ~p> v_y} ({1 ~p> v_x} ρ) ⟧ v /\
+          a⟦ {0 ~a> v_y} ({1 ~a> v_x} A) ⟧ (α ++ α').
 Proof.
   intros HWF * HT * HTv_x HTv_y * HDα Hstepv.
   eapply fundamental_value in HT; eauto using ctxRst.
   unfold msubst in HT. rewrite !map_fold_empty in HT.
-  eapply HT; eauto.
-  rewrite_measure_irrelevant.
-  apply mk_top_denote_pty; eauto.
+  destruct HT as (_&_&HD); eauto.
+  repeat rewrite_measure_irrelevant.
+  specialize (HD _ HTv_x).
+  simpl pty_open in HD.
+  destruct HD as (_&_&HD).
+  repeat rewrite_measure_irrelevant.
+  eapply HD; eauto using mk_top_denote_pty.
 Qed.
 
 Print Assumptions soundness.
