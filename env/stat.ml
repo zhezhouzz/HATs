@@ -272,6 +272,10 @@ let update_dt_static_stat (stat : dt_static_stat) =
   (* let old = *)
   (*   match old with [ old ] -> old | _ -> _failatwith __FILE__ __LINE__ "die" *)
   (* in *)
+  (* let () = *)
+  (*   Printf.printf "stat: %s\n" *)
+  (*     (List.split_by_comma (fun x -> x.interface) stat.interfaceStatStatic) *)
+  (* in *)
   let stat =
     match old with [ old ] -> merge_dt_static_interfaces stat old | _ -> stat
   in

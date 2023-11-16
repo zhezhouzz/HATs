@@ -1,4 +1,4 @@
-let mem (x : Elem.t) (thunk : unit -> unit) (z : unit) : bool =
+let lazy_mem (x : Elem.t) (thunk : unit -> unit) (z : unit) : bool =
   thunk ();
   if hasRoot () then
     let (root : Elem.t) = getRoot () in
@@ -12,7 +12,7 @@ let[@libRty] mem_aux ?l:(cur = (true : [%v: Elem.t]))
     ?l:(x = (true : [%v: Elem.t])) =
   { pre = rI && memP cur; res = (true : [%v: bool]); post = rI }
 
-let[@assertRty] mem ?l:(x = (true : [%v: Elem.t]))
+let[@assertRty] lazy_mem ?l:(x = (true : [%v: Elem.t]))
     ?l:(thunk =
         fun ?l:(y = (true : [%v: unit])) ->
           { pre = rI; res = (true : [%v: unit]); post = rI })

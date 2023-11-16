@@ -44,23 +44,17 @@ def load_benchmarks(path):
     # print(files)
     return files
 
-def show_table(paths):
+def show_table1(paths):
     with open (stat_file) as f:
         j = json.load(f)
-    # with open (stat_file) as f:
-    #     j = json.load(f)
-    #     static_j = j["static"]
-    #     dynamic_j = j["dynamic"]
-    #     for filename in paths:
-    #         dt, lib = filename_to_dt_lib(filename)
-    #         # print(static_j)
-    #         # print(dt, lib)
-    #         matches = [x for x in static_j if x["dt"] == dt and x["lib"] == lib]
-    #         stat = matches[0]
-    #         col = mk_table.mk_col(dt, lib, 0, 0, stat["numGhost"], stat["sizeRI"], 0, 0, 0, 0.0, 0.0)
-    #         cols.append(col)
     cols = analyze.analyze_stat(paths, j)
-    mk_table.print_cols(cols)
+    mk_table.mk_table1(cols)
+
+def show_table2(paths):
+    with open (stat_file) as f:
+        j = json.load(f)
+    cols = analyze.analyze_details_stat(paths, j)
+    mk_table.mk_table2(cols)
 
 def show_benchmarks(verbose, paths):
     for path in paths:
@@ -111,8 +105,10 @@ if __name__ == '__main__':
         ntypecheck_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "ntyping-one" == sys.argv[2]:
         ntypecheck_one(verbose, sys.argv[3])
-    elif "show-table" == sys.argv[2]:
-        show_table(load_benchmarks(sys.argv[3]))
+    elif "show-table1" == sys.argv[2]:
+        show_table1(load_benchmarks(sys.argv[3]))
+    elif "show-table2" == sys.argv[2]:
+        show_table2(load_benchmarks(sys.argv[3]))
     elif "show" == sys.argv[2]:
         show_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "show-one" == sys.argv[2]:

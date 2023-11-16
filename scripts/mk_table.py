@@ -25,6 +25,7 @@ def multirow(num: int, content: str):
 latex_headers_map = {
     "dt": "Datatype",
     "lib": "Library",
+    "methodName": "Method",
     "numMethod": "\\#Method",
     "numGhost": "\\#Ghost",
     "sizeRI": "s$_{I}$",
@@ -44,7 +45,6 @@ latex_headers_map = {
     "tTotal": "t$_{\\text{total}}$ (s)"
 }
 
-# format_header = "\n\n\\begin{tabular}{ccc|cc|c||ccc|ccc|cc}\n\\toprule"
 format_header = "\n\n\\begin{tabular}{cc|ccc|c||cc|ccc|cc}\n\\toprule"
 
 header = ["dt", "lib", "numMethod",
@@ -56,42 +56,22 @@ header = ["dt", "lib", "numMethod",
           "numQuery", "numInclusion", "sizeA",
           "tTrans", "tInclusion"]
 
-# latex_headers = ["Datatype", "Library",
-#                  "\\#Method", "\\#Ghost", "size$_{I}$",
-#                  "\\#Br", "\\#Var" ,
-#                  "\\#SAT" , "\\#Incl", "avg. size$_{A}$" ,
-#                  "t$_{\\text{trans}}$ (s) ", "t$_{A}$ (s)"]
+details_format_header = "\n\n\\begin{tabular}{cc|cc|c||cc|ccc|cc}\n\\toprule"
 
-def print_header():
+details_header = ["dt", "lib",
+                  "numGhost", "sizeRI",
+                  "methodName",
+                  "numBranch", "numApp",
+                  "numQuery", "numInclusion", "sizeA",
+                  "tTrans", "tInclusion"]
+
+
+def print_header(header):
     print(" & ".join([latex_headers_map[name] for name in header]) + "\\\\")
-
-# def mk_col (dt: str, lib: str, numMethod: int,
-#             numGhost: int, sizeRI: int,
-#             numBranch: int, numVars: int,
-#             numQuery: int, numInclusion: int, sizeA: int,
-#             tTrans: float, tInclusion: float):
-#     return {"dt": dt, "lib": lib,
-#             "numMethod": numMethod, "numGhost": numGhost, "sizeRI": sizeRI,
-#             "numBranch": numBranch, "numVars": numVars,
-#             "numQuery": numQuery, "numInclusion": numInclusion, "sizeA": sizeA,
-#             "tTrans":tTrans, "tInclusion":tInclusion }
 
 # def show_source(source, name):
 #     tab = {"Okisaki": "*", "Miltner": "★", "ours": ""}
 #     return "{} {}".format(name, tab[source])
-
-def print_col(print_dt_num: int, col):
-    dt_str = ""
-    if print_dt_num > 0:
-        print("\\midrule")
-        dt_str = multirow(print_dt_num, textsf(col["dt"]))
-    lib_str = textsf(col["lib"])
-    header_res = header[2:]
-    strs = [ str(col.get(name, " ")) for name in header_res]
-    rest = " & ".join(strs)
-    res = "{} & {} & {} \\\\".format(dt_str, lib_str, rest)
-    print(res)
-    return
 
 def analysis_col_dts(cols):
     cur_dt = None
@@ -107,9 +87,40 @@ def analysis_col_dts(cols):
             res[i + 1] = 0
     return res
 
-def print_cols(cols):
+def print_col(print_dt_num: int, col):
+    dt_str = ""
+    if print_dt_num > 0:
+        print("\\midrule")
+        dt_str = multirow(print_dt_num, textsf(col["dt"]))
+    lib_str = textsf(col["lib"])
+    header_res = header[2:]
+    strs = [ str(col.get(name, " ")) for name in header_res]
+    rest = " & ".join(strs)
+    res = "{} & {} & {} \\\\".format(dt_str, lib_str, rest)
+    print(res)
+    return
+
+def print_cols(format_header, header ,cols):
     print(format_header)
-    print_header()
+    print_header(header)
+    nums = analysis_col_dts(cols)
+    for i in range(len(cols)):
+        print_col(nums[i], cols[i])
+    print("\\bottomrule\n\\end{tabular}\n\n")
+    return
+
+def mk_table1(cols):
+    print(format_header)
+    print_header(header)
+    nums = analysis_col_dts(cols)
+    for i in range(len(cols)):
+        print_col(nums[i], cols[i])
+    print("\\bottomrule\n\\end{tabular}\n\n")
+    return
+
+def mk_table2(cols):
+    print(details_format_header)
+    print_header(details_header)
     nums = analysis_col_dts(cols)
     for i in range(len(cols)):
         print_col(nums[i], cols[i])
