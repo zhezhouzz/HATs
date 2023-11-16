@@ -50,7 +50,7 @@ Fixpoint pty_measure (ρ: pty) : nat :=
   end
 with hty_measure (τ: hty) : nat :=
   match τ with
-  | [: ρ | _ ▶ _ ] => 1 + pty_measure ρ
+  | <[ _ ] ρ  [ _ ]> => 1 + pty_measure ρ
   | τ1 ⊓ τ2 => 1 + hty_measure τ1 + hty_measure τ2
   end .
 
@@ -86,7 +86,7 @@ with htyR (gas: nat) (τ: hty) (e: tm) : Prop :=
   | S gas' =>
       ∅ ⊢t e ⋮t ⌊ τ ⌋ /\ closed_hty ∅ τ /\
         match τ with
-        | [: ρ | A ▶ B ] =>
+        | <[ A ] ρ [ B ]> =>
             forall (α β: list evop) (v: value),
               a⟦ A ⟧ α ->
               α ⊧ e ↪*{ β } v ->

@@ -44,7 +44,7 @@ with wf_hty: listctx pty -> hty -> Prop :=
     wf_am Γ A ->
     wf_am Γ B ->
     prefix_am Γ A B ->
-    wf_hty Γ [: ρ | A ▶ B ]
+    wf_hty Γ (<[ A ] ρ [ B ]>)
 | wf_hty_inter: forall Γ τ1 τ2,
     wf_hty Γ τ1 ->
     wf_hty Γ τ2 ->
@@ -97,9 +97,9 @@ where
 
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
 | TValue: forall Γ v ρ A,
-    Γ ⊢WF [: ρ | A ▶ A] ->
+    Γ ⊢WF (<[ A ] ρ [ A ]>) ->
     Γ ⊢ v ⋮v ρ ->
-    Γ ⊢ v ⋮t [: ρ | A ▶ A]
+    Γ ⊢ v ⋮t (<[ A ] ρ [ A ]>)
 | TSub: forall Γ e (τ1 τ2: hty),
     Γ ⊢WF τ2 ->
     Γ ⊢ e ⋮t τ1 ->
@@ -111,25 +111,25 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     Γ ⊢ e ⋮t τ2 ->
     Γ ⊢ e ⋮t (τ1 ⊓ τ2)
 | TLetE: forall Γ e_x e ρx ρ A A' B (L: aset),
-    Γ ⊢WF [: ρ | A ▶ B ] ->
-    Γ ⊢ e_x ⋮t [: ρx | A ▶ A' ] ->
+    Γ ⊢WF (<[ A ] ρ [ B ]>) ->
+    Γ ⊢ e_x ⋮t (<[ A ] ρx [ A' ]>) ->
     (forall x, x ∉ L ->
-          (Γ ++ [(x, ρx)]) ⊢ (e ^t^ x) ⋮t [: ρ | A' ▶ B]) ->
-    Γ ⊢ (tlete e_x e) ⋮t [: ρ | A ▶ B ]
+          (Γ ++ [(x, ρx)]) ⊢ (e ^t^ x) ⋮t (<[ A' ] ρ [ B ]>)) ->
+    Γ ⊢ (tlete e_x e) ⋮t (<[ A ] ρ [ B ]>)
 | TApp: forall Γ (v1 v2: value) e ρ ρx ρ2 A A' B (L: aset),
-    Γ ⊢WF [: ρ | (A ^a^ v2) ▶ B ] ->
+    Γ ⊢WF (<[ (A ^a^ v2) ] ρ [ B ]>) ->
     Γ ⊢ v2 ⋮v ρ2 ->
-    Γ ⊢ v1 ⋮v (ρ2 ⇨ [: ρx | A ▶ A' ]) ->
+    Γ ⊢ v1 ⋮v (ρ2 ⇨ (<[ A ] ρx [ A' ]>)) ->
     (forall x, x ∉ L ->
-          (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: ρ | (A' ^a^ v2) ▶ B]) ->
-    Γ ⊢ (tletapp v1 v2 e) ⋮t [: ρ | (A ^a^ v2) ▶ B ]
+          (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t (<[ A' ^a^ v2 ] ρ [ B ]>)) ->
+    Γ ⊢ (tletapp v1 v2 e) ⋮t (<[ A ^a^ v2 ] ρ [ B ]>)
 | TEffOp: forall Γ (op: effop) (v2: value) e ρ ρx ρ2 A A' B (L: aset),
-    Γ ⊢WF [: ρ | (A ^a^ v2) ▶ B ] ->
+    Γ ⊢WF (<[ A ^a^ v2 ] ρ [ B ]>) ->
     Γ ⊢ v2 ⋮v ρ2 ->
-    Γ ⊢ op ⋮o (ρ2 ⇨ [: ρx | A ▶ A' ]) ->
+    Γ ⊢ op ⋮o (ρ2 ⇨ (<[ A ] ρx [ A' ]>)) ->
     (forall x, x ∉ L ->
-          (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t [: ρ | (A' ^a^ v2) ▶ B]) ->
-    Γ ⊢ (tleteffop op v2 e) ⋮t [: ρ | (A ^a^ v2) ▶ B ]
+          (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t (<[ A' ^a^ v2 ] ρ [ B ]>)) ->
+    Γ ⊢ (tleteffop op v2 e) ⋮t (<[ A ^a^ v2 ] ρ [ B ]>)
 | TMatchb: forall Γ (v: value) e1 e2 ϕ τ (L : aset),
     Γ ⊢WF τ ->
     Γ ⊢ v ⋮v {:TBool | ϕ} ->
@@ -520,7 +520,7 @@ Qed.
 
 Lemma msubst_hoarehty: forall (Γv: env) ρ A B,
     closed_env Γv ->
-    m{Γv}h [:ρ|A▶B] = [:m{Γv}p ρ|m{Γv}a A ▶ m{Γv}a B].
+    m{Γv}h (<[ A ] ρ [ B ]>) = <[ m{Γv}a A ] (m{Γv}p ρ) [ m{Γv}a B ]>.
 Proof.
   msubst_tac. rewrite_msubst_insert.
 Qed.
@@ -615,8 +615,8 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }p (_ ⇨ _) ] => rewrite msubst_arrpty
   | H: context [ m{ _ }p (_ ⇢ _) ] |- _ => rewrite msubst_ghostpty in H
   | |- context [ m{ _ }p (_ ⇢ _) ] => rewrite msubst_ghostpty
-  | H: context [ m{ _ }h [:_|_▶_] ] |- _ => rewrite msubst_hoarehty in H
-  | |- context [ m{ _ }h [:_|_▶_] ] => rewrite msubst_hoarehty
+  | H: context [ m{ _ }h (<[_] _ [_]>) ] |- _ => rewrite msubst_hoarehty in H
+  | |- context [ m{ _ }h <[_] _ [_]> ] => rewrite msubst_hoarehty
   | H: context [ m{ _ }h (_⊓_) ] |- _ => rewrite msubst_interhty in H
   | |- context [ m{ _ }h (_⊓_) ] => rewrite msubst_interhty
   | H: context [ m{ _ }p (mk_top _) ] |- _ => rewrite msubst_mk_top in H
@@ -1658,7 +1658,7 @@ Lemma closed_hty_hoare_congr d ρ a b :
   closed_pty d ρ ->
   closed_am d a ->
   closed_am d b ->
-  closed_hty d [: ρ | a ▶ b ].
+  closed_hty d (<[ a ] ρ [ b ]>).
 Proof.
   inversion 1. inversion 1. inversion 1.
   econstructor.
@@ -1867,7 +1867,7 @@ Proof.
   - intros Γ e_x e ρx ρ A A' B L HWF HTe_x HDe_x HTe HDe Γv HΓv.
     ospecialize* HDe_x; eauto. repeat msubst_simp.
     split; [| split]. {
-      assert (Γ ⊢ tlete e_x e ⋮t [:ρ|A▶B]) by eauto using term_type_check.
+      assert (Γ ⊢ tlete e_x e ⋮t (<[ A ] ρ [ B ]>)) by eauto using term_type_check.
       eapply tm_typing_regular_basic_typing in H.
       eapply msubst_preserves_basic_typing_tm_empty in H; eauto.
       repeat msubst_simp.
@@ -1908,7 +1908,8 @@ Proof.
   - intros Γ v1 v2 e ρ ρx ρ2 A A' B L HWF HTv2 HDv2 HTv1 HDv1 HTe HDe Γv HΓv.
     ospecialize* HDv1; eauto. ospecialize* HDv2; eauto. repeat msubst_simp.
     split; [| split]. {
-      assert (Γ ⊢ tletapp v1 v2 e ⋮t [:ρ|(A^a^v2)▶B]) by eauto using term_type_check.
+      assert (Γ ⊢ tletapp v1 v2 e ⋮t (<[ A^a^v2 ] ρ [ B ]>)) by
+        eauto using term_type_check.
       eapply tm_typing_regular_basic_typing in H.
       eapply msubst_preserves_basic_typing_tm_empty in H; eauto.
       repeat msubst_simp.
@@ -2117,7 +2118,7 @@ Transparent msubst.
 Corollary soundness' :
   well_formed_builtin_typing ->
   forall (e : tm) (ρ : pty) (A : am),
-    [] ⊢ e ⋮t [:ρ | A ▶ A] ->
+    [] ⊢ e ⋮t (<[ A ] ρ [ A ]>) ->
     forall (v : value) α α',
       a⟦ A ⟧ α ->
       α ⊧ e ↪*{ α' } v ->
@@ -2132,7 +2133,7 @@ Qed.
 Corollary soundness :
   well_formed_builtin_typing ->
   forall (v_f: value) (Bx By: base_ty) (ρ: pty) (A: am),
-    [] ⊢ v_f ⋮v (Bx⇢(mk_top By)⇨[:ρ | A ▶ A]) ->
+    [] ⊢ v_f ⋮v (Bx⇢(mk_top By)⇨(<[ A ] ρ [ A ]>)) ->
     forall v_x v_y,
       ∅ ⊢t v_x ⋮v Bx ->
       ∅ ⊢t v_y ⋮v By ->

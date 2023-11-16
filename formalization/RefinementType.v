@@ -57,7 +57,10 @@ Notation "ρ '⇨' τ " :=
  (arrpty ρ τ) (at level 80, format "ρ ⇨ τ", right associativity, ρ constr, τ constr).
 Notation "B '⇢' ρ " :=
  (ghostpty B ρ) (at level 80, format "B ⇢ ρ", right associativity, B constr, ρ constr).
-Notation "'[:' ρ '|' a '▶' b ']'" := (hoarehty ρ a b) (at level 5, format "[: ρ | a ▶ b ]", ρ constr, a constr, b constr).
+Notation "'<[' a ']' ρ '[' b ']>'" :=
+  (hoarehty ρ a b)
+    (at level 5, format "<[ a ] ρ [ b ]>",
+      ρ constr at next level, a constr, b constr).
 Notation "τ1 '⊓' τ2" := (interhty τ1 τ2).
 
 (** Erase *)
@@ -71,7 +74,7 @@ Fixpoint pty_erase ρ : ty :=
 
 with hty_erase τ : ty :=
   match τ with
-  | [: ρ | _ ▶ _ ] => pty_erase ρ
+  | <[_] ρ [_]> => pty_erase ρ
   | τ1 ⊓ τ2 => hty_erase τ1
   end.
 
@@ -101,7 +104,7 @@ Fixpoint pty_fv ρ : aset :=
 
 with hty_fv τ : aset :=
   match τ with
-  | [: ρ | a ▶ b ] => pty_fv ρ ∪ am_fv a ∪ am_fv b
+  | <[ a ] ρ [ b ]> => pty_fv ρ ∪ am_fv a ∪ am_fv b
   | τ1 ⊓ τ2 => hty_fv τ1 ∪ hty_fv τ2
   end.
 
@@ -133,7 +136,7 @@ Fixpoint pty_open (k: nat) (s: value) (ρ: pty) : pty :=
 
 with hty_open (k: nat) (s: value) (τ : hty): hty :=
   match τ with
-  | [: ρ | a ▶ b ] => [: (pty_open k s ρ) | (am_open k s a) ▶ (am_open k s b)]
+  | <[ a ] ρ [ b ]> => <[ am_open k s a ] (pty_open k s ρ) [ am_open k s b ]>
   | τ1 ⊓ τ2 => (hty_open k s τ1) ⊓ (hty_open k s τ2)
   end.
 
@@ -161,7 +164,7 @@ Fixpoint pty_subst (k: atom) (s: value) (ρ: pty) : pty :=
 
 with hty_subst (k: atom) (s: value) (τ : hty): hty :=
   match τ with
-  | [: ρ | a ▶ b ] => [: (pty_subst k s ρ) | am_subst k s a ▶ (am_subst k s b)]
+  | <[ a ] ρ  [ b ]> => <[ am_subst k s a ] (pty_subst k s ρ) [ am_subst k s b ]>
   | τ1 ⊓ τ2 => (hty_subst k s τ1) ⊓ (hty_subst k s τ2)
   end.
 
@@ -198,7 +201,7 @@ with lc_hty : hty -> Prop :=
     lc_pty ρ ->
     lc_am a ->
     lc_am b ->
-    lc_hty [: ρ | a ▶ b ]
+    lc_hty (<[ a ] ρ [ b ]>)
 | lc_hty_inter : forall τ1 τ2,
     lc_hty τ1 ->
     lc_hty τ2 ->
