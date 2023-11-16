@@ -53,10 +53,36 @@ The following command pretty prints the content of given files, which may contai
 
     $ ./_build/default/bin/main.exe print-raw meta-config.json data/ri/FileSystem_KVStore/ri.ml
 
-The script will print the following commands:
+The script will print the following autoamata predicates:
 
 ```
 val[@pred] rI: (p : Path.t) = ☐⟨is_root p⟩ ∨ (¬aliveP(p) ∨ dirP(parent p))
+```
+
+Another example:
+
+    $ ./_build/default/bin/main.exe print-raw meta-config.json data/ri/FileSystem_KVStore/add.ml
+
+The script will print the following source code and refinement types:
+
+```
+let add = fun (path : Path.t) ->
+  fun (content : Bytes.t) ->
+    (if exists path
+     then (false : bool)
+     else
+       (let (parent_path : Path.t) = getParent path in
+        if not (exists parent_path)
+        then (false : bool)
+        else
+          (let (bytes' : Bytes.t) = get parent_path in
+           if isDir bytes'
+           then
+             let (unused!0 : unit) = put path content in
+             let (unused!1 : unit) = put parent_path (addChild bytes' path) in
+             (true : bool)
+           else (false : bool))) : bool)
+val[@assertRty] add: (p:Path.t)⇢(path:{v:Path.t | true})→(content:{v:Bytes.t | true})→[rI(p)]{v:bool | true}[rI(p)]
 ```
 
 ##### Basic Type Check
