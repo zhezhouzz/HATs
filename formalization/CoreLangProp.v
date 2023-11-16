@@ -977,7 +977,7 @@ Lemma lc_subst_tm: forall x (u: value) (t: tm), lc ({x := u}t t) -> lc u -> lc t
 Proof.
   intros.
   remember ({x:=u}t t).
-  revert dependent t.
+  generalize dependent t.
   induction H; intros;
     repeat
       match goal with
@@ -1038,7 +1038,7 @@ Lemma open_lc_respect_tm: forall (t: tm) (u v : value) k,
     lc ({k ~t> v} t).
 Proof.
   intros * H. remember ({k ~t> u} t) as t'.
-  revert dependent t. revert k.
+  generalize dependent t. revert k.
   induction H; intros;
     repeat
       match goal with
@@ -1063,7 +1063,7 @@ Lemma open_lc_respect_value: forall (t: value) (u v : value) k,
     lc ({k ~v> v} t).
 Proof.
   intros * H. remember (treturn ({k ~v> u} t)) as t'.
-  revert dependent t. revert k.
+  generalize dependent t. revert k.
   induction H; intros;
     repeat
       match goal with
@@ -1078,5 +1078,17 @@ Proof.
   rewrite open_swap_tm in * by eauto; eauto using open_lc_respect_tm.
 Qed.
 
+Lemma open_tm_idemp: forall u (v: value) (t: tm) (k: nat),
+    lc v ->
+    {k ~t> u} ({k ~t> v} t) = ({k ~t> v} t)
+with open_value_idemp: forall u (v: value) (t: value) (k: nat),
+    lc v ->
+    {k ~v> u} ({k ~v> v} t) = ({k ~v> v} t).
+Proof.
+  all: destruct t; intros; simpl; f_equal; eauto.
+  case_decide; subst; simpl.
+  rewrite open_rec_lc_value; eauto.
+  rewrite decide_False by auto. reflexivity.
+Qed.
 
 Global Hint Resolve lc_fresh_var_implies_body: core.
