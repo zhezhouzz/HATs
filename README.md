@@ -33,6 +33,7 @@ We provides the meaning of representation invaraints of each ADT in our benchmar
 * `FileSystem`: Any path that is stored as a key in the key-value
   store (other than the root path) must also have its parent stored as a
   non-deleted directory in the store.
+* `Heap`: the top element of a heap is the minimal one.
 * `LazySet`: there is no duplicate element insertion.
 * `MinSet`: the recorded minimal element is the minimal element in the set.
 * `Queue`: the queue data structure that supports first-in-first-out (FIFO) order.
