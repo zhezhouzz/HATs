@@ -216,7 +216,7 @@ let type_check_ (ri_input, s) source_file =
       (ri_input.dt, ri_input.lib, !Stat.local_interface_dynamic_stat)
   in
   (* let () = Stat.dump default_stat_file ress in *)
-  let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in
+  (* let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in *)
   interfaceStaic
 
 let subtype_check_ (ri_input, s) source_file =

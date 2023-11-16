@@ -141,7 +141,6 @@ def analyze_details_stat(paths, j):
     cols = []
     static_j = j["static"]
     dynamic_j = j["dynamic"]
-    # print(static_j)
     # exit(1)
     for filename in paths:
         dt, lib = filename_to_dt_lib(filename)
@@ -153,14 +152,15 @@ def analyze_details_stat(paths, j):
             col["dt"] = dt
             col["lib"] = lib
             col.update(static_stat)
-            print(stat_d)
-            print(dt, lib)
-            print(col["interface"])
-            stat_d_one = find_one(stat_d, lambda x: x["interfaceDynamic"] == "{}.ml".format(col["interface"]))
+            # print(stat_d)
+            # print(dt, lib)
+            # print(col["interface"])
+            stat_d_new = [ analyze_interface_dynamic(s) for s in stat_d]
+            stat_d_one = find_one(stat_d_new, lambda x: x["interfaceDynamic"] == "{}.ml".format(col["interface"]))
             col.update(stat_d_one)
             analyze_for_display(col)
-            print(col)
+            # print(col)
             cols.append(col)
-    print(len(cols))
+    # print(len(cols))
     return cols
 

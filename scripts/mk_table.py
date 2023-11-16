@@ -25,7 +25,7 @@ def multirow(num: int, content: str):
 latex_headers_map = {
     "dt": "Datatype",
     "lib": "Library",
-    "methodName": "Method",
+    "interface": "Method",
     "numMethod": "\\#Method",
     "numGhost": "\\#Ghost",
     "sizeRI": "s$_{I}$",
@@ -60,7 +60,7 @@ details_format_header = "\n\n\\begin{tabular}{cc|cc|c||cc|ccc|cc}\n\\toprule"
 
 details_header = ["dt", "lib",
                   "numGhost", "sizeRI",
-                  "methodName",
+                  "interface",
                   "numBranch", "numApp",
                   "numQuery", "numInclusion", "sizeA",
                   "tTrans", "tInclusion"]
@@ -87,11 +87,29 @@ def analysis_col_dts(cols):
             res[i + 1] = 0
     return res
 
-def print_col(print_dt_num: int, col):
+def print_col(header, print_dt_num: int, col):
     dt_str = ""
     if print_dt_num > 0:
         print("\\midrule")
         dt_str = multirow(print_dt_num, textsf(col["dt"]))
+    lib_str = textsf(col["lib"])
+    header_res = header[2:]
+    strs = [ str(col.get(name, " ")) for name in header_res]
+    rest = " & ".join(strs)
+    res = "{} & {} & {} \\\\".format(dt_str, lib_str, rest)
+    print(res)
+    return
+
+import re
+def safe_print(s):
+    return re.sub(r"_", "\_", s)
+
+def print_details_col(header, print_dt_num: int, col):
+    dt_str = ""
+    if print_dt_num > 0:
+        print("\\midrule")
+        dt_str = multirow(print_dt_num, textsf(col["dt"]))
+    col["interface"] = textsf(safe_print(col["interface"]))
     lib_str = textsf(col["lib"])
     header_res = header[2:]
     strs = [ str(col.get(name, " ")) for name in header_res]
@@ -105,7 +123,7 @@ def print_cols(format_header, header ,cols):
     print_header(header)
     nums = analysis_col_dts(cols)
     for i in range(len(cols)):
-        print_col(nums[i], cols[i])
+        print_col(header, nums[i], cols[i])
     print("\\bottomrule\n\\end{tabular}\n\n")
     return
 
@@ -114,7 +132,7 @@ def mk_table1(cols):
     print_header(header)
     nums = analysis_col_dts(cols)
     for i in range(len(cols)):
-        print_col(nums[i], cols[i])
+        print_col(header, nums[i], cols[i])
     print("\\bottomrule\n\\end{tabular}\n\n")
     return
 
@@ -123,6 +141,6 @@ def mk_table2(cols):
     print_header(details_header)
     nums = analysis_col_dts(cols)
     for i in range(len(cols)):
-        print_col(nums[i], cols[i])
+        print_details_col(details_header, nums[i], cols[i])
     print("\\bottomrule\n\\end{tabular}\n\n")
     return
