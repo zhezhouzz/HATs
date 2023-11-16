@@ -98,8 +98,7 @@ where
 "Γ '⊢' op '⋮o' ρ" := (effop_type_check Γ op ρ).
 
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
-| TSubPE: forall Γ v ρ A,
-    (* [SubPure] in the paper is inlined here. *)
+| TEPur: forall Γ v ρ A,
     Γ ⊢WF (<[ A ] ρ [ A ]>) ->
     Γ ⊢ v ⋮v ρ ->
     Γ ⊢ v ⋮t (<[ A ] ρ [ A ]>)
@@ -1839,7 +1838,7 @@ Proof.
     apply_eq HDlam.
     simpl. repeat msubst_simp.
     clear. simplify_map_eq. eauto.
-  (* [TSubPE] *)
+  (* [TEPur] *)
   - intros Γ v ρ A HWF Hv HDv Γv HΓv. specialize (HDv _ HΓv).
     repeat msubst_simp.
     split; [| split]. {
