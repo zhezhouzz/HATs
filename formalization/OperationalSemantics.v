@@ -12,7 +12,7 @@ Reserved Notation "α '⊧' t1 '↪{' β '}' t2" (at level 60, t1 constr, β con
 
 (** the small step operational semantics *)
 Inductive step : list evop -> tm -> list evop -> tm -> Prop :=
-| STEffOp: forall (α β: list evop) op (c1 c: constant) e,
+| STEffOp: forall (α: list evop) op (c1 c: constant) e,
     body e -> lc c1 -> lc c ->
     α ⊧{ op ~ c1 }⇓{ c } ->
     α ⊧ (tleteffop op c1 e) ↪{ [ev{ op ~ c1 := c}] } (e ^t^ c)
@@ -93,16 +93,16 @@ Theorem multistep_trans :
 Proof.
   intros. generalize dependent z.
   induction H; intros.
-  - simpl. rewrite <- app_nil_end in H0; eauto.
-  - rewrite app_ass.
+  - simpl. rewrite app_nil_r in H0. eauto.
+  - rewrite <- app_assoc.
     apply multistep_step with y; auto. apply IHmultistep.
-    rewrite app_ass; auto.
+    rewrite <- app_assoc; auto.
 Qed.
 
 Theorem multistep_R : forall α β (x y : tm),
     α ⊧ x ↪{ β } y -> α ⊧ x ↪*{ β } y.
 Proof. intros.
-  setoid_rewrite app_nil_end at 2. eauto.
+  setoid_rewrite <- app_nil_r at 2. eauto.
 Qed.
 
 Lemma multi_step_regular: forall α β e1 e2, α ⊧ e1 ↪*{ β } e2 -> lc e1 /\ lc e2.
