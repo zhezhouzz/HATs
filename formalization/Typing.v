@@ -28,24 +28,24 @@ Definition prefix_am (Γ: listctx pty) (A B: am) : Prop :=
              a⟦m{ Γv }a A ;+ ∘*⟧ α.
 
 Inductive wf_pty: listctx pty -> pty -> Prop :=
-| wf_pty_base: forall Γ b ϕ,
+| WfBase: forall Γ b ϕ,
     closed_pty (ctxdom Γ) {: b | ϕ } -> wf_pty Γ {: b | ϕ }
-| wf_pty_arr: forall Γ ρ τ (L: aset),
+| WfArr: forall Γ ρ τ (L: aset),
     wf_pty Γ ρ ->
     (forall x, x ∉ L -> wf_hty (Γ ++ [(x, ρ)]) (τ ^h^ x)) ->
     wf_pty Γ (ρ ⇨ τ)
-| wf_pty_ghost: forall Γ b ρ (L: aset),
+| WfGhost: forall Γ b ρ (L: aset),
     (forall x, x ∉ L -> wf_pty (Γ ++ [(x, mk_top b)]) (ρ ^p^ x)) ->
     wf_pty Γ (b ⇢ ρ)
 
 with wf_hty: listctx pty -> hty -> Prop :=
-| wf_hty_hoare: forall Γ ρ A B,
+| WfHoare: forall Γ ρ A B,
     wf_pty Γ ρ ->
     wf_am Γ A ->
     wf_am Γ B ->
     prefix_am Γ A B ->
     wf_hty Γ (<[ A ] ρ [ B ]>)
-| wf_hty_inter: forall Γ τ1 τ2,
+| WfInter: forall Γ τ1 τ2,
     wf_hty Γ τ1 ->
     wf_hty Γ τ2 ->
     ⌊ τ1 ⌋ = ⌊ τ2 ⌋ ->
@@ -59,7 +59,7 @@ Notation " Γ '⊢WFa' a " := (wf_am Γ a) (at level 20, a constr, Γ constr).
 Reserved Notation "Γ '⊢' e '⋮t' τ" (at level 20).
 Reserved Notation "Γ '⊢' e '⋮v' τ"  (at level 20).
 
-(** Subtyping *)
+(** Semantic subtyping *)
 Definition pty_subtyping (Γ: listctx pty) (ρ1 ρ2: pty) : Prop :=
   (* Assume [ρ1] and [ρ2] are valid [pty]s. *)
   ⌊ ρ1 ⌋ = ⌊ ρ2 ⌋ /\
@@ -89,6 +89,8 @@ Inductive effop_type_check : listctx pty -> effop -> pty -> Prop :=
 | TEOp : forall Γ op ρ_op ρ,
     Γ ⊢WFp ρ ->
     builtin_typing_relation op ρ_op ->
+    (* [TSubEOp] is inlined here. Consecutive applications of subtyping is just
+    one subtyping. *)
     Γ ⊢ ρ_op <⋮p ρ ->
     ⌊ ρ ⌋ = ty_of_op op ->
     Γ ⊢ op ⋮o ρ
@@ -96,7 +98,8 @@ where
 "Γ '⊢' op '⋮o' ρ" := (effop_type_check Γ op ρ).
 
 Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
-| TValue: forall Γ v ρ A,
+| TSubPE: forall Γ v ρ A,
+    (* [SubPure] in the paper is inlined here. *)
     Γ ⊢WF (<[ A ] ρ [ A ]>) ->
     Γ ⊢ v ⋮v ρ ->
     Γ ⊢ v ⋮t (<[ A ] ρ [ A ]>)
@@ -123,7 +126,7 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     (forall x, x ∉ L ->
           (Γ ++ [(x, ρx ^p^ v2)]) ⊢ (e ^t^ x) ⋮t (<[ A' ^a^ v2 ] ρ [ B ]>)) ->
     Γ ⊢ (tletapp v1 v2 e) ⋮t (<[ A ^a^ v2 ] ρ [ B ]>)
-| TEffOp: forall Γ (op: effop) (v2: value) e ρ ρx ρ2 A A' B (L: aset),
+| TEOpApp: forall Γ (op: effop) (v2: value) e ρ ρx ρ2 A A' B (L: aset),
     Γ ⊢WF (<[ A ^a^ v2 ] ρ [ B ]>) ->
     Γ ⊢ v2 ⋮v ρ2 ->
     Γ ⊢ op ⋮o (ρ2 ⇨ (<[ A ] ρx [ A' ]>)) ->
@@ -139,7 +142,7 @@ Inductive term_type_check : listctx pty -> tm -> hty -> Prop :=
     (forall x, x ∉ L -> (Γ ++ [(x, {: TBool | b0:c=false & b0:v= v & ϕ})]) ⊢ e2 ⋮t τ) ->
     Γ ⊢ (tmatchb v e1 e2) ⋮t τ
 with value_type_check : listctx pty -> value -> pty -> Prop :=
-| TVSub: forall Γ (v: value) (ρ1 ρ2: pty),
+| TSubPP: forall Γ (v: value) (ρ1 ρ2: pty),
     Γ ⊢WFp ρ2 ->
     Γ ⊢ v ⋮v ρ1 ->
     Γ ⊢ ρ1 <⋮p ρ2 ->
@@ -148,7 +151,7 @@ with value_type_check : listctx pty -> value -> pty -> Prop :=
     Γ ⊢WFp (b ⇢ ρ) ->
     (forall (x: atom), x ∉ L -> (Γ ++ [(x, mk_top b)]) ⊢ v ⋮v (ρ ^p^ x)) ->
     Γ ⊢ v ⋮v (b ⇢ ρ)
-| TConstant: forall Γ (c: constant),
+| TConst: forall Γ (c: constant),
     Γ ⊢WFp (mk_eq_constant c) ->
     Γ ⊢ c ⋮v (mk_eq_constant c)
 | TBaseVar: forall Γ (x: atom) b ϕ,
@@ -159,12 +162,12 @@ with value_type_check : listctx pty -> value -> pty -> Prop :=
     Γ ⊢WFp (ρ ⇨ τ) ->
     ctxfind Γ x = Some (ρ ⇨ τ) ->
     Γ ⊢ x ⋮v (ρ ⇨ τ)
-| TLam: forall Γ Tx ρ e τ (L: aset),
+| TFun: forall Γ Tx ρ e τ (L: aset),
     Γ ⊢WFp (ρ ⇨ τ) ->
     (forall x, x ∉ L -> (Γ ++ [(x, ρ)]) ⊢ (e ^t^ x) ⋮t (τ ^h^ x)) ->
     Tx = ⌊ ρ ⌋ ->
     Γ ⊢ (vlam Tx e) ⋮v (ρ ⇨ τ)
-| TLamFix: forall Γ (Tx : base_ty) ϕ e τ T (L: aset),
+| TFix: forall Γ (Tx : base_ty) ϕ e τ T (L: aset),
     Γ ⊢WFp ({: Tx | ϕ} ⇨ τ) ->
     (* NOTE: should not open the whole type, because the first argument (bound
     variable 0) of the return type is not the fixed point function but [{: Tx |
@@ -1727,7 +1730,7 @@ Theorem fundamental_combined:
 Proof.
   intros HWFbuiltin.
   apply value_term_type_check_mutind.
-  (* [TVSub] *)
+  (* [TSubPP] *)
   - intros Γ v ρ1 ρ2 HWFρ2 _ HDρ1 Hsub Γv HΓv. specialize (HDρ1 _ HΓv).
     apply Hsub in HDρ1; auto.
   (* [TGhost] *)
@@ -1756,7 +1759,7 @@ Proof.
       (eauto using ctxRst_closed_env, basic_typing_closed_value;
        simpl_fv; my_set_solver).
     auto.
-  (* [TConstant] *)
+  (* [TConst] *)
   - intros Γ c HWF Γv HΓv. repeat msubst_simp. eauto using mk_eq_constant_denote_pty.
   (* [TBaseVar] *)
   - intros Γ x b ϕ Hwf Hfind Γv HΓv.
@@ -1772,7 +1775,7 @@ Proof.
     dup_hyp HΓv (fun H => eapply ctxRst_ctxfind in H; eauto). simp_hyps.
     repeat msubst_simp.
     by rewrite H0.
-  (* [TLam] *)
+  (* [TFun] *)
   - intros Γ Tx ρ e τ L HWF Ht HDe He Γv HΓv. repeat msubst_simp.
     eapply denotation_application_lam; eauto.
     cbn. rewrite <- pty_erase_msubst_eq, <- hty_erase_msubst_eq. subst. eauto.
@@ -1799,7 +1802,7 @@ Proof.
         (eauto using ctxRst_closed_env, ctxRst_lc, ptyR_closed_value;
          simpl_fv; my_set_solver).
     eauto.
-  (* [TLamFix] *)
+  (* [TFix] *)
   - intros Γ Tx ϕ e τ T L HWF Hlam HDlam He Γv HΓv. repeat msubst_simp.
     eapply denotation_application_fixed; eauto.
     by rewrite <- hty_erase_msubst_eq.
@@ -1836,7 +1839,7 @@ Proof.
     apply_eq HDlam.
     simpl. repeat msubst_simp.
     clear. simplify_map_eq. eauto.
-  (* [TValue] *)
+  (* [TSubPE] *)
   - intros Γ v ρ A HWF Hv HDv Γv HΓv. specialize (HDv _ HΓv).
     repeat msubst_simp.
     split; [| split]. {
@@ -1959,7 +1962,7 @@ Proof.
        simpl_fv; my_set_solver).
     clear - HDe.
     by simplify_list_eq.
-  (* [TEffOp] *)
+  (* [TEOpApp] *)
   - intros Γ op v2 e ρ ρx ρ2 A A' B L HWF HTv2 HDv2 HTop HTe HDe Γv HΓv.
     assert (∅ ⊢t (m{Γv}t) (tleteffop op v2 e) ⋮t ⌊ρ⌋) as HT. {
       eapply msubst_preserves_basic_typing_tm_empty; eauto.
