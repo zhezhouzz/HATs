@@ -6,7 +6,7 @@ This is the supplementary material for the PLDI 2024 submission *A HAT Trick: Au
 
 This section gives a brief overview of the files in this supplementary material.
 
-* `marple24.tar.gz`: A docker image contains this repo with all required dependecies.
+* `marple24.tar.gz.part-aa`, `marple24.tar.gz.part-ab`, and `marple24.tar.gz.part-ac`: A docker image contains this repo with all required dependecies.
 * `bin/main.ml`: the main entry point of **Marple**.
 * `coersion` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
@@ -43,8 +43,9 @@ We provides the meaning of representation invaraints of each ADT in our benchmar
 
 ### Running the Docker Image
 
-You can load the docker image from the file `marple24.tar.gz`.
+You can load the docker image from the files `marple24.tar.gz.part-aa`, `marple24.tar.gz.part-ab`, and `marple24.tar.gz.part-ac`.
 
+    $ cat marple24.tar.gz.part-* > marple24.tar.gz
     $ docker load < marple24.tar.gz
 
 To launch a shell in the Docker image:
