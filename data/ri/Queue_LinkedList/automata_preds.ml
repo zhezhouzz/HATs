@@ -1,8 +1,3 @@
-(* let[@pred] headP (value : Cell.t) = *)
-(*   _F (SetHead ((value [@d]), v, true) && _X (_G (not (SetHead (x_0, v, true))))) *)
-
-(* let[@pred] has_headP (k : Cell.t) = _F (SetHead (x_0, v, true)) *)
-
 let[@pred] nextP (prev : Cell.t) (value : Cell.t) =
   _F
     (SetNext ((prev [@d]), (value [@d]), v, true)

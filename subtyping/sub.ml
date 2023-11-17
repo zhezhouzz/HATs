@@ -100,7 +100,7 @@ and sub_srl_bool_aux rctx (srl1, srl2) =
     sub_rty_bool (RTypectx.new_to_rights rctx bindings) (tau1, tau2)
   in
   let tTrans, res =
-    Sugar.clock (fun () -> Desymbolic_opt.do_desymbolic checker (srl1, srl2))
+    Sugar.clock (fun () -> Desymbolic.do_desymbolic checker (srl1, srl2))
   in
   let tTrans = tTrans /. float_of_int (List.length res) in
   let check (srl1, srl2) =

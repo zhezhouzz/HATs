@@ -1,4 +1,3 @@
-(* set *)
 val insert : Node.t -> Node.t -> unit
 val mem : Node.t -> Node.t -> bool
 val memFst : Node.t -> bool

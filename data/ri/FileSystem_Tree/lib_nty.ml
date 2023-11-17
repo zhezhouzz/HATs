@@ -1,4 +1,3 @@
-(* multi-tree *)
 val init : Path.t -> unit
 val connectChild : Path.t -> Path.t -> unit
 val mem : Path.t -> bool
