@@ -17,10 +17,11 @@ Notation " 'ev{' op '~' v1 ':=' v2 '}' " := (evop_ op v1 v2)
 Definition trace : Type := list evop.
 
 Inductive read_reduction : trace -> constant -> Prop :=
-| ReadRead: forall (α: trace) (n: nat) (b: bool), read_reduction (α ++ [ev{ op_read ~ n := b }]) n
-| WriteRead: forall (α: trace) (n: nat) (b: bool), read_reduction (α ++ [ev{ op_write ~ b := n }]) n
+| ReadRead: forall (α: trace) (n' n: nat), read_reduction (α ++ [ev{ op_read ~ n' := n }]) n
+| WriteRead: forall (α: trace) (n: nat), read_reduction (α ++ [ev{ op_write ~ n := true }]) n
 | ElseRead: forall (α: trace) op c c' (n: nat),
-    ~ (op = op_read) -> ~ (op = op_write) ->
+    op <> op_read ->
+    (op <> op_write \/ c' = false) ->
     read_reduction α n -> read_reduction (α ++ [ev{ op ~ c := c' }]) n.
 
 Inductive tr_reduction : trace -> effop -> constant -> constant -> Prop :=
@@ -31,7 +32,7 @@ Inductive tr_reduction : trace -> effop -> constant -> constant -> Prop :=
 | TrNatGen: forall (α: trace) (n: nat) (n': nat), tr_reduction α op_rannat n n'
 | TrBoolGen: forall (α: trace) (n: nat) (b: bool), tr_reduction α op_ranbool n b
 | TrWrite: forall (α: trace) (n: nat) (b: bool), tr_reduction α op_write n b
-| TrRead: forall (α: trace) (n: nat) (b: bool), read_reduction α n -> tr_reduction α op_read n b.
+| TrRead: forall (α: trace) (n' n: nat), read_reduction α n -> tr_reduction α op_read n' n.
 
 Notation "α '⊧{' op '~' c1 '}⇓{' c '}' " := (tr_reduction α op c1 c)
                                               (at level 30, format "α ⊧{ op ~ c1 }⇓{ c }", c1 constr, α constr).
