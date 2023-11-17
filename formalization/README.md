@@ -43,6 +43,8 @@ opam pin coq-stdpp 1.9.0
 opam pin coq-hammer-tactics 1.3.2+8.18
 ```
 
+> Notice: We have installed all dependencies lised above in our docker image.
+
 To build and check the Coq formalization, simply run `make` in the
 `formalization` directory. The command `Print Assumptions soundness` at the end
 of file `Typing.v` should print out `Axioms: builtin_typing_relation : ...`. It

@@ -177,4 +177,6 @@ All commands of **Marple** will take a universal configuration file (`meta-confi
 - the `prim_path` field indicates the predefined refinement types for a number of
 OCaml primitives, including various arithmetic operators, and data constructors, and axioms of unintepreted functions.
 
+### Coq Formalization
 
+See `formalization/README.md`.
