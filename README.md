@@ -6,6 +6,7 @@ This is the supplementary material for the PLDI 2024 submission *A HAT Trick: Au
 
 This section gives a brief overview of the files in this supplementary material.
 
+* `marple24.tar.gz`: A docker image contains this repo with all required dependecies.
 * `bin/main.ml`: the main entry point of **Marple**.
 * `coersion` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
@@ -40,6 +41,15 @@ We provides the meaning of representation invaraints of each ADT in our benchmar
 * `Set`: the set data structure that contains non-duplicate elements.
 * `Stack`: the stack data structure that supports first-in-last-out (FILO) order.
 
+### Running the Docker Image
+
+You can load the docker image from the file `marple24.tar.gz`.
+
+    $ docker load < marple24.tar.gz
+
+To launch a shell in the Docker image:
+
+    $ docker run -it -m="8g" marple24/marple:pldi-2024
 
 ### Running Benchmarks of Marple
 
@@ -95,7 +105,7 @@ By enable the `preprocess` option in the config file `meta-config.json`, **Marpl
 
 ##### Type check
 
-The following command performs the type check for a given ADT implementation.
+The following command performs the type check for a given ADT implementation. It will take about `3` min:
 
     $ python3 scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
 
@@ -109,7 +119,7 @@ The following scripts run the benchmark suite displayed in Table 1 of the paper.
 
 The following scripts run the preprocess on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`).
 
-    $ python3 scripts/comprehensive.py verbose ntyping data/ri
+    $ python3 scripts/comprehensive.py silent ntyping data/ri
 
 Then, the following prints the first part of table 1 (as latex code).
 
@@ -117,9 +127,9 @@ Then, the following prints the first part of table 1 (as latex code).
 
 ###### Step 2: Type Check
 
-The following scripts run typecheck on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `10` mins:
+The following scripts run typecheck on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
 
-    $ python3 scripts/comprehensive.py verbose typing data/ri
+    $ python3 scripts/comprehensive.py silent typing data/ri
 
 Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table).
 

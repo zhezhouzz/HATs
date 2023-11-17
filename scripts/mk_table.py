@@ -2,7 +2,7 @@ import sys
 import argparse
 import os
 import json
-from tabulate import tabulate
+# from tabulate import tabulate
 
 # headers = ["", "Recursive", "#LocalVar" , "#OP" , "#Q_{SMT}" , "#Q_{automata}" , "(max. Char, Size)" ,
 #            "smt total (avg. time)(s)", "automata total (avg. time)(s)"]
