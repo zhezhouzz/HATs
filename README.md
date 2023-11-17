@@ -2,11 +2,12 @@
 
 This is the supplementary material for the PLDI 2024 submission *A HAT Trick: Automatically Verifying Representation Invariants Using Symbolic Finite Automata*. This supplementary material consists of both the OCaml implementation (**Marple**) and the Coq formalization of the type system of our core language **λ<sup>E</sup>** introduced in the paper.
 
+A docker image of this repo with all required dependecies is available on: `https://hub.docker.com/r/marple24/marple`.
+
 ### Supplementary Material Structure
 
 This section gives a brief overview of the files in this supplementary material.
 
-* `marple24.tar.gz.part-aa`, `marple24.tar.gz.part-ab`, and `marple24.tar.gz.part-ac`: A docker image contains this repo with all required dependecies.
 * `bin/main.ml`: the main entry point of **Marple**.
 * `coersion` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
@@ -43,10 +44,9 @@ We provides the meaning of representation invaraints of each ADT in our benchmar
 
 ### Running the Docker Image
 
-You can load the docker image from the files `marple24.tar.gz.part-aa`, `marple24.tar.gz.part-ab`, and `marple24.tar.gz.part-ac`.
+You may fetch the pre-built Docker image from Docker Hub:
 
-    $ cat marple24.tar.gz.part-* > marple24.tar.gz
-    $ docker load < marple24.tar.gz
+    $ docker pull marple24/marple:pldi-2024
 
 To launch a shell in the Docker image:
 
