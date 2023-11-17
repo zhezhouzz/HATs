@@ -152,6 +152,15 @@ Proof.
   auto_apply. my_set_solver.
 Qed.
 
+Lemma open_fv_qualifier (ϕ : qualifier) (v : value) k :
+  qualifier_fv ({k ~q> v} ϕ) ⊆ qualifier_fv ϕ ∪ fv_value v.
+Proof.
+  destruct ϕ.
+  simpl. clear. induction vals; simpl. easy.
+  etrans. apply union_mono. apply open_fv_value.
+  reflexivity. my_set_solver.
+Qed.
+
 Lemma open_fv_qualifier' (ϕ : qualifier) (v : value) k :
   qualifier_fv ϕ ⊆ qualifier_fv ({k ~q> v} ϕ).
 Proof.
@@ -248,4 +257,8 @@ Notation " 'b0:x≺' x " :=
 
 Notation " 'b0:v≺' v " :=
   (qual [# vbvar 0; v] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
+    (at level 5).
+
+Notation " 'b0:c≺' c " :=
+  (qual [# vbvar 0; vconst c] (fun v => (v !!! 0) ≺ (v !!! 1))%fin)
     (at level 5).

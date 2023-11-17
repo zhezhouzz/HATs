@@ -17,99 +17,93 @@ Import BasicTyping.
 Import RefinementType.
 Import Qualifier.
 Import Trace.
-Import mapset.
-
-Inductive repeat_tr: (list evop -> Prop) -> list evop -> Prop :=
-| repeat_tr0: forall p, repeat_tr p []
-| repeat_tr1: forall (p: list evop -> Prop) α β, p α -> repeat_tr p β -> repeat_tr p (α ++ β).
-
-Global Hint Constructors effop: repeat_tr.
 
 (** Regular language *)
 
-Definition bpropR (ϕ: qualifier) (c: constant) : Prop :=
-  denote_qualifier (ϕ ^q^ c).
+Definition valid_evop 'ev{op ~ argv := retv} :=
+  ∅ ⊢t argv ⋮v TNat /\ ∅ ⊢t retv ⋮v ret_ty_of_op op.
+
+Definition valid_trace := Forall valid_evop.
 
 Fixpoint langA (a: am) (α: list evop) {struct a} : Prop :=
-  closed_am ∅ a /\
+  closed_am ∅ a /\ valid_trace α /\
     match a with
-    | aemp => False
-    | aϵ => α = []
-    | aany =>
-        exists op c1 c,
-        α = [ev{op ~ c1 := c}] /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op)
     | aevent op ϕ =>
-        exists (c1 c: constant),
-          α = [ev{op ~ c1 := c}] /\ ∅ ⊢t c1 ⋮v TNat /\ ∅ ⊢t c ⋮v (ret_ty_of_op op) /\
+        exists (c1 c: constant) α',
+          α = ev{op ~ c1 := c} :: α' /\
           denote_qualifier ({0 ~q> c} ({1 ~q> c1} ϕ))
-    | aconcat a1 a2 =>
-        exists α1 α2, α = α1 ++ α2 ∧ langA a1 α1 /\ langA a2 α2
+    | aany => True
+    | aconcat a1 a2 => exists α1 α2, α = α1 ++ α2 ∧ langA a1 α1 /\ langA a2 α2
     | aunion a1 a2 => langA a1 α ∨ langA a2 α
-    | astar a => repeat_tr (langA a) α
-    | adiff a1 a2 => langA a1 α /\ ~langA a2 α
     end.
 
 Notation "'a⟦' a '⟧' " := (langA a) (at level 20, format "a⟦ a ⟧", a constr).
 
 (** Type Denotation: *)
 
-Fixpoint ptyR (t: ty) (ρ: pty) (e: tm) : Prop :=
-  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
-    match ρ with
-    | {: b | ϕ } => forall (c: constant) α β, α ⊧ e ↪*{β} c -> β = [] /\ bpropR ϕ c
-    | -: {:b | ϕ} ⤑[: T | A ▶ B ] =>
-        match t with
-        | TBase _ => False
-        | TArrow t1 t2 =>
-            amlist_typed B T ->
-            forall (v_x: constant),
-              ptyR t1 {:b | ϕ} v_x ->
-              forall (α β: list evop) (v: value),
-                a⟦ A ^a^ v_x ⟧ α ->
-                α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
-                exists Bi ρi, In (Bi, ρi) B /\
-                           a⟦ Bi ^a^ v_x ⟧ β /\
-                           ptyR t2 (ρi ^p^ v_x) v
-        end
-    | -: (-: ρ ⤑[: Tx | ax ▶ bx ]) ⤑[: T | A ▶ B ] =>
-        match t with
-        | TBase _ => False
-        | TArrow t1 t2 =>
-            amlist_typed B T ->
-            forall (v_x: value),
-              ptyR t1 (-: ρ ⤑[: Tx | ax ▶ bx ]) v_x ->
-              forall (α β: list evop) (v: value),
-                a⟦ A ⟧ α ->
-                α ⊧ (mk_app_e_v e v_x) ↪*{ β } v ->
-                exists Bi ρi, In (Bi, ρi) B /\
-                           a⟦ Bi ⟧ β /\
-                           ptyR t2 ρi v
-        end
-    end.
-
-Notation "'p⟦' ρ '⟧' " :=
-  (ptyR ⌊ ρ ⌋  ρ) (at level 20, format "p⟦ ρ ⟧", ρ constr).
-
-Definition htyR τ (e: tm) : Prop :=
-  ∅ ⊢t e ⋮t ⌊ τ ⌋  /\ closed_hty ∅ τ /\
+(* Instead of addtion, we can also use [max] for the subterms. *)
+Fixpoint pty_measure (ρ: pty) : nat :=
+  match ρ with
+  | {: _ | _} => 1
+  | ρ ⇨ τ => 1 + pty_measure ρ + hty_measure τ
+  | _ ⇢ ρ => 1 + pty_measure ρ
+  end
+with hty_measure (τ: hty) : nat :=
   match τ with
-  | [: T | A ▶ B ] =>
-      amlist_typed B T ->
-      forall (α β: list evop) (v: value),
-        a⟦ A ⟧ α ->
-        α ⊧ e ↪*{ β } v ->
-        exists Bi ρi, In (Bi, ρi) B /\
-                   a⟦ Bi ⟧ β /\
-                   p⟦ ρi ⟧ v
+  | <[ _ ] ρ  [ _ ]> => 1 + pty_measure ρ
+  | τ1 ⊓ τ2 => 1 + hty_measure τ1 + hty_measure τ2
+  end .
+
+(* The first argument is an overapproximation of the "size" of [ρ] or [τ]. In
+other words, it is the "fuel" to get around Coq's termination checker. As long
+as it is no less than [pty_measure] and [hty_measure], the denotation will not
+hit bottom. Note that this is _different_ from the step used in step-indexed
+logical relation. *)
+Fixpoint ptyR (gas: nat) (ρ: pty) (e: tm) : Prop :=
+  match gas with
+  | 0 => False
+  | S gas' =>
+      ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ /\
+        match ρ with
+        | {: b | ϕ} =>
+            forall (v: value) α β,
+              α ⊧ e ↪*{β} v ->
+              β = [] /\ denote_qualifier (ϕ ^q^ v)
+        | B ⇢ ρ =>
+            forall (v: value),
+              ∅ ⊢t v ⋮v B ->
+              ptyR gas' (ρ ^p^ v) e
+        | ρx ⇨ τ =>
+            forall (v_x: value),
+              ptyR gas' ρx v_x ->
+              htyR gas' (τ ^h^ v_x) (mk_app_e_v e v_x)
+        end
+  end
+
+with htyR (gas: nat) (τ: hty) (e: tm) : Prop :=
+  match gas with
+  | 0 => False
+  | S gas' =>
+      ∅ ⊢t e ⋮t ⌊ τ ⌋ /\ closed_hty ∅ τ /\
+        match τ with
+        | <[ A ] ρ [ B ]> =>
+            forall (α β: list evop) (v: value),
+              a⟦ A ⟧ α ->
+              α ⊧ e ↪*{ β } v ->
+              ptyR gas' ρ v /\ a⟦ B ⟧ (α ++ β)
+        | τ1 ⊓ τ2 =>
+            htyR gas' τ1 e /\ htyR gas' τ2 e
+        end
   end.
 
-Notation "'⟦' τ '⟧' " := (htyR τ) (at level 20, format "⟦ τ ⟧", τ constr).
-Notation "'⟦' τ '⟧p' " := (ptyR τ) (at level 20, format "⟦ τ ⟧p", τ constr).
+Notation "'p⟦' ρ '⟧' " :=
+  (ptyR (pty_measure ρ)  ρ) (at level 20, format "p⟦ ρ ⟧", ρ constr).
+
+Notation "'⟦' τ '⟧' " := (htyR (hty_measure τ) τ) (at level 20, format "⟦ τ ⟧", τ constr).
 
 Notation "'m{' x '}q'" := (msubst qualifier_subst x) (at level 20, format "m{ x }q", x constr).
 Notation "'m{' x '}p'" := (msubst pty_subst x) (at level 20, format "m{ x }p", x constr).
 Notation "'m{' x '}a'" := (msubst am_subst x) (at level 20, format "m{ x }a", x constr).
-Notation "'m{' x '}pa'" := (msubst postam_subst x) (at level 20, format "m{ x }pa", x constr).
 Notation "'m{' x '}h'" := (msubst hty_subst x) (at level 20, format "m{ x }h", x constr).
 Notation "'m{' x '}v'" := (msubst value_subst x) (at level 20, format "m{ x }v", x constr).
 Notation "'m{' x '}t'" := (msubst tm_subst x) (at level 20, format "m{ x }t", x constr).
@@ -121,7 +115,7 @@ Inductive ctxRst: listctx pty -> env -> Prop :=
     (* [ok_ctx] implies [ρ] is closed and valid, meaning that it does not use
     any function variables. *)
     ok_ctx (Γ ++ [(x, ρ)]) ->
-    p⟦ msubst pty_subst env ρ ⟧ v ->
+    p⟦ m{ env }p ρ ⟧ v ->
     ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> env).
 
 Lemma langA_closed a α :
@@ -131,26 +125,63 @@ Proof.
   destruct a; simpl; intuition.
 Qed.
 
-Lemma ptyR_typed_closed t ρ e :
-  ptyR t ρ e ->
-  ⌊ ρ ⌋ = t /\ ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ.
+Lemma langA_valid_trace a α :
+  langA a α ->
+  valid_trace α.
 Proof.
-  destruct t; simpl; intuition.
+  destruct a; simpl; intuition.
 Qed.
 
-Lemma ptyR_closed_tm t ρ e :
-  ptyR t ρ e ->
+Lemma pty_measure_gt_0 ρ : pty_measure ρ > 0.
+Proof.
+  induction ρ; simpl; lia.
+Qed.
+
+Lemma hty_measure_gt_0 τ : hty_measure τ > 0.
+Proof.
+  induction τ; simpl; lia.
+Qed.
+
+Lemma pty_measure_S ρ : exists n, pty_measure ρ = S n.
+Proof.
+  destruct (Nat.lt_exists_pred 0 (pty_measure ρ)).
+  pose proof (pty_measure_gt_0 ρ). lia.
+  intuition eauto.
+Qed.
+
+Lemma hty_measure_S τ : exists n, hty_measure τ = S n.
+  destruct (Nat.lt_exists_pred 0 (hty_measure τ)).
+  pose proof (hty_measure_gt_0 τ). lia.
+  intuition eauto.
+Qed.
+
+Lemma htyR_typed_closed gas τ e :
+  htyR gas τ e ->
+  ∅ ⊢t e ⋮t ⌊ τ ⌋ /\ closed_hty ∅ τ.
+Proof.
+  destruct gas; simpl; tauto.
+Qed.
+
+Lemma ptyR_typed_closed gas ρ e :
+  ptyR gas ρ e ->
+  ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_pty ∅ ρ.
+Proof.
+  destruct gas; simpl; tauto.
+Qed.
+
+Lemma ptyR_closed_tm gas ρ e :
+  ptyR gas ρ e ->
   closed_tm e.
 Proof.
   intros H.
   apply ptyR_typed_closed in H.
-  destruct H as (_&H&_).
+  destruct H as (H&_).
   apply basic_typing_contains_fv_tm in H.
   my_set_solver.
 Qed.
 
-Lemma ptyR_closed_value t ρ (v : value) :
-  ptyR t ρ v ->
+Lemma ptyR_closed_value gas ρ (v : value) :
+  ptyR gas ρ v ->
   closed_value v.
 Proof.
   intros H.
@@ -158,13 +189,13 @@ Proof.
   eauto.
 Qed.
 
-Lemma ptyR_lc t ρ e :
-  ptyR t ρ e ->
+Lemma ptyR_lc gas ρ e :
+  ptyR gas ρ e ->
   lc e.
 Proof.
   intros H.
   apply ptyR_typed_closed in H.
-  destruct H as (_&H&_).
+  destruct H as (H&_).
   eauto using basic_typing_regular_tm.
 Qed.
 
@@ -198,7 +229,7 @@ Lemma ctxRst_dom Γ Γv :
   ctxRst Γ Γv ->
   ctxdom Γ ≡ dom Γv.
 Proof.
-  induction 1; simpl; eauto. my_set_solver.
+  induction 1; simpl; eauto.
   rewrite ctxdom_app_union.
   rewrite dom_insert.
   simpl. my_set_solver.
@@ -209,4 +240,114 @@ Lemma ctxRst_ok_ctx Γ Γv :
   ok_ctx Γ.
 Proof.
   induction 1; eauto. econstructor.
+Qed.
+
+Lemma open_preserves_pty_measure ρ k t:
+  pty_measure ρ = pty_measure ({k ~p> t} ρ)
+with open_preserves_hty_measure τ k t:
+  hty_measure τ = hty_measure ({k ~h> t} τ).
+Proof.
+  destruct ρ; simpl; eauto.
+  destruct τ; simpl; eauto.
+Qed.
+
+Lemma subst_preserves_pty_measure ρ x t:
+  pty_measure ρ = pty_measure ({x:=t}p ρ)
+with subst_preserves_hty_measure τ x t:
+  hty_measure τ = hty_measure ({x:=t}h τ).
+Proof.
+  destruct ρ; simpl; eauto.
+  destruct τ; simpl; eauto.
+Qed.
+
+(* The conclusion has to be strengthened to an equivalence to get around
+termination checker. *)
+Lemma ptyR_measure_irrelevant m n ρ e :
+  pty_measure ρ <= n ->
+  pty_measure ρ <= m ->
+  ptyR n ρ e <-> ptyR m ρ e
+with htyR_measure_irrelevant m n τ e :
+  hty_measure τ <= n ->
+  hty_measure τ <= m ->
+  htyR n τ e <-> htyR m τ e.
+Proof.
+  all: destruct m, n; intros;
+    try solve [ pose proof (pty_measure_gt_0 ρ); lia
+              | pose proof (hty_measure_gt_0 τ); lia ];
+    specialize (ptyR_measure_irrelevant m);
+    specialize (htyR_measure_irrelevant m);
+    simpl.
+  - intuition.
+    + destruct ρ; intros; simpl in *; eauto.
+      rewrite <- htyR_measure_irrelevant.
+      auto_apply.
+      rewrite ptyR_measure_irrelevant; eauto. lia. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite <- ptyR_measure_irrelevant; eauto.
+      rewrite <- open_preserves_pty_measure. lia.
+      rewrite <- open_preserves_pty_measure. lia.
+    + destruct ρ; intros; simpl in *; eauto.
+      rewrite htyR_measure_irrelevant.
+      auto_apply.
+      rewrite <- ptyR_measure_irrelevant; eauto. lia. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite <- open_preserves_hty_measure. lia.
+      rewrite ptyR_measure_irrelevant; eauto.
+      rewrite <- open_preserves_pty_measure. lia.
+      rewrite <- open_preserves_pty_measure. lia.
+  - intuition.
+    + destruct τ; intros; simpl in *; eauto.
+      specialize (H4 _ _ _ H3 H5). intuition.
+      rewrite <- ptyR_measure_irrelevant; eauto. lia. lia.
+      intuition.
+      rewrite <- htyR_measure_irrelevant; eauto. lia. lia.
+      rewrite <- htyR_measure_irrelevant; eauto. lia. lia.
+    + destruct τ; intros; simpl in *; eauto.
+      specialize (H4 _ _ _ H3 H5). intuition.
+      rewrite ptyR_measure_irrelevant; eauto. lia. lia.
+      intuition.
+      rewrite htyR_measure_irrelevant; eauto. lia. lia.
+      rewrite htyR_measure_irrelevant; eauto. lia. lia.
+Qed.
+
+Lemma ptyR_measure_irrelevant' n ρ e :
+  pty_measure ρ <= n ->
+  ptyR n ρ e <-> p⟦ ρ ⟧ e.
+Proof.
+  intros. rewrite ptyR_measure_irrelevant; eauto.
+Qed.
+
+Lemma htyR_measure_irrelevant' n τ e :
+  hty_measure τ <= n ->
+  htyR n τ e <-> ⟦ τ ⟧ e.
+Proof.
+  intros. rewrite htyR_measure_irrelevant; eauto.
+Qed.
+
+Definition tm_refine e e' :=
+  (* Alternatively, we may require [∅ ⊢t e ⋮t ⌊τ⌋] in [htyR_refine]. However, we
+  would need [wf_hty] as a side-condition (or some sort of validity of [hty]),
+  to make sure all components in intersection have the same erasure. This would
+  introduce a large set of naming lemmas about [wf_hty] (and consequently
+  everything it depends on). Annoying. *)
+  (exists T, ∅ ⊢t e' ⋮t T /\ ∅ ⊢t e ⋮t T) /\
+  (forall α β (v : value), α ⊧ e ↪*{ β} v -> α ⊧ e' ↪*{ β} v).
+
+Lemma htyR_refine τ e1 e2 :
+  tm_refine e2 e1 ->
+  ⟦ τ ⟧ e1 ->
+  ⟦ τ ⟧ e2.
+Proof.
+  intros [Ht Hr].
+  assert (hty_measure τ <= hty_measure τ) by reflexivity.
+  revert H. generalize (hty_measure τ) at 2 3 4 as n.
+  intros n. revert τ.
+  induction n. easy.
+  simpl. intuition.
+  qauto using basic_typing_tm_unique.
+  destruct τ; eauto.
+  simpl in *. intuition.
+  apply IHn; eauto. lia.
+  apply IHn; eauto. lia.
 Qed.

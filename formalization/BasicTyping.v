@@ -94,6 +94,18 @@ Proof.
   my_set_solver.
 Qed.
 
+Lemma basic_typing_closed_tm: forall e T, ∅ ⊢t e ⋮t T -> closed_tm e.
+Proof.
+  intros.
+  apply basic_typing_contains_fv_tm in H. my_set_solver.
+Qed.
+
+Lemma basic_typing_closed_value: forall v T, ∅ ⊢t v ⋮v T -> closed_value v.
+Proof.
+  intros.
+  apply basic_typing_contains_fv_value in H. my_set_solver.
+Qed.
+
 Ltac instantiate_atom_listctx :=
   let acc := collect_stales tt in
   instantiate (1 := acc); intros;
