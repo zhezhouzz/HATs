@@ -5,13 +5,6 @@ let[@libRty] newCell ((x : Cell.t) [@ghost]) ?l:(a = (true : [%v: unit])) =
     newadding = lastL && NewCell (x_0, v, v == x);
   }
 
-(* let[@libRty] newCell ?l:(a = (true : [%v: unit])) = *)
-(*   { *)
-(*     pre = _G (Any true); *)
-(*     res = (true : [%v: Cell.t]); *)
-(*     newadding = lastL && NewCell (x_0, v, true); *)
-(*   } *)
-
 let[@libRty] isCell ?l:(c = (true : [%v: Cell.t])) =
   [|
     {

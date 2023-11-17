@@ -19,7 +19,3 @@ let[@assertRty] is_node ((s1 : Node.t) [@ghost]) ((s2 : Node.t) [@ghost])
       post = rI s1 s2 && not (mem_fstP x || mem_sndP x);
     };
   |]
-
-(* let[@assertRty] is_node ((s1 : Node.t) [@ghost]) ((s2 : Node.t) [@ghost]) *)
-(*     ?l:(x = (true : [%v: Node.t])) = *)
-(*   { pre = mem_fstP x; res = (v : [%v: bool]); post = mem_fstP x } *)

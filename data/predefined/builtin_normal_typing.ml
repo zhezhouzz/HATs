@@ -44,7 +44,3 @@ val cell_eq : Cell.t -> Cell.t -> bool
 (* set *)
 val set_insert : int -> unit
 val set_mem : int -> bool
-
-(* val mtree_get_parent : Path.t -> Path.t *)
-(* val mtree_add_child : Path.t -> Path.t -> Bytes.t -> unit *)
-(* val mtree_del_child : Path.t -> Path.t -> unit *)

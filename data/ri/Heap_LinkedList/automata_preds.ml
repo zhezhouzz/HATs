@@ -1,8 +1,6 @@
 let[@pred] headP (value : Elem.t) =
   _F (SetHead ((value [@d]), v, true) && _X (_G (not (SetHead (x_0, v, true)))))
 
-(* let[@pred] has_headP (k : Elem.t) = _F (SetHead (x_0, v, true)) *)
-
 let[@pred] nextP (prev : Elem.t) (value : Elem.t) =
   _F
     (SetNext ((prev [@d]), (value [@d]), v, true)

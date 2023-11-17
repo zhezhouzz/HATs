@@ -1,23 +1,7 @@
-(* let[@axiom] bytes1 ((content [@forall]) : Bytes.t) = *)
-(*   implies (is_deleted content) (not (is_dir content)) *)
-
 let[@axiom] bytes2 ((content [@forall]) : Bytes.t) =
   not (is_dir content && is_del content)
 
-(* let[@axiom] bytes3 ((content [@forall]) : Bytes.t) ((path [@forall]) : Path.t) = *)
-(*   not (is_deleted (add_child content path)) *)
-
-(* let[@axiom] bytes4 ((content [@forall]) : Bytes.t) ((path [@forall]) : Path.t) = *)
-(*   is_dir (add_child content path) *)
-
-let[@axiom] path1 ((path [@forall]) : Path.t) =
-  (* iff (is_root path) (path == parent path) *)
-  not (path == parent path)
-
-(* let[@axiom] path2 ((p1 [@forall]) : Path.t) ((p2 [@forall]) : Path.t) = *)
-(*   (\* iff (is_root path) (path == parent path) *\) *)
-(*   not (p2 == parent p1 && p1 == parent p2) *)
-(* (\* not (path == parent (parent path)) *\) *)
+let[@axiom] path1 ((path [@forall]) : Path.t) = not (path == parent path)
 
 let[@axiom] elem1 ((a [@forall]) : Elem.t) ((b [@forall]) : Elem.t) =
   implies (elem_lt a b || elem_lt b a) (not (a == b))

@@ -1,5 +1,3 @@
-(* multi-tree *)
-
 let[@libRty] init ?l:(p1 = (true : [%v: Path.t])) =
   {
     pre = _G (Any true);

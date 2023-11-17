@@ -13,10 +13,6 @@ let[@libRty] ( == ) ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (true : [%v: int]) [@over]) : [%v: bool] =
   iff v (a == b)
 
-(* let[@libRty] eqn ?l:(a = (true : [%v: nat]) [@over]) *)
-(*     ?l:(b = (true : [%v: nat]) [@over]) : [%v: bool] = *)
-(*   iff v (a == b) *)
-
 let[@libRty] ( != ) ?l:(a = (true : [%v: int]) [@over])
     ?l:(b = (true : [%v: int]) [@over]) : [%v: bool] =
   iff v (a != b)
