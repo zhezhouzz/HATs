@@ -177,10 +177,39 @@ Proof.
   eapply basic_typing_strengthen_value; eauto. my_set_solver.
 Qed.
 
+Lemma tr_reduction_sound α op c1 c :
+  α⊧{op~c1}⇓{c} ->
+  ty_of_const c = ret_ty_of_op op.
+Proof.
+  induction 1; eauto.
+Qed.
+
 (** perservation *)
 Lemma preservation: forall α β Γ T (e e': tm),α ⊧ e ↪{ β } e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
-Admitted.
+Proof.
+  intros * Hstep HT. move HT at top. revert_all.
+  induction 1; intros; sinvert Hstep; eauto.
+  - auto_pose_fv x. repeat specialize_with x.
+    rewrite <- subst_intro_tm with (x:=x) by (eauto; my_set_solver).
+    sinvert HT. eauto using basic_typing_subst_tm.
+  - auto_pose_fv x. repeat specialize_with x.
+    rewrite <- subst_intro_tm with (x:=x) by (eauto; my_set_solver).
+    sinvert H0. erewrite <- tr_reduction_sound in H1; eauto.
+    eauto using basic_typing_subst_tm.
+  - sinvert H.
+    econstructor; eauto.
+    auto_pose_fv x. repeat specialize_with x.
+    rewrite <- subst_intro_tm with (x:=x) by (eauto; my_set_solver).
+    eauto using basic_typing_subst_tm.
+  - sinvert H.
+    econstructor; eauto.
+    auto_pose_fv x. repeat specialize_with x.
+    rewrite <- subst_intro_value with (x:=x) by (eauto; my_set_solver).
+    eauto using basic_typing_subst_value.
+Qed.
 
 (** multi preservation *)
 Lemma multi_preservation: forall α β Γ T (e e': tm),α ⊧ e ↪*{ β } e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
-Admitted.
+Proof.
+  induction 1; eauto using preservation.
+Qed.
