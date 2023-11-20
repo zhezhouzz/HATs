@@ -1,7 +1,7 @@
 (library
  (name smtquery)
  (wrapped true)
- (libraries utils language core env z3 desymbolic zzdatatype)
+ (libraries language core env z3 desymbolic)
  (modules
    z3aux
    litencoding

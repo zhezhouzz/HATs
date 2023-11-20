@@ -1,7 +1,7 @@
 (library
  (name ntypecheck)
  (wrapped true)
- (libraries utils language core env ocolor coersion)
+ (libraries language core env ocolor coersion)
  (modules
    ntypecheck
    ttypecheck

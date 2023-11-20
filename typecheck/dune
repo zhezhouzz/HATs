@@ -1,7 +1,7 @@
 (library
  (name typecheck)
  (wrapped true)
- (libraries utils language core env subtyping normalization)
+ (libraries language core env subtyping normalization)
  (modules
    baux
    bidirectional

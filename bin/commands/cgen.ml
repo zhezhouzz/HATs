@@ -1,4 +1,3 @@
-open Sugar
 open Zzdatatype.Datatype
 open QCheck
 

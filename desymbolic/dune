@@ -1,7 +1,7 @@
 (library
  (name desymbolic)
  (wrapped true)
- (libraries utils language core env)
+ (libraries language core env)
  (modules
    head
    desymbolic

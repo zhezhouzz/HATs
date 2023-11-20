@@ -1,7 +1,7 @@
 (library
  (name frontend)
  (wrapped false)
- (libraries utils syntax normal5ty core ocaml5_parser env)
+ (libraries syntax core env)
  (modules
    aux
    to_id

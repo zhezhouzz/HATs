@@ -9,5 +9,5 @@
    language
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
- (libraries zzdatatype utils syntax frontend coersion dtree)
+ (libraries syntax frontend coersion dtree)
 )

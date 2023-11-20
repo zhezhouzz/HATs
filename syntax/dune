@@ -27,5 +27,5 @@
    syntax
  )
  (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv))
- (libraries zzdatatype utils normal5ty env)
+ (libraries env)
 )
