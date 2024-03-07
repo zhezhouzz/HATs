@@ -8,12 +8,14 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 
-(** * We define the bound proposition in locally nameless style. *)
+(** This file defines the qualifiers used in refinement types, corresponding to
+  ϕ in Fig. 4. In contrast to the syntactic presentation in paper, propositions
+  are encoded as shallowly embedded Coq propositions. *)
 
-(** Qualifier is defined as a Coq proposition [prop], with closed arguments that
-correspond to possibly open [vals]. We use [vec] to make sure [prop] arguments
-and [vals] match exactly, but using [list] is probably fine too; in that case
-[prop] is defined over possibly partial assignments. *)
+(** A qualifier is defined as a Coq proposition [prop], with closed arguments
+  corresponding to the possibly open [vals]. [vals] captures the variables that
+  are referred to in [prop]. We use length-indexed list [vec] to make sure
+  [prop] arguments and [vals] match exactly. *)
 Inductive qualifier : Type :=
 | qual {n : nat} (vals : vec value n) (prop : vec constant n -> Prop).
 
@@ -22,7 +24,22 @@ Inductive qualifier : Type :=
 qual [# vbvar 0; vbvar 1; vfvar "x"]
    (fun v => v !!! 0 = v !!! 1 /\ v !!! 2 = cnat 1)%fin
 >>
+
+It means the first and second bound variables are equal, and the free variable
+[x] is [1].
 *)
+
+(** Conjunction of two qualifiers *)
+Definition qualifier_and (q1 q2 : qualifier) : qualifier :=
+  match q1, q2 with
+  | qual vals1 prop1, qual vals2 prop2 =>
+      qual (vals1 +++ vals2)
+        (fun v =>
+           let (v1, v2) := Vector.splitat _ v
+           in prop1 v1 /\ prop2 v2)
+  end.
+
+(** * Qualifier denotation *)
 
 Fixpoint denote_vals {n} (vals : vec value n) : option (vec constant n) :=
   match vals with
@@ -38,7 +55,7 @@ Fixpoint denote_vals {n} (vals : vec value n) : option (vec constant n) :=
       end
   end.
 
-(** Denote a _closed_ qualifier to a Coq proposition. The result if [False] if the
+(** Denote a _closed_ qualifier to a Coq proposition. The result is [False] if the
 qualifier mentions functions. *)
 Definition denote_qualifier (ϕ : qualifier) : Prop :=
   match ϕ with
@@ -48,6 +65,30 @@ Definition denote_qualifier (ϕ : qualifier) : Prop :=
       | None => False
       end
   end.
+
+(** * Notations *)
+
+Definition mk_q_bvar_eq_val n v :=
+  qual [# vbvar n; v] (fun v => v !!! 0 = v !!! 1)%fin.
+Definition mk_q_under_bot := qual [#] (fun _ => False).
+Definition mk_q_under_top := qual [#] (fun _ => True).
+
+Notation " 'b0:v=' v " := (mk_q_bvar_eq_val 0 v)
+                            (at level 5, format "b0:v= v", v constr).
+Notation " 'b0:x=' y " := (mk_q_bvar_eq_val 0 (vfvar y))
+                            (at level 5, format "b0:x= y", y constr).
+Notation " 'b0:c=' c " := (mk_q_bvar_eq_val 0 (vconst c))
+                            (at level 5, format "b0:c= c", c constr).
+Notation " 'b1:v=' v " := (mk_q_bvar_eq_val 1 v)
+                            (at level 5, format "b1:v= v", v constr).
+Notation " 'b1:x=' y " := (mk_q_bvar_eq_val 1 (vfvar y))
+                            (at level 5, format "b1:x= y", y constr).
+Notation " 'b1:c=' c " := (mk_q_bvar_eq_val 1 (vconst c))
+                            (at level 5, format "b1:c= c", c constr).
+Notation " ϕ1 '&' ϕ2 " := (qualifier_and ϕ1 ϕ2)
+                             (at level 5, format "ϕ1  &  ϕ2").
+    
+(** * Naming related definitions and lemmas *)
 
 (** free variables *)
 Definition qualifier_fv ϕ : aset :=
@@ -81,50 +122,7 @@ Inductive lc_qualifier : qualifier -> Prop :=
   Vector.Forall (fun v => lc (treturn v)) vals ->
   lc_qualifier (@qual n vals prop)
 .
-
-Definition qualifier_and (q1 q2 : qualifier) : qualifier :=
-  match q1, q2 with
-  | qual vals1 prop1, qual vals2 prop2 =>
-      qual (vals1 +++ vals2)
-        (fun v =>
-           let (v1, v2) := Vector.splitat _ v
-           in prop1 v1 /\ prop2 v2)
-  end.
-
-Definition mk_q_bvar_eq_val n v :=
-  qual [# vbvar n; v] (fun v => v !!! 0 = v !!! 1)%fin.
-Definition mk_q_under_bot := qual [#] (fun _ => False).
-Definition mk_q_under_top := qual [#] (fun _ => True).
-
-Notation " 'b0:v=' v " := (mk_q_bvar_eq_val 0 v)
-                            (at level 5, format "b0:v= v", v constr).
-Notation " 'b0:x=' y " := (mk_q_bvar_eq_val 0 (vfvar y))
-                            (at level 5, format "b0:x= y", y constr).
-Notation " 'b0:c=' c " := (mk_q_bvar_eq_val 0 (vconst c))
-                            (at level 5, format "b0:c= c", c constr).
-Notation " 'b1:v=' v " := (mk_q_bvar_eq_val 1 v)
-                            (at level 5, format "b1:v= v", v constr).
-Notation " 'b1:x=' y " := (mk_q_bvar_eq_val 1 (vfvar y))
-                            (at level 5, format "b1:x= y", y constr).
-Notation " 'b1:c=' c " := (mk_q_bvar_eq_val 1 (vconst c))
-                            (at level 5, format "b1:c= c", c constr).
-Notation " ϕ1 '&' ϕ2 " := (qualifier_and ϕ1 ϕ2)
-                             (at level 5, format "ϕ1  &  ϕ2").
-
-(* NOTE: the constant cases can be expressed directly without invoking
-[mk_q_bvar_eq_val], e.g., [qual [# vbvar 0] (fun v => v !!! 0 = c)%fin]. But the
-current encoding is more uniform. In addition, the following can be expressed
-by combining [qualifier_and] and the existing notations. *)
-
-(* Definition mk_q_1_eq_constant_0_eq_var c (x: atom) := *)
-(*   qual [# vbvar 0; vbvar 1; vfvar x] (fun v => v !!! 1 = c /\ v !!! 0 = v !!! 2)%fin. *)
-(* Definition mk_q_1_eq_var_0_eq_var (x: atom) (y: atom) := *)
-(*   qual [# vbvar 0; vbvar 1; vfvar y; vfvar x] *)
-(*     (fun v => v !!! 1 = v !!! 3 /\ v !!! 0 = v !!! 2 )%fin. *)
-(* Notation " 'b1:x=' y '∧∧' 'b0:x=' x " := (mk_q_1_eq_var_0_eq_var y x) (at level 5, format "b1:x= y ∧∧ b0:x= x", y constr). *)
-(* Notation " 'b1:c=' c '∧∧' 'b0:x=' x " := (mk_q_1_eq_constant_0_eq_var c x) (at level 5, format "b1:c= c ∧∧ b0:x= x", c constr). *)
-
-
+  
 Lemma subst_commute_qualifier : forall x u_x y u_y ϕ,
     x <> y -> x ∉ fv_value u_y -> y ∉ fv_value u_x ->
     {x := u_x }q ({y := u_y }q ϕ) = {y := u_y }q ({x := u_x }q ϕ).
@@ -229,7 +227,171 @@ Proof.
   rewrite Vector.splitat_append. eauto.
 Qed.
 
+Lemma open_subst_same_qualifier: forall x y (ϕ : qualifier) k,
+    x # ϕ ->
+    {x := y }q ({k ~q> x} ϕ) = {k ~q> y} ϕ.
+Proof.
+  destruct ϕ. cbn. intros.
+  f_equal. clear - H.
+  (* A better proof should simply reduce to vector facts. Don't bother yet. *)
+  induction vals; cbn; eauto.
+  cbn in H.
+  f_equal. apply open_subst_same_value. my_set_solver.
+  apply IHvals. my_set_solver.
+Qed.
+
+Lemma subst_open_qualifier: forall (ϕ: qualifier) (x:atom) (u: value) (w: value) (k: nat),
+    lc w -> {x := w}q ({k ~q> u} ϕ) = ({k ~q> {x := w}v u} ({x := w}q ϕ)).
+Proof.
+  destruct ϕ. cbn. intros.
+  f_equal.
+  rewrite !Vector.map_map.
+  apply Vector.map_ext.
+  eauto using subst_open_value.
+Qed.
+
+Lemma subst_open_qualifier_closed:
+  ∀ (ϕ : qualifier) (x : atom) (u w : value) (k : nat),
+    closed_value u ->
+    lc w → {x := w }q ({k ~q> u} ϕ) = {k ~q> u} ({x := w }q ϕ).
+Proof.
+  intros. rewrite subst_open_qualifier; auto.
+  rewrite (subst_fresh_value); eauto. set_solver.
+Qed.
+
+Lemma subst_lc_qualifier : forall x (u: value) (ϕ: qualifier),
+    lc_qualifier ϕ -> lc u -> lc_qualifier ({x := u}q ϕ).
+Proof.
+  destruct 1. intros Hu.
+  econstructor.
+  srewrite Vector.to_list_Forall.
+  rewrite Vector.to_list_map.
+  rewrite Forall_map.
+  eapply Forall_impl; eauto.
+  simpl. eauto using subst_lc_value.
+Qed.
+
+Lemma subst_open_var_qualifier: forall x y (u: value) (ϕ: qualifier) (k: nat),
+    x <> y -> lc u -> {x := u}q ({k ~q> y} ϕ) = ({k ~q> y} ({x := u}q ϕ)).
+Proof.
+  intros.
+  rewrite subst_open_qualifier; auto. simpl. rewrite decide_False; auto.
+Qed.
+
+Lemma fv_of_subst_qualifier_closed:
+  forall x (u : value) (ϕ: qualifier),
+    closed_value u ->
+    qualifier_fv ({x := u }q ϕ) = qualifier_fv ϕ ∖ {[x]}.
+Proof.
+  destruct ϕ; simpl. clear. induction vals; simpl; intros.
+  my_set_solver.
+  rewrite fv_of_subst_value_closed by eauto.
+  my_set_solver.
+Qed.
+
+Lemma open_not_in_eq_qualifier (x : atom) (ϕ : qualifier) k :
+  x # {k ~q> x} ϕ ->
+  forall e, ϕ = {k ~q> e} ϕ.
+Proof.
+  destruct ϕ. simpl. intros.
+  f_equal.
+  clear - H.
+  induction vals; simpl; eauto.
+  f_equal. apply open_not_in_eq_value with x. my_set_solver.
+  auto_apply. my_set_solver.
+Qed.
+
+Lemma lc_subst_qualifier:
+  forall x (u: value) (ϕ: qualifier), lc_qualifier ({x := u}q ϕ) -> lc u -> lc_qualifier ϕ.
+Proof.
+  intros.
+  sinvert H.
+  destruct ϕ. simpl in *. simplify_eq.
+  econstructor.
+  srewrite Vector.to_list_Forall.
+  srewrite Vector.to_list_map.
+  srewrite Forall_map.
+  eapply Forall_impl; eauto.
+  simpl. eauto using lc_subst_value.
+Qed.
+
+Lemma open_rec_lc_qualifier: forall (v: value) (ϕ: qualifier) (k: nat),
+    lc_qualifier ϕ -> {k ~q> v} ϕ = ϕ.
+Proof.
+  destruct 1. simpl. f_equal.
+  rewrite <- Vector.map_id.
+  apply Vector.map_ext_in.
+  rewrite Vector.Forall_forall in H.
+  eauto using open_rec_lc_value.
+Qed.
+
+Lemma open_qualifier_idemp: forall u (v: value) (ϕ: qualifier) (k: nat),
+    lc v ->
+    {k ~q> u} ({k ~q> v} ϕ) = ({k ~q> v} ϕ).
+Proof.
+  destruct ϕ; intros. simpl.
+  f_equal.
+  rewrite Vector.map_map.
+  apply Vector.map_ext_in.
+  eauto using open_value_idemp.
+Qed.
+
+Lemma subst_intro_qualifier: forall (ϕ: qualifier) (x:atom) (w: value) (k: nat),
+    x # ϕ ->
+    lc w -> {x := w}q ({k ~q> x} ϕ) = ({k ~q> w} ϕ).
+Proof.
+  intros.
+  specialize (subst_open_qualifier ϕ x x w k) as J.
+  simpl in J. rewrite decide_True in J; auto.
+  rewrite J; auto. rewrite subst_fresh_qualifier; auto.
+Qed.
+
+Lemma open_lc_qualifier: forall (u: value) (ϕ: qualifier),
+    (* don't body defining body yet. *)
+    (exists L : aset, forall x : atom, x ∉ L -> lc_qualifier (ϕ ^q^ x)) ->
+    lc u ->
+    lc_qualifier ({0 ~q> u} ϕ).
+Proof.
+  intros. destruct H.
+  let acc := collect_stales tt in pose acc.
+  pose (Atom.fv_of_set a).
+  assert (a0 ∉ a). apply Atom.fv_of_set_fresh.
+  erewrite <- subst_intro_qualifier; auto. instantiate (1:= a0).
+  apply subst_lc_qualifier; auto. apply H.
+  my_set_solver. my_set_solver.
+Qed.
+
+Lemma open_swap_qualifier: forall (ϕ: qualifier) i j (u v: value),
+    lc u ->
+    lc v ->
+    i <> j ->
+    {i ~q> v} ({j ~q> u} ϕ) = {j ~q> u} ({i ~q> v} ϕ).
+Proof.
+  destruct ϕ. intros. simpl.
+  f_equal. rewrite !Vector.map_map.
+  apply Vector.map_ext.
+  eauto using open_swap_value.
+Qed.
+
+Lemma open_lc_respect_qualifier: forall (ϕ: qualifier) (u v : value) k,
+    lc_qualifier ({k ~q> u} ϕ) ->
+    lc u ->
+    lc v ->
+    lc_qualifier ({k ~q> v} ϕ).
+Proof.
+  intros. sinvert H.
+  destruct ϕ. simpl in *. simplify_eq.
+  econstructor.
+  srewrite Vector.to_list_Forall.
+  rewrite Vector.to_list_map in *.
+  rewrite Forall_map in *.
+  eapply Forall_impl; eauto.
+  simpl. eauto using open_lc_respect_value.
+Qed.
+
 Arguments qualifier_and : simpl never.
+
+(** * Well-founded relation in qualifiers *)
 
 (* Well-founded constraint of base type for fixed point. *)
 Definition constant_measure (c : constant) :=

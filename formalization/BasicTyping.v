@@ -6,6 +6,8 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 
+(** This file defines the basic type system of λᴱ. *)
+
 Definition ty_of_const (c: constant): base_ty :=
   match c with
   | cnat _ => TNat
@@ -73,6 +75,8 @@ Scheme value_has_type_mutual_rec := Induction for value_has_type Sort Prop
 Global Hint Constructors tm_has_type: core.
 Global Hint Constructors value_has_type: core.
 
+(** * Naming related properties of the basic type system *)
+
 Lemma basic_typing_contains_fv_tm: forall Γ e T, Γ ⊢t e ⋮t T -> fv_tm e ⊆ dom Γ
 with basic_typing_contains_fv_value: forall Γ e T, Γ ⊢t e ⋮v T -> fv_value e ⊆ dom Γ.
 Proof.
@@ -106,15 +110,6 @@ Proof.
   apply basic_typing_contains_fv_value in H. my_set_solver.
 Qed.
 
-Ltac instantiate_atom_listctx :=
-  let acc := collect_stales tt in
-  instantiate (1 := acc); intros;
-  repeat (match goal with
-          | [H: forall (x: atom), x ∉ ?L -> _, H': ?a ∉ _ ∪ (stale _) |- _ ] =>
-              assert (a ∉ L) as Htmp by fast_set_solver;
-              specialize (H a Htmp); clear Htmp; repeat destruct_hyp_conj; auto
-          end; simpl).
-
 Lemma basic_typing_regular_value: forall Γ v t, Γ ⊢t v ⋮v t -> lc v
 with basic_typing_regular_tm: forall Γ e t, Γ ⊢t e ⋮t t -> lc e.
 Proof.
@@ -129,31 +124,3 @@ Ltac basic_typing_regular_simp :=
     | [H: _ ⊢t _ ⋮v _ |- body _] => apply basic_typing_regular_value in H; destruct H; auto
     | [H: _ ⊢t _ ⋮t _ |- body _] => apply basic_typing_regular_tm in H; destruct H; auto
     end.
-
-Lemma empty_basic_typing_bool_value_exists: forall (v: value), ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
-Proof.
-  inversion 1; subst; simpl in *.
-  destruct c; simplify_eq. destruct b; eauto.
-  simplify_map_eq.
-Qed.
-
-Lemma empty_basic_typing_nat_value_exists: forall (v: value), ∅ ⊢t v ⋮v TNat -> (exists (i: nat), v = i).
-Proof.
-  inversion 1; subst; simpl in *.
-  destruct c; simplify_eq. eauto.
-  simplify_map_eq.
-Qed.
-
-Lemma empty_basic_typing_base_const_exists: forall (v: value) (B: base_ty), ∅ ⊢t v ⋮v B -> (exists (c: constant), v = c).
-Proof.
-  inversion 1; subst. eauto. simplify_map_eq.
-Qed.
-
-Lemma empty_basic_typing_arrow_value_lam_exists:
-  forall (v: value) T1 T2, ∅ ⊢t v ⋮v T1 ⤍ T2 ->
-                      (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam (T1 ⤍ T2) e)).
-Proof.
-  inversion 1; subst. simplify_map_eq.
-  - left. eauto.
-  - right. eexists. f_equal.
-Qed.

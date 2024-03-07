@@ -6,7 +6,11 @@ From CT Require Import NamelessTactics.
 Import CoreLang.
 Import NamelessTactics.
 
-(** * Most of lemmas in this file is inspired by Arthur Chargu´eraud's paper "The Locally Nameless Representation" : https://chargueraud.org/research/2009/ln/main.pdf *)
+(** This file provides the infrastructure for reasoning about locally nameless
+  representation for the core language. Most lemmas in this file are inspired by
+  Arthur Chargu´eraud's paper "The Locally Nameless Representation" :
+  https://chargueraud.org/research/2009/ln/main.pdf *)
+
 Lemma constant_eqb_spec: forall (c c': constant), c = c' \/ c <> c'.
 Proof with eauto.
   destruct c, c'...

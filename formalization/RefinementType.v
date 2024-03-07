@@ -12,22 +12,26 @@ Import Tactics.
 Import NamelessTactics.
 Import OperationalSemantics.
 Import BasicTyping.
-(* Import Substitution. *)
 Import Qualifier.
 Import ListCtx.
 Import List.
 
-(** * We define the refinement type in locally nameless style. *)
+(** This file defines the λᴱ refinement type syntax (Fig. 4). Like λᴱ term
+  syntax, the type syntax also uses locally nameless representation. *)
 
+(** Symbolic finite automata (A, B in Fig. 4). Only a minimal set of SFAs
+  relevant to metatheory are formalized. The complete set of SFAs can be
+  straightforwardly added, but it is orthogonal to the formal development. *)
 Inductive am : Type :=
-(** bvar 1 is argument, bvar 0 is result value *)
+(** Qualifier [ϕ] may refer to two bound variables: [bvar 1] is the argument
+  variable, [bvar 0] is result variable. *)
 | aevent (op: effop) (ϕ: qualifier)
 (* □⟨⊤⟩ in the paper, directly encoded as a primitive operator here for
 convenience. *)
 | aany
 | aconcat (a: am) (b: am)
 (* We only need the operations above for metatheory. Other connectives or
-modality can be added, but not interesting. *)
+modality can be straightforwardly added, but not interesting. *)
 | aunion (a: am) (b: am)
 .
 
@@ -35,11 +39,13 @@ Notation "'⟨' op '|' ϕ '⟩'" := (aevent op ϕ) (at level 5, format "⟨ op |
 Notation " a ';+' b " := (aconcat a b) (at level 5, format "a ;+ b", b constr, a constr, right associativity).
 Notation "∘*" := aany (at level 5).
 
+(** Refinement types (t in Fig. 4) *)
 Inductive pty : Type :=
 | basepty (B: base_ty) (ϕ: qualifier)
 | arrpty (ρ: pty) (τ: hty)
 | ghostpty (B: base_ty) (ρ: pty)
 
+(** Hoare automata types (τ in Fig. 4) *)
 with hty : Type :=
 | hoarehty (ρ: pty) (pre post: am)
 | interhty (τ1 τ2: hty).
@@ -63,7 +69,7 @@ Notation "'<[' a ']' ρ '[' b ']>'" :=
       ρ constr at next level, a constr, b constr).
 Notation "τ1 '⊓' τ2" := (interhty τ1 τ2).
 
-(** Erase *)
+(** Type erasure (Fig. 5) *)
 
 Fixpoint pty_erase ρ : ty :=
   match ρ with
@@ -86,8 +92,14 @@ Class Erase A := erase : A -> ty.
 
 Notation " '⌊' ty '⌋' " := (erase ty) (at level 5, format "⌊ ty ⌋", ty constr).
 
-(** free variables *)
+Definition ctx_erase (Γ: listctx pty) :=
+  ⋃ ((List.map (fun e => {[e.1 := pty_erase e.2]}) Γ): list (amap ty)).
 
+Notation " '⌊' Γ '⌋*' " := (ctx_erase Γ) (at level 5, format "⌊ Γ ⌋*", Γ constr).
+
+(** * Naming related definitions *)
+
+(** free variables *)
 Fixpoint am_fv a : aset :=
   match a with
   | aevent _ ϕ => qualifier_fv ϕ
@@ -172,7 +184,7 @@ Notation "'{' x ':=' s '}p'" := (pty_subst x s) (at level 20, format "{ x := s }
 Notation "'{' x ':=' s '}a'" := (am_subst x s) (at level 20, format "{ x := s }a", x constr).
 Notation "'{' x ':=' s '}h'" := (hty_subst x s) (at level 20, format "{ x := s }h", x constr).
 
-(** well formed, locally closed, closed with state *)
+(** Local closure *)
 
 Inductive lc_am : am -> Prop :=
 | lc_aevent: forall op ϕ (L : aset),
@@ -211,6 +223,8 @@ Scheme lc_pty_hty_ind := Minimality for lc_pty Sort Prop
     with lc_hty_pty_ind := Minimality for lc_hty Sort Prop.
 Combined Scheme lc_pty_hty_mutind from lc_pty_hty_ind, lc_hty_pty_ind.
 
+(** Closed under free variable set *)
+
 Inductive closed_am (d: aset) (a: am): Prop :=
 | closed_am_: lc_am a -> am_fv a ⊆ d -> closed_am d a.
 
@@ -220,8 +234,8 @@ Inductive closed_pty (d : aset) (ρ: pty): Prop :=
 Inductive closed_hty (d: aset) (ρ: hty): Prop :=
 | closed_hty_: lc_hty ρ -> hty_fv ρ ⊆ d -> closed_hty d ρ.
 
-(* Type context *)
-
+(** Well-formedness of type context. All terms and types are alpha-converted to
+  have unique names. *)
 Inductive ok_ctx: listctx pty -> Prop :=
 | ok_ctx_nil: ok_ctx []
 | ok_ctx_cons: forall (Γ: listctx pty)(x: atom) (ρ: pty),
@@ -235,16 +249,13 @@ Proof.
   induction 1; eauto.
 Qed.
 
-Definition ctx_erase (Γ: listctx pty) :=
-  ⋃ ((List.map (fun e => {[e.1 := pty_erase e.2]}) Γ): list (amap ty)).
-
-Notation " '⌊' Γ '⌋*' " := (ctx_erase Γ) (at level 5, format "⌊ Γ ⌋*", Γ constr).
-
-(** Ty Function *)
+(** Shorthands *)
 Definition mk_eq_constant c := {: ty_of_const c | b0:c= c }.
 Definition mk_bot ty := {: ty | mk_q_under_bot }.
 Definition mk_top ty := {: ty | mk_q_under_top }.
 Definition mk_eq_var ty (x: atom) := {: ty | b0:x= x }.
+
+(** * Naming properties of refinement type syntax *)
 
 Lemma pty_erase_open_eq ρ k s :
   pty_erase ρ = pty_erase ({k ~p> s} ρ)
@@ -389,19 +400,6 @@ Proof.
     repeat apply union_mono; eauto using open_fv_am'.
 Qed.
 
-Lemma open_subst_same_qualifier: forall x y (ϕ : qualifier) k,
-    x # ϕ ->
-    {x := y }q ({k ~q> x} ϕ) = {k ~q> y} ϕ.
-Proof.
-  destruct ϕ. cbn. intros.
-  f_equal. clear - H.
-  (* A better proof should simply reduce to vector facts. Don't bother yet. *)
-  induction vals; cbn; eauto.
-  cbn in H.
-  f_equal. apply open_subst_same_value. my_set_solver.
-  apply IHvals. my_set_solver.
-Qed.
-
 Lemma open_subst_same_am: forall x y (a : am) k,
     x # a ->
     {x := y }a ({k ~a> x} a) = {k ~a> y} a.
@@ -437,16 +435,6 @@ Proof.
           | apply open_subst_same_am; my_set_solver ].
 Qed.
 
-Lemma subst_open_qualifier: forall (ϕ: qualifier) (x:atom) (u: value) (w: value) (k: nat),
-    lc w -> {x := w}q ({k ~q> u} ϕ) = ({k ~q> {x := w}v u} ({x := w}q ϕ)).
-Proof.
-  destruct ϕ. cbn. intros.
-  f_equal.
-  rewrite !Vector.map_map.
-  apply Vector.map_ext.
-  eauto using subst_open_value.
-Qed.
-
 Lemma subst_open_am: forall (a: am) (x:atom) (u: value) (w: value) (k: nat),
     lc w -> {x := w}a ({k ~a> u} a) = ({k ~a> {x := w}v u} ({x := w}a a)).
 Proof.
@@ -466,15 +454,6 @@ with subst_open_hty: forall (τ: hty) (x:atom) (u: value) (w: value) (k: nat),
 Proof.
   destruct ρ; simpl; intros; f_equal; eauto using subst_open_qualifier.
   destruct τ; simpl; intros; f_equal; eauto using subst_open_am.
-Qed.
-
-Lemma subst_open_qualifier_closed:
-  ∀ (ϕ : qualifier) (x : atom) (u w : value) (k : nat),
-    closed_value u ->
-    lc w → {x := w }q ({k ~q> u} ϕ) = {k ~q> u} ({x := w }q ϕ).
-Proof.
-  intros. rewrite subst_open_qualifier; auto.
-  rewrite (subst_fresh_value); eauto. set_solver.
 Qed.
 
 Lemma subst_open_pty_closed:
@@ -502,25 +481,6 @@ Lemma subst_open_hty_closed:
 Proof.
   intros. rewrite subst_open_hty; auto.
   rewrite (subst_fresh_value); eauto. set_solver.
-Qed.
-
-Lemma subst_lc_qualifier : forall x (u: value) (ϕ: qualifier),
-    lc_qualifier ϕ -> lc u -> lc_qualifier ({x := u}q ϕ).
-Proof.
-  destruct 1. intros Hu.
-  econstructor.
-  srewrite Vector.to_list_Forall.
-  rewrite Vector.to_list_map.
-  rewrite Forall_map.
-  eapply Forall_impl; eauto.
-  simpl. eauto using subst_lc_value.
-Qed.
-
-Lemma subst_open_var_qualifier: forall x y (u: value) (ϕ: qualifier) (k: nat),
-    x <> y -> lc u -> {x := u}q ({k ~q> y} ϕ) = ({k ~q> y} ({x := u}q ϕ)).
-Proof.
-  intros.
-  rewrite subst_open_qualifier; auto. simpl. rewrite decide_False; auto.
 Qed.
 
 Lemma subst_open_var_am: forall x y (u: value) (a: am) (k: nat),
@@ -569,17 +529,6 @@ Proof.
   - rewrite <- subst_open_var_pty by (eauto; my_set_solver); eauto.
 Qed.
 
-Lemma fv_of_subst_qualifier_closed:
-  forall x (u : value) (ϕ: qualifier),
-    closed_value u ->
-    qualifier_fv ({x := u }q ϕ) = qualifier_fv ϕ ∖ {[x]}.
-Proof.
-  destruct ϕ; simpl. clear. induction vals; simpl; intros.
-  my_set_solver.
-  rewrite fv_of_subst_value_closed by eauto.
-  my_set_solver.
-Qed.
-
 Lemma fv_of_subst_am_closed:
   forall x (u : value) (a: am),
     closed_value u ->
@@ -605,18 +554,6 @@ Proof.
   my_set_solver.
   rewrite !fv_of_subst_hty_closed by eauto.
   my_set_solver.
-Qed.
-
-Lemma open_not_in_eq_qualifier (x : atom) (ϕ : qualifier) k :
-  x # {k ~q> x} ϕ ->
-  forall e, ϕ = {k ~q> e} ϕ.
-Proof.
-  destruct ϕ. simpl. intros.
-  f_equal.
-  clear - H.
-  induction vals; simpl; eauto.
-  f_equal. apply open_not_in_eq_value with x. my_set_solver.
-  auto_apply. my_set_solver.
 Qed.
 
 Lemma open_not_in_eq_am (x : atom) (a : am) k :
@@ -651,20 +588,6 @@ Proof.
   specialize (subst_open_pty ρ x x w k) as J.
   simpl in J. rewrite decide_True in J; auto.
   rewrite J; auto. rewrite subst_fresh_pty; auto.
-Qed.
-
-Lemma lc_subst_qualifier:
-  forall x (u: value) (ϕ: qualifier), lc_qualifier ({x := u}q ϕ) -> lc u -> lc_qualifier ϕ.
-Proof.
-  intros.
-  sinvert H.
-  destruct ϕ. simpl in *. simplify_eq.
-  econstructor.
-  srewrite Vector.to_list_Forall.
-  srewrite Vector.to_list_map.
-  srewrite Forall_map.
-  eapply Forall_impl; eauto.
-  simpl. eauto using lc_subst_value.
 Qed.
 
 Lemma lc_subst_am:
@@ -704,27 +627,6 @@ Proof.
     econstructor; eauto using lc_subst_am.
 Qed.
 
-Lemma open_rec_lc_qualifier: forall (v: value) (ϕ: qualifier) (k: nat),
-    lc_qualifier ϕ -> {k ~q> v} ϕ = ϕ.
-Proof.
-  destruct 1. simpl. f_equal.
-  rewrite <- Vector.map_id.
-  apply Vector.map_ext_in.
-  rewrite Vector.Forall_forall in H.
-  eauto using open_rec_lc_value.
-Qed.
-
-Lemma open_qualifier_idemp: forall u (v: value) (ϕ: qualifier) (k: nat),
-    lc v ->
-    {k ~q> u} ({k ~q> v} ϕ) = ({k ~q> v} ϕ).
-Proof.
-  destruct ϕ; intros. simpl.
-  f_equal.
-  rewrite Vector.map_map.
-  apply Vector.map_ext_in.
-  eauto using open_value_idemp.
-Qed.
-
 Lemma open_am_idemp: forall u (v: value) (a: am) (k: nat),
     lc v ->
     {k ~a> u} ({k ~a> v} a) = ({k ~a> v} a).
@@ -743,59 +645,6 @@ Proof.
   destruct τ; intros; simpl; f_equal; eauto using open_am_idemp.
 Qed.
 
-Lemma subst_intro_qualifier: forall (ϕ: qualifier) (x:atom) (w: value) (k: nat),
-    x # ϕ ->
-    lc w -> {x := w}q ({k ~q> x} ϕ) = ({k ~q> w} ϕ).
-Proof.
-  intros.
-  specialize (subst_open_qualifier ϕ x x w k) as J.
-  simpl in J. rewrite decide_True in J; auto.
-  rewrite J; auto. rewrite subst_fresh_qualifier; auto.
-Qed.
-
-Lemma open_lc_qualifier: forall (u: value) (ϕ: qualifier),
-    (* don't body defining body yet. *)
-    (exists L : aset, forall x : atom, x ∉ L -> lc_qualifier (ϕ ^q^ x)) ->
-    lc u ->
-    lc_qualifier ({0 ~q> u} ϕ).
-Proof.
-  intros. destruct H.
-  let acc := collect_stales tt in pose acc.
-  pose (Atom.fv_of_set a).
-  assert (a0 ∉ a). apply Atom.fv_of_set_fresh.
-  erewrite <- subst_intro_qualifier; auto. instantiate (1:= a0).
-  apply subst_lc_qualifier; auto. apply H.
-  my_set_solver. my_set_solver.
-Qed.
-
-Lemma open_swap_qualifier: forall (ϕ: qualifier) i j (u v: value),
-    lc u ->
-    lc v ->
-    i <> j ->
-    {i ~q> v} ({j ~q> u} ϕ) = {j ~q> u} ({i ~q> v} ϕ).
-Proof.
-  destruct ϕ. intros. simpl.
-  f_equal. rewrite !Vector.map_map.
-  apply Vector.map_ext.
-  eauto using open_swap_value.
-Qed.
-
-Lemma open_lc_respect_qualifier: forall (ϕ: qualifier) (u v : value) k,
-    lc_qualifier ({k ~q> u} ϕ) ->
-    lc u ->
-    lc v ->
-    lc_qualifier ({k ~q> v} ϕ).
-Proof.
-  intros. sinvert H.
-  destruct ϕ. simpl in *. simplify_eq.
-  econstructor.
-  srewrite Vector.to_list_Forall.
-  rewrite Vector.to_list_map in *.
-  rewrite Forall_map in *.
-  eapply Forall_impl; eauto.
-  simpl. eauto using open_lc_respect_value.
-Qed.
-
 Lemma closed_pty_subseteq_proper s1 s2 ρ :
   closed_pty s1 ρ ->
   s1 ⊆ s2 ->
@@ -803,4 +652,16 @@ Lemma closed_pty_subseteq_proper s1 s2 ρ :
 Proof.
   intros. sinvert H. split. eauto.
   my_set_solver.
+Qed.
+
+Lemma closed_hty_hoare_congr d ρ a b :
+  closed_pty d ρ ->
+  closed_am d a ->
+  closed_am d b ->
+  closed_hty d (<[ a ] ρ [ b ]>).
+Proof.
+  inversion 1. inversion 1. inversion 1.
+  econstructor.
+  econstructor; eauto.
+  simpl. my_set_solver.
 Qed.

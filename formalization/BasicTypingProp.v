@@ -11,6 +11,41 @@ Import BasicTyping.
 Import Trace.
 Import OperationalSemantics.
 
+(** This file proves properties of the basic type system. *)
+
+(** * Canonical forms *)
+
+Lemma basic_typing_bool_canonical_form: forall (v: value), ∅ ⊢t v ⋮v TBool -> v = true \/ v = false.
+Proof.
+  inversion 1; subst; simpl in *.
+  destruct c; simplify_eq. destruct b; eauto.
+  simplify_map_eq.
+Qed.
+
+Lemma basic_typing_nat_canonical_form: forall (v: value), ∅ ⊢t v ⋮v TNat -> (exists (i: nat), v = i).
+Proof.
+  inversion 1; subst; simpl in *.
+  destruct c; simplify_eq. eauto.
+  simplify_map_eq.
+Qed.
+
+Lemma basic_typing_base_canonical_form: forall (v: value) (B: base_ty), ∅ ⊢t v ⋮v B -> (exists (c: constant), v = c).
+Proof.
+  inversion 1; subst. eauto. simplify_map_eq.
+Qed.
+
+Lemma basic_typing_arrow_canonical_form:
+  forall (v: value) T1 T2, ∅ ⊢t v ⋮v T1 ⤍ T2 ->
+                      (exists e, v = vlam T1 e) \/ (exists e, v = vfix (T1 ⤍ T2) (vlam (T1 ⤍ T2) e)).
+Proof.
+  inversion 1; subst. simplify_map_eq.
+  - left. eauto.
+  - right. eexists. f_equal.
+Qed.
+
+
+(** * Weakening lemmas *)
+
 Lemma basic_typing_weaken_tm: forall Γ Γ' (v: tm) T,
     Γ ⊆ Γ' -> Γ ⊢t v ⋮t T -> Γ' ⊢t v ⋮t T
 with basic_typing_weaken_value: forall Γ Γ' (v: value) T,
@@ -38,6 +73,8 @@ Proof.
   intros. eapply basic_typing_weaken_value. 2: eauto.
   apply insert_subseteq. apply not_elem_of_dom. my_set_solver.
 Qed.
+
+(** * Substitution lemmas *)
 
 Lemma basic_typing_subst_tm: forall Γ z u U (v: tm) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮t T -> Γ ⊢t {z := u}t v ⋮t T.
 Proof.
@@ -85,6 +122,8 @@ Proof.
     | apply insert_commute; my_set_solver ].
 Qed.
 
+(** * Type uniqueness lemmas *)
+
 Lemma basic_typing_tm_unique: forall Γ e T1 T2,
     Γ ⊢t e ⋮t T1 ->
     Γ ⊢t e ⋮t T2 ->
@@ -121,6 +160,8 @@ Proof.
   by simplify_map_eq.
 Qed.
 
+(** * Strengthening lemmas *)
+
 (* This statement can be generalized to taking a union of the context and a
 disjoint new context. *)
 Lemma basic_typing_strengthen_tm: forall Γ x Tx (v: tm) T,
@@ -143,6 +184,8 @@ Proof.
         end ].
   by rewrite lookup_insert_ne in * by my_set_solver.
 Qed.
+
+(** * Type properties of syntax sugar *)
 
 Lemma mk_app_e_v_has_type Γ e v T1 T2 :
   Γ ⊢t e ⋮t T1 ⤍ T2 ->
@@ -176,6 +219,8 @@ Proof.
   repeat esplit; eauto.
   eapply basic_typing_strengthen_value; eauto. my_set_solver.
 Qed.
+
+(** * Type preservation *)
 
 Lemma tr_reduction_sound α op c1 c :
   α⊧{op~c1}⇓{c} ->

@@ -13,4 +13,5 @@ ListCtx.v
 RefinementType.v
 Denotation.v
 Instantiation.v
+InstantiationProp.v
 Typing.v

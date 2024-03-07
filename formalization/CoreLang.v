@@ -1,22 +1,24 @@
 From CT Require Import Atom.
 From stdpp Require Import stringmap mapset.
 
-(** * constant *)
+(** * This file defines the core language λᴱ. *)
+
+(** * constants (c in Fig. 2) *)
 Inductive constant : Type :=
 | cbool: bool -> constant
 | cnat : nat -> constant.
 
 Global Hint Constructors constant: core.
 
-(** * basic type *)
-(** base basic type *)
+(** * basic types *)
+(** base types (b in Fig. 4) *)
 Inductive base_ty : Type :=
 | TNat   : base_ty
 | TBool  : base_ty.
 
 Global Hint Constructors base_ty: core.
 
-(** basic type *)
+(** basic types (s in Fig. 4) *)
 Inductive ty : Type :=
 | TBase : base_ty -> ty
 | TArrow : ty -> ty -> ty.
@@ -27,10 +29,13 @@ Coercion TBase : base_ty >-> ty.
 Coercion cbool : bool >-> constant.
 Coercion cnat : nat >-> constant.
 
-(* rightbkarrow *)
+(* notation for function type: \rightbkarrow. *)
 Notation " t1 '⤍' t2" := (TArrow t1 t2) (at level 18, right associativity).
 
-(** * effectful operators *)
+(** * effectful operators (op in Fig. 4) *)
+(** pure operators (e.g., [op_plus_one]) are treated as effectful operators,
+  whose return value is independent of the context trace, and will not interfere
+  the result of other operators. *)
 Inductive effop : Type :=
 | op_plus_one
 | op_minus_one
@@ -42,14 +47,19 @@ Inductive effop : Type :=
 
 Global Hint Constructors effop: core.
 
-(** * core language in locally nameless style, defined mutual recursively *)
+(** * λᴱ term syntax (Fig. 2) *)
+
+(** values (v in Fig. 2) *)
 Inductive value : Type :=
 | vconst (c: constant)
 | vfvar (atom: atom)
 | vbvar (bn: nat)
 | vlam (T: ty) (e: tm)
 | vfix (Tf: ty) (e: tm)
+(** expressions (computations) (e in Fig. 2) *)
 with tm : Type :=
+(* We explicitly connect values and expressions (computation) using a standard
+return syntax, while in the paper values are implicitly expressions. *)
 | treturn (v: value)
 | tlete (e1: tm) (e2: tm)
 | tleteffop (op: effop) (v1: value) (e: tm)
@@ -63,7 +73,8 @@ Coercion vconst : constant >-> value.
 Coercion vfvar : atom >-> value.
 Coercion treturn : value >-> tm.
 
-(** * open, close, subst (locally nameless style) *)
+(** * Locally nameless representation related definitions *)
+
 (** open *)
 Fixpoint open_value (k : nat) (s : value) (v : value): value :=
   match v with
@@ -160,7 +171,7 @@ Definition closed_tm (e: tm) := fv_tm e ≡ ∅.
 
 Definition body (e: tm) := exists (L: aset), forall (x: atom), x ∉ L -> lc (e ^t^ x).
 
-(** subst *)
+(** substitution *)
 Fixpoint value_subst (x : atom) (s : value) (v : value): value :=
   match v with
   | vconst _ => v

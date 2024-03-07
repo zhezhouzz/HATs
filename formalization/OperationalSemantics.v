@@ -8,9 +8,13 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 
+(** This file defines the operational semantics of the core language. *)
+
 Reserved Notation "α '⊧' t1 '↪{' β '}' t2" (at level 60, t1 constr, β constr).
 
-(** the small step operational semantics *)
+(** the small step operational semantics (Fig. 3) *)
+(* Because in this formalization, we treat pure operations as effectful
+operations, the rule [STPureOp] is not necessary. *)
 Inductive step : list evop -> tm -> list evop -> tm -> Prop :=
 | STEffOp: forall (α: list evop) op (c1 c: constant) e,
     body e -> lc c1 -> lc c ->
@@ -37,6 +41,24 @@ Inductive step : list evop -> tm -> list evop -> tm -> Prop :=
     lc e1 -> lc e2 ->
     α ⊧ (tmatchb false e1 e2) ↪{ [] } e2
 where "α '⊧' t1 '↪{' β '}' t2" := (step α t1 β t2).
+  
+Inductive multistep : list evop -> tm -> list evop -> tm -> Prop :=
+| multistep_refl : forall α (e : tm),
+    lc e -> multistep α e [] e
+| multistep_step : forall  α β β' (x y z: tm),
+    α ⊧ x ↪{ β } y ->
+    multistep (α ++ β) y β' z ->
+    multistep α x (β ++ β') z.
+
+Notation "α '⊧' t1 '↪*{' β '}' t2" := (multistep α t1 β t2) (at level 60, t1 constr, β constr).
+
+Definition pure_multistep (t1 t2: tm) := forall α, α ⊧ t1 ↪*{ [] } t2.
+
+Notation "t1 '↪*' t2" := (pure_multistep t1 t2) (at level 60, t1 constr, t2 constr).
+
+Global Hint Constructors multistep : core.
+
+(** * Properties of operational semantics *)
 
 Lemma step_regular: forall α β e1 e2, α ⊧ e1 ↪{ β } e2 -> lc e1 /\ lc e2.
 Proof.
@@ -68,22 +90,6 @@ Qed.
 
 Global Hint Resolve step_regular1: core.
 Global Hint Resolve step_regular2: core.
-
-Inductive multistep : list evop -> tm -> list evop -> tm -> Prop :=
-| multistep_refl : forall α (e : tm),
-    lc e -> multistep α e [] e
-| multistep_step : forall  α β β' (x y z: tm),
-    α ⊧ x ↪{ β } y ->
-    multistep (α ++ β) y β' z ->
-    multistep α x (β ++ β') z.
-
-Notation "α '⊧' t1 '↪*{' β '}' t2" := (multistep α t1 β t2) (at level 60, t1 constr, β constr).
-
-Definition pure_multistep (t1 t2: tm) := forall α, α ⊧ t1 ↪*{ [] } t2.
-
-Notation "t1 '↪*' t2" := (pure_multistep t1 t2) (at level 60, t1 constr, t2 constr).
-
-Global Hint Constructors multistep : core.
 
 Theorem multistep_trans :
   forall α βx βy (x y z : tm),
@@ -127,3 +133,183 @@ Ltac step_regular_simp :=
     | [H: _ ⊧ _ ↪*{ _ } _ |- body _] => apply multi_step_regular in H; destruct H; auto
     | [H: _ ⊧ _ ↪{ _ } _ |- body _] => apply step_regular in H; destruct H; auto
     end.
+
+Lemma value_reduction_refl: forall α β (v1: value) v2, α ⊧ v1 ↪*{ β} v2 -> v2 = v1 /\ β = [].
+Proof.
+  intros * H.
+  sinvert H; easy.
+Qed.
+
+Ltac reduction_simp :=
+  match goal with
+  | H: _ ⊧ (treturn _) ↪*{ _ } _  |- _ =>
+      apply value_reduction_refl in H; simp_hyps; simplify_eq
+  end.
+
+Lemma reduction_tlete:  forall e_x e α β (v : value),
+    α ⊧ tlete e_x e ↪*{ β } v ->
+    (exists (βx βe: trace) (v_x: value),
+      β = βx ++ βe /\ α ⊧ e_x ↪*{ βx } v_x /\ (α ++ βx) ⊧ (e ^t^ v_x) ↪*{ βe } v).
+Proof.
+  intros.
+  remember (tlete e_x e). remember (treturn v).
+  generalize dependent e_x.
+  induction H; intros; subst. easy.
+  sinvert H.
+  - ospecialize* IHmultistep; eauto.
+    simp_hyps.
+    eexists _, _, _. split; [ | split ]; cycle 1.
+    econstructor; eauto. simplify_list_eq. eauto.
+    simplify_list_eq. eauto.
+  - repeat esplit. econstructor; eauto. eauto.
+Qed.
+
+Lemma reduction_tlete':  forall e_x e α βx βe (v_x v : value),
+    (* NOTE: This condition is unnecessary as it should be implied by the
+    regularity lemma. Remove later when we bother proving a few more naming
+    lemmas. *)
+    body e ->
+    α ⊧ e_x ↪*{ βx } v_x ->
+    (α ++ βx) ⊧ (e ^t^ v_x) ↪*{ βe } v ->
+    α ⊧ tlete e_x e ↪*{ βx ++ βe } v.
+Proof.
+  intros * Hb H. remember (treturn v_x).
+  induction H; intros; subst.
+  - econstructor; eauto using STLetE2.
+  - simp_hyps.
+    simplify_list_eq.
+    econstructor.
+    econstructor; eauto.
+    eauto.
+Qed.
+
+Lemma reduction_mk_app_e_v α β (f v_x v : value) :
+  lc v_x ->
+  α ⊧ mk_app_e_v f v_x ↪*{ β} v ->
+  α ⊧ tletapp f v_x (vbvar 0) ↪*{ β} v.
+Proof.
+  intros Hlc H.
+  sinvert H. sinvert H0. easy.
+  simpl in *. simplify_list_eq.
+  rewrite open_rec_lc_value in * by eauto. eauto.
+Qed.
+
+Lemma reduction_mk_app_e_v' α β (f v_x v : value) :
+  α ⊧ tletapp f v_x (vbvar 0) ↪*{ β} v ->
+  α ⊧ mk_app_e_v f v_x ↪*{ β} v.
+Proof.
+  intros H.
+  assert (lc v_x). {
+    apply multi_step_regular1 in H. sinvert H. eauto.
+  }
+  eapply_eq multistep_step.
+  eapply STLetE2.
+  apply multi_step_regular1 in H. sinvert H. eauto.
+  (* Probably should be a lemma. *)
+  eexists. instantiate_atom_listctx.
+  simpl. apply letapp_lc_body. repeat split; eauto using lc.
+  by rewrite open_rec_lc_value.
+  simpl. simplify_list_eq. rewrite open_rec_lc_value; eauto.
+  eauto.
+Qed.
+
+Lemma reduction_letapplam α Tb e (v_x : value) β (v : value) :
+  lc v_x ->
+  α ⊧ mk_app_e_v (vlam Tb e) v_x ↪*{ β} v ->
+  α ⊧ e ^t^ v_x ↪*{ β} v.
+Proof.
+  intros Hlc H.
+  sinvert H.
+  sinvert H0; try easy.
+  simpl in H1.
+  rewrite open_rec_lc_value in H1 by auto.
+  sinvert H1. sinvert H.
+  apply reduction_tlete in H0.
+  simp_hyps. simpl in *.
+  sinvert H2; try easy.
+  simplify_list_eq; eauto.
+Qed.
+
+Lemma reduction_letapplam' α Tb e (v_x : value) β (v : value) :
+  lc v_x ->
+  (* NOTE: This condition is unnecessary as it should be implied by the
+  regularity lemma. *)
+  body e ->
+  α ⊧ e ^t^ v_x ↪*{ β} v ->
+  α ⊧ mk_app_e_v (vlam Tb e) v_x ↪*{ β} v.
+Proof.
+  intros Hlc Hb H.
+  eapply_eq multistep_step.
+  eapply STLetE2.
+  qauto using lc_abs_iff_body.
+  (* probably should be a lemma. *)
+  eexists. instantiate_atom_listctx.
+  simpl. apply letapp_lc_body. repeat split; eauto using lc.
+  by rewrite open_rec_lc_value.
+  simpl. econstructor.
+  econstructor. eauto. eauto.
+  by rewrite open_rec_lc_value.
+  rewrite open_rec_lc_value by eauto.
+  simplify_list_eq. eapply reduction_tlete'; eauto.
+  simpl. econstructor. eauto using multi_step_regular2.
+  simplify_list_eq. auto.
+Qed.
+
+Lemma reduction_tletapp:  forall v1 v2 e α β (v : value),
+    α ⊧ tletapp v1 v2 e ↪*{ β} v ->
+    (exists (βx βe: trace) (v_x: value),
+      β = βx ++ βe /\ α ⊧ mk_app_e_v v1 v2 ↪*{ βx } v_x /\
+        (α ++ βx) ⊧ (e ^t^ v_x) ↪*{ βe } v).
+Proof.
+  intros.
+  remember (tletapp v1 v2 e). remember (treturn v).
+  generalize dependent v2.
+  generalize dependent v1.
+  induction H; intros; subst. easy.
+  simp_hyps. sinvert H.
+  - eapply reduction_tlete in H0. simp_hyps.
+    simplify_list_eq.
+    eexists _, _, _. split; [| split]; eauto using reduction_letapplam'.
+  - simplify_list_eq.
+    ospecialize* H1; eauto. simp_hyps.
+    eexists _, _, _.
+    repeat split; cycle 1.
+
+    (* Maybe this should be a lemma about [vfix]. *)
+    apply reduction_mk_app_e_v in H.
+    apply reduction_mk_app_e_v'.
+    econstructor. econstructor; eauto.
+    simplify_list_eq. eauto.
+    apply multi_step_regular1 in H0.
+    sinvert H0. eauto.
+
+    simplify_list_eq. eauto.
+    simplify_list_eq. eauto.
+Qed.
+
+Lemma reduction_tleteffop:  forall op v2 e α β (v : value),
+    α ⊧ (tleteffop op v2 e) ↪*{ β} v ->
+    exists (c2 c_x: constant) β',
+      v2 = c2 /\ β = ev{ op ~ c2 := c_x } :: β' /\
+        α ⊧{op ~ c2}⇓{ c_x } /\ (α ++ [ev{op ~ c2 := c_x}]) ⊧ (e ^t^ c_x) ↪*{ β'} v .
+Proof.
+  intros.
+  sinvert H. sinvert H0.
+  eauto 10.
+Qed.
+
+Lemma reduction_matchb_true:  forall e1 e2 α β (v : value),
+    α ⊧ tmatchb true e1 e2 ↪*{ β} v -> α ⊧ e1 ↪*{ β} v.
+Proof.
+  intros.
+  sinvert H.
+  sinvert H0. simplify_list_eq. eauto.
+Qed.
+
+Lemma reduction_matchb_false:  forall e1 e2 α β (v : value),
+    α ⊧ tmatchb false e1 e2 ↪*{ β} v -> α ⊧ e2 ↪*{ β} v.
+Proof.
+  intros.
+  sinvert H.
+  sinvert H0. simplify_list_eq. eauto.
+Qed.
