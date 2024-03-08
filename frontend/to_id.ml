@@ -1,8 +1,5 @@
 open Ocaml5_parser
-
-(* open Parsetree *)
 open Sugar
-(* open Syntax.NTyped *)
 
 let longid_to_id c =
   match Longident.flatten c.Location.txt with
