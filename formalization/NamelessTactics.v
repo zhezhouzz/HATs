@@ -6,6 +6,9 @@ From Coq Require Import Logic.ClassicalFacts.
 From Coq Require Import Classical.
 From Coq Require Import Arith.Compare_dec.
 
+(** * This file defines auxiliary tactics for handling locally nameless
+    representations. *)
+
 Import CoreLang.
 
 Ltac destruct_hyp_conj :=
@@ -364,3 +367,12 @@ Ltac simpl_union H :=
           destruct H as [H1 H2]; go H1; go H2
       | _ => idtac
   end in go H.
+
+Ltac instantiate_atom_listctx :=
+  let acc := collect_stales tt in
+  instantiate (1 := acc); intros;
+  repeat (match goal with
+          | [H: forall (x: atom), x ∉ ?L -> _, H': ?a ∉ _ ∪ (stale _) |- _ ] =>
+              assert (a ∉ L) as Htmp by fast_set_solver;
+              specialize (H a Htmp); clear Htmp; repeat destruct_hyp_conj; auto
+          end; simpl).

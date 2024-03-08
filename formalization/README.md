@@ -8,7 +8,7 @@ The files containing the definitions and proofs of our core language
 - `Tactics.v`: Some auxiliary tactics.
 - `NamelessTactics.v`: Auxiliary tactics for the locally nameless representation.
 - `CoreLang.v`: Definitions and notations of terms in **λ<sup>E</sup>**.
-- `CoreLangProp.v`: Lemmas for our core language **λ<sup>E</sup>**.
+- `CoreLangProp.v`: Lemmas for the syntax of **λ<sup>E</sup>**.
 - `Trace.v`: Definitions and notations of traces.
 - `OperationalSemantics.v`: Definitions and notations of the small-step
   operational semantics of **λ<sup>E</sup>**.
@@ -18,9 +18,11 @@ The files containing the definitions and proofs of our core language
 - `ListCtx.v`: Definitions and notations for reasoning about type context.
 - `RefinementType.v`: Definitions and notations of Hoare Automata Types.
 - `Denotation.v`: Definitions and notations of the automaton and type denotation.
-- `Instantiation.v`: Lemmas for the substitution under type context.
-- `Typing.v`: Definitions and notations for the typing rules; as well as
-  statement and proof of the fundamental and soundness theorem.
+- `Instantiation.v`: Definition and notations of substitution and
+  multi-substitution operation.
+- `InstantiationProp.v`: Lemmas for multi-substitution.
+- `Typing.v`: Definitions and notations for the typing rules; as well as the
+  statements and proofs of the fundamental and soundness theorems.
 
 ## Compilation and Dependencies
 
@@ -54,26 +56,26 @@ undefined, as the type system is parameterized over this relation.
 
 Our formalization takes inspiration and ideas from the following work, though does not directly depend on them:
 - [Software Foundations](https://softwarefoundations.cis.upenn.edu/): a lot of our formalization is inspired by the style used in Software Foundations.
-- [The Locally Nameless Representation](https://chargueraud.org/research/2009/ln/main.pdf): we use the locally nameless representation for variable bindings.
+- [The Locally Nameless Representation](https://chargueraud.org/research/2009/ln/main.pdf): we use locally nameless representation for variable bindings.
 
 ## Paper-to-artifact Correspondence
 
 | Definition/Theorems          | Paper                                                                       | Definition                                                                                                                | Notation                        |
 |------------------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| Term Syntax                  | Fig. 2                                                                    | mutually recursively defined as values (`value`) and expressions (`tm`) in file `CoreLang.v` (line `45`)                      |                                 |
-| Trace Syntax                 | Fig. 3                                                                    | `trace` in file `Trace.v` (line `17`)                                                                                     | `[ev{ op ~ v1 := v2 }]`         |
-| Operational semantics        | Fig. 3 (and Fig. 9 in appendix) | `step` in file `OperationalSemantics.v` (line `14`)                                                                       | `α ⊧ e ↪{ α } e`        |
-| Type Syntax                  | Fig. 4                                                                    | basic types (`ty`) in file `CoreLang` (line `20`), Refinement Types (`pty`) and Hoare Automata Types (`hty`) in file `RefinementType.v` (line `38` and `43`) | `{:b \| ϕ }`, `t ⇨ τ`, `b ⇢ t`, `<[A]t[A]>` and `τ ⊓ τ`                               |
-| Basic typing rules           | Fig. 10 in appendix                                         | mutually recursive definition of `tm_has_type` and `value_has_type` in file `BasicTyping.v` (line `36`)                     | `Γ ⊢t e ⋮t T` and `Γ ⊢t v ⋮v T` |
-| Type Erasure                 | Fig. 5                                                                    | `pty_erase` (line `68`), `hty_erase` (line `75`) and `ctx_erase` (line `238`) in file `RefinementTypes.v`                                          | `⌊ t ⌋`, `⌊ τ ⌋` and `⌊ Γ ⌋*`            |
-| Well-formedness | Fig. 5 (and Fig. 12 in appendix)                                                                  | `wf_hty` in file `Typing.v` (line `41`)                                                               | `Γ ⊢WF τ`                       |
-| Subtyping | Fig. 5 (and Fig. 12 in appendix) | `pty_subtyping` and `subtyping` in file `Typing.v` (line `63` and `70`)                                                                                | `Γ ⊢ τ1 <⋮ τ2`                  |
-| Typing rules                 | Fig. 6 (and Fig. 13 in appendix) | `effop_type_check` (line `88`), and mutually inductive propositions `value_type_check` and `term_type_check` in file `Typing.v` (line `100`)            | `Γ ⊢ op ⋮o t`,  `Γ ⊢ v ⋮v t` and `Γ ⊢ e ⋮t τ` |
-| Trace language                 | Fig. 7                                                                   | `langA` in file `Denotation.v` (line `28`)                                                                                | `a⟦ A ⟧`                        |
-| Type denotation              | Fig. 7                                                                   | `ptyR` and `htyR` in file `Denotation.v` (line `62` and `83`)                                                                                 | `p⟦ t ⟧` and `⟦ τ ⟧`                         |
-| Type context denotation      | Fig. 7                                                                   | `ctxRst` in file `Denotation.v` (line `111`)                                                                              |                                 |
-| Fundamental Theorem          | Theorem 4.8                                                                | `fundamental` in file `Typing.v` (line `2109`)                                                                               |                                 |
-| Soundness theorem            | Corollary 4.9                                                                | `soundness` in file `Typing.v` (line `2135`)                                                                                 |                                 |
+| Term Syntax                  | Fig. 2                                                                    | mutually recursively defined as values (`value`) and expressions (`tm`) in file `CoreLang.v` (line `53`)                      |                                 |
+| Trace Syntax                 | Fig. 3                                                                    | `trace` in file `Trace.v` (line `23`)                                                                                     | `[ev{ op ~ v1 := v2 }]`         |
+| Operational semantics        | Fig. 3 (and Fig. 9 in appendix) | `step` in file `OperationalSemantics.v` (line `18`)                                                                       | `α ⊧ e ↪{ α } e`        |
+| Type Syntax                  | Fig. 4                                                                    | basic types (`ty`) in file `CoreLang` (line `22`), Refinement Types (`pty`) and Hoare Automata Types (`hty`) in file `RefinementType.v` (line `43` and `49`) | `{:b \| ϕ }`, `t ⇨ τ`, `b ⇢ t`, `<[A]t[A]>` and `τ ⊓ τ`                               |
+| Basic typing rules           | Fig. 10 in appendix                                         | mutually recursive definition of `tm_has_type` and `value_has_type` in file `BasicTyping.v` (line `39`)                     | `Γ ⊢t e ⋮t T` and `Γ ⊢t v ⋮v T` |
+| Type Erasure                 | Fig. 5                                                                    | `pty_erase` (line `74`), `hty_erase` (line `81`) and `ctx_erase` (line `95`) in file `RefinementTypes.v`                                          | `⌊ t ⌋`, `⌊ τ ⌋` and `⌊ Γ ⌋*`            |
+| Well-formedness | Fig. 5 (and Fig. 12 in appendix)                                                                  | `wf_pty` (line `34`), `wf_am` (line `27`) and `wf_hty` (line `45`) in file `Typing.v`                                                               | `Γ ⊢WFp t`, `Γ ⊢WFa A` and `Γ ⊢WF τ`                       |
+| Subtyping | Fig. 5 (and Fig. 12 in appendix) | `pty_subtyping` and `subtyping` in file `Typing.v` (line `69` and `76`)                                                                                | `Γ ⊢ t1 <⋮p t2` and `Γ ⊢ τ1 <⋮ τ2` |
+| Typing rules                 | Fig. 6 (and Fig. 13 in appendix) | `effop_type_check` (line `95`), and mutually inductive propositions `value_type_check` (line `152`) and `term_type_check` (line `109`) in file `Typing.v`            | `Γ ⊢ op ⋮o t`,  `Γ ⊢ v ⋮v t` and `Γ ⊢ e ⋮t τ` |
+| Trace language                 | Fig. 7                                                                   | `langA` in file `Denotation.v` (line `33`)                                                                                | `a⟦ A ⟧`                        |
+| Type denotation              | Fig. 7                                                                   | `ptyR` (line `69`) and `htyR` (line `90`) in file `Denotation.v`                                                                                 | `p⟦ t ⟧` and `⟦ τ ⟧`                         |
+| Type context denotation      | Fig. 7                                                                   | `ctxRst` in file `Denotation.v` (line `113`)                                                                              |                                 |
+| Fundamental Theorem          | Theorem 4.8                                                                | `fundamental` in file `Typing.v` (line `916`)                                                                               |                                 |
+| Soundness theorem            | Corollary 4.9                                                                | `soundness` in file `Typing.v` (line `944`)                                                                                 |                                 |
 
 ## Differences Between Paper and Artifact
 

@@ -7,6 +7,11 @@ Import Tactics.
 Import NamelessTactics.
 Import Lists.List.
 
+(** This file defines the syntax of traces and the trace reduction relation. *)
+
+(** * Trace syntax *)
+
+(** A single effect event *)
 Inductive evop : Type :=
 | evop_ (op: effop) (argv: constant) (retv: constant).
 
@@ -14,6 +19,7 @@ Notation " 'ev{' op '~' v1 ':=' v2 '}' " := (evop_ op v1 v2)
                                         (at level 20, format "ev{ op ~ v1 := v2 }",
                                           op constr, v1 constr, v2 constr, right associativity).
 
+(** A trace is a list of effect events (α in Fig. 3). *)
 Definition trace : Type := list evop.
 
 Inductive read_reduction : trace -> constant -> Prop :=
@@ -24,6 +30,7 @@ Inductive read_reduction : trace -> constant -> Prop :=
     (op <> op_write \/ c' = false) ->
     read_reduction α n -> read_reduction (α ++ [ev{ op ~ c := c' }]) n.
 
+(** Trace reduction relation. Used in the premise of [STEffOp]. *)
 Inductive tr_reduction : trace -> effop -> constant -> constant -> Prop :=
 | TrPlus1: forall (α: trace) (n: nat), tr_reduction α op_plus_one n (S n)
 | TrMinus1: forall (α: trace) (n: nat), tr_reduction α op_minus_one (S n) n

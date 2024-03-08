@@ -7,6 +7,22 @@ Import Tactics.
 Import NamelessTactics.
 Import List.
 
+(** This file defines an ordered type context used in refinement typing. *)
+
+(** Type Context Definition (Γ in Fig. 4) *)
+(** We use list instead of set since the type context in the refinement typing has dependency. *)
+Definition listctx (A: Type) := list (atom * A).
+
+Fixpoint ctxdom {A: Type} (Γ: listctx A) : aset :=
+  match Γ with
+  | [] => ∅
+  | (x, _) :: Γ => {[x]} ∪ ctxdom Γ
+  end.
+
+#[global]
+Instance listctx_stale {A:Type} : Stale (listctx A) := ctxdom.
+Arguments listctx_stale /.
+
 Lemma app_one_eq_nil {A: Type}: forall (x: atom) (tau:A) Γ, ~ ([] = Γ ++ [(x, tau)]).
 Proof.
   intros. intro H. symmetry in H. apply app_eq_nil in H. destruct H. inversion H0.
@@ -42,20 +58,6 @@ Ltac list_app_simpl :=
     | [H: context [(_ ++ _) ++ _] |- _ ] => rewrite <- app_assoc in H
     | [ |- context [(_ ++ _) ++ _]] => rewrite <- app_assoc
     end; auto.
-
-(** * Type Context Definition *)
-(** We use list instead of set since the type context in the refinement typing has dependency. *)
-Definition listctx (A: Type) := list (atom * A).
-
-Fixpoint ctxdom {A: Type} (Γ: listctx A) : aset :=
-  match Γ with
-  | [] => ∅
-  | (x, _) :: Γ => {[x]} ∪ ctxdom Γ
-  end.
-
-#[global]
-Instance listctx_stale {A:Type} : Stale (listctx A) := ctxdom.
-Arguments listctx_stale /.
 
 Lemma ctxdom_app_union {A: Type}: forall (Γ1 Γ2: listctx A), ctxdom (Γ1 ++ Γ2) = (ctxdom Γ1) ∪ (ctxdom Γ2).
 Proof.
