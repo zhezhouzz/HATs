@@ -6,13 +6,13 @@ import colored
 import benchs
 import run
 import analyze
-import mk_table
 import json
 from pathlib import Path
 import pathlib
 import run_datatype
 import marple_interface
-import mk_table
+import mk_tex_table
+import mk_md_table
 import analyze
 
 meta_config_file = "meta-config.json"
@@ -44,17 +44,29 @@ def load_benchmarks(path):
     # print(files)
     return files
 
-def show_table1(paths):
+def show_tex_table1(paths):
     with open (stat_file) as f:
         j = json.load(f)
     cols = analyze.analyze_stat(paths, j)
-    mk_table.mk_table1(cols)
+    mk_tex_table.mk_table1(cols)
 
-def show_table2(paths):
+def show_tex_table2(paths):
     with open (stat_file) as f:
         j = json.load(f)
     cols = analyze.analyze_details_stat(paths, j)
-    mk_table.mk_table2(cols)
+    mk_tex_table.mk_table2(cols)
+
+def show_md_table1(paths):
+    with open (stat_file) as f:
+        j = json.load(f)
+    cols = analyze.analyze_stat(paths, j)
+    mk_md_table.mk_table1(cols)
+
+def show_md_table2(paths):
+    with open (stat_file) as f:
+        j = json.load(f)
+    cols = analyze.analyze_details_stat(paths, j)
+    mk_md_table.mk_table2(cols)
 
 def show_benchmarks(verbose, paths):
     for path in paths:
@@ -77,13 +89,13 @@ def typecheck_benchmarks(verbose, paths):
 def typecheck_one(verbose, path):
     run_datatype.typecheck_datatype(run_datatype.load_datatype(path), verbose)
 
-def make_table(verbose, bench_name):
+def make_tex_table(verbose, bench_name):
     tab = benchs.load_benchmarks()
     res = {}
     for name, (source, path) in tab.items():
         if bench_name == name:
             res[name] = load_stat(source)
-            mk_table.show_latex_tab(res)
+            mk_tex_table.show_latex_tab(res)
             return
     exit(1)
 
@@ -105,16 +117,23 @@ if __name__ == '__main__':
         ntypecheck_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "ntyping-one" == sys.argv[2]:
         ntypecheck_one(verbose, sys.argv[3])
-    elif "show-table1" == sys.argv[2]:
-        show_table1(load_benchmarks(sys.argv[3]))
-    elif "show-table2" == sys.argv[2]:
-        show_table2(load_benchmarks(sys.argv[3]))
+    elif "show-tex-table1" == sys.argv[2]:
+        show_tex_table1(load_benchmarks(sys.argv[3]))
+    elif "show-tex-table2" == sys.argv[2]:
+        show_tex_table2(load_benchmarks(sys.argv[3]))
+    elif "show-md-table1" == sys.argv[2]:
+        show_md_table1(load_benchmarks(sys.argv[3]))
+    elif "show-md-table2" == sys.argv[2]:
+        show_md_table2(load_benchmarks(sys.argv[3]))
     elif "show" == sys.argv[2]:
         show_benchmarks(verbose, load_benchmarks(sys.argv[3]))
     elif "show-one" == sys.argv[2]:
         show_one(verbose, sys.argv[3])
-    elif "make_table" == sys.argv[2]:
-        make_table(verbose, sys.argv[3])
+    # elif "make-tex-table" == sys.argv[2]:
+    #     make_tex_table(verbose, sys.argv[3])
     elif "run_one" == sys.argv[2]:
         run_one_benchs(verbose, sys.argv[3])
+    else:
+        print("unknown command: {}".format(sys.argv[2]))
+        exit(1)
 

@@ -2,7 +2,7 @@ import sys
 import argparse
 import os
 import subprocess
-import mk_table
+import mk_tex_table
 import statistics
 
 def analyze_interface_static(stats):
