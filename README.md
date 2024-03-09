@@ -93,7 +93,7 @@ val[@assertRty] add: (p:Path.t)⇢(path:{v:Path.t | true})→(content:{v:Bytes.t
 
 ### Coq proofs in the Docker Image
 
-The Coq proofs of our core language **λ<sup>E</sup>** are located in the `formalization/` directory. See `formalization/README.md`.
+The Coq proofs of our core language **λ<sup>E</sup>** are located in the `formalization/` directory. To build and check the Coq formalization, simply run `make` in the formalization directory. See `formalization/README.md`.
 
 ## Step-by-Step Instructions
 
@@ -393,13 +393,14 @@ EFFOP := string
 LIT :=
 | "true"
 | "false"
+| INT
 | VAR
 | OP VAR ...
 
 PROP :=
 | LIT
 | "implies" PROP PROP
-| "iff" PROP PRO
+| "iff" PROP PROP
 | PROP "&&" PROP
 | PROP "||" PROP
 | "not" PROP
