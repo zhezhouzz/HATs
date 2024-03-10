@@ -318,7 +318,7 @@ DT(FileSystem)  Task 1(add): exec time 19.768031(s), type check succeeded
 
 All commands of **Marple** will take a universal configuration file (`meta-config.json`) in JSON format as its first argument. Precisely, the JSON file outputs results in JSON format to some output directory.
 - the `debug_tags` field controls the debug information output. Precisely, we have the following options:
-  + if the `preprocess` field is true, **Marple** will print the preprocessed result. It will print the given source code, type code, and the code in A-Normal Form.
+  + if the `preprocess` field is true, **Marple** will print the preprocessed result. It will print the given source code, typed code, and the code in A-Normal Form.
   + if the `typing` field is set as true, **Marple** will print the type judgement of each step in the type check.
   + if the `result` field is set as true, **Marple** will print the type check result.
 - the `resfile` field indicates the path of the output file of type check.
