@@ -55,11 +55,11 @@ successfully:
 
 ##### Pretty Printing
 
-As another way to verify the tool operating successfull, the following command pretty prints the content of given files, which may contains source code, autoamata predicates, and HATs:
+As another way to verify the tool operating successfull, the following command pretty prints the content of given files, which may contains source code, automata predicates, and HATs:
 
     $ ./main.exe print-raw meta-config.json data/ri/FileSystem_KVStore/ri.ml
 
-The script will print the following autoamata predicates:
+The script will print the following automata predicates:
 
 ```
 val[@pred] rI: (p : Path.t) = ☐⟨is_root p⟩ ∨ (¬aliveP(p) ∨ dirP(parent p))
