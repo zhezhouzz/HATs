@@ -452,7 +452,7 @@ The definition of the coverage type is consistent with Figure 4. Precisely,
 + the Hoare Automata Types is defined as `HAT`, we use an abbreviation with the
   `newadding` field when the postcondition automata is just appending new events
   to the precondition automata.
-+ Our syntax share the same syntax sugar with OCaml program, thus, for example
++ Our syntax share the same syntax sugar with OCaml programs, thus, for example
 
 ```
 let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
