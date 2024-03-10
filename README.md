@@ -133,32 +133,32 @@ The following scripts run the benchmark suite displayed in Table 1 of the paper.
 
 The following scripts run the preprocess on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`).
 
-    $ python3 scripts/comprehensive.py silent ntyping data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent ntyping data/ri
 
 Then, the following prints the first part of table 1 (as markdown table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
 
-    $ python3 scripts/comprehensive.py silent show-md-table1 data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
 ##### Step 2: Type Check
 
 The following scripts run typecheck on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
 
-    $ python3 scripts/comprehensive.py silent typing data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent typing data/ri
 
 Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
 
-    $ python3 scripts/comprehensive.py silent show-md-table1 data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
 (Optional) The reader can also print the table 2 shown in the supplemental material (again, please first performs preporcess to get the statistics result for the first part of the table).
 
-    $ python3 scripts/comprehensive.py silent show-md-table2 data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table2 data/ri
 
 
 #### Detailed Steps
 
 By add commanding the line argument `verbose`, all of the scripts above will show the actual command sent to **Marple** on each benchmark. For example, by running:
 
-    $ python3 scripts/comprehensive.py verbose ntyping data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py verbose ntyping data/ri
 
 The script will print the following commands:
 
@@ -194,7 +194,7 @@ See [Pretty Printing](#pretty-printing).
 
 The following command performs the basic (OCaml) type check (and normalization which converts code into A-normal form, converts LTLf formulae into symbolic regular language) for a given ADT implementation.
 
-    $ python3 scripts/comprehensive.py silent ntyping-one data/ri/FileSystem_Tree
+    $ ../.venv/bin/python scripts/comprehensive.py silent ntyping-one data/ri/FileSystem_Tree
 
 The following command performs the basic type check  (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
 
@@ -271,7 +271,7 @@ fun (u : unit) ->
 
 The following command performs the HAT type check for a given ADT implementation. It will take about `3` min:
 
-    $ python3 scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
+    $ ../.venv/bin/python scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
 
 The following command performs the HAT type check for a interface of a given ADT implementation.
 
