@@ -330,7 +330,7 @@ OCaml primitives, including various arithmetic operators, and data constructors,
 
 #### Input File Formats
 
-As a verification tool for representation invaraint of datatypes that is implemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
+As a verification tool for representation invariant of datatypes that is implemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invariant shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json ADT_DIR/INTERFACE.ml
 
@@ -340,7 +340,7 @@ a folder (`ADT_DIR`) should contain the following files:
   + `lib_nty.ml` (the basic (OCaml) typing for the underline stateful library)
   + `lib_rty.ml` (the HAT typing for the underline stateful library)
   + `automata_preds.ml` (automata predicates, e.g., 𝑃stored in Example 4.1, it is optional)
-  + `ri.ml` (representation invaraint shared by all interfaces)
+  + `ri.ml` (representation invariant shared by all interfaces)
   + `INTERFACE.ml` (source code and HAT of this interface)
 
 #### Format of `lib_nty.ml`
