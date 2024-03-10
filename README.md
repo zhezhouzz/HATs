@@ -158,7 +158,7 @@ Then, the following prints the two parts of table 1 (please first perform prepro
 
 #### Detailed Steps
 
-By add commanding the line argument `verbose`, all of the scripts above will show the actual command sent to **Marple** on each benchmark. For example, by running:
+By add commanding the line argument `verbose`, all of the above scripts will show the actual command sent to **Marple** on each benchmark. For example, by running:
 
     $ ../.venv/bin/python scripts/comprehensive.py verbose ntyping data/ri
 
