@@ -131,7 +131,9 @@ The following scripts run the benchmark suite displayed in Table 1 of the paper.
 
 ##### Step 1: Preprocess
 
-The following scripts run the preprocess on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`).
+The following scripts run the preprocess step on all benchmark suite displayed
+in Table 1 of the paper, and store the result into a statfile file (defined in
+config file `meta-config.json`, the default location is `.stat`).
 
     $ ../.venv/bin/python scripts/comprehensive.py silent ntyping data/ri
 
