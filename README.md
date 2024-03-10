@@ -205,7 +205,7 @@ The following command performs the basic type check  (and normalization which co
 
 By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desugaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
 
-**Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
+**Requirements:** We use bold and coloring printing in command line, make sure your terminal supports escape sequences.
 
 For example,
 
@@ -282,7 +282,7 @@ The following command performs the HAT type check for a interface of a given ADT
 
 By enable the `typing` option in the config file `meta-config.json`, **Marple** will print the typing rules and subtyping rules used during type check.
 
-**Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
+**Requirements:** We use bold and coloring printing in command line, make sure your terminal supports escape sequences.
 
 > For example,
 
