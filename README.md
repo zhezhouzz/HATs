@@ -326,11 +326,16 @@ All commands of **Marple** will take a universal configuration file (`meta-confi
 - the `statfile` field indicates the path of the statistics file of type check.
 - the `uninterops` field indicates the built-in operators and method predicates used in the current benchmarks.
 - the `prim_path` field indicates the predefined refinement types for a number of
-OCaml primitives, including various arithmetic operators, and data constructors, and axioms of unintepreted functions.
+OCaml primitives, including various arithmetic operators, and data constructors, and axioms of uninterpreted functions.
 
 #### Input File Formats
 
-As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
+As a verification tool for representation invariant of datatypes that is
+implemented by an underline stateful library, **Marple** expects input that contains
+the specification of underline stateful library and a representation invariant
+shared by all interfaces. For example, when **Marple** can type check an
+interface `INTERFACE` via the following command (introduced in [HAT Type
+check](#hat-type-check)):
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json ADT_DIR/INTERFACE.ml
 
@@ -340,7 +345,7 @@ a folder (`ADT_DIR`) should contain the following files:
   + `lib_nty.ml` (the basic (OCaml) typing for the underline stateful library)
   + `lib_rty.ml` (the HAT typing for the underline stateful library)
   + `automata_preds.ml` (automata predicates, e.g., 𝑃stored in Example 4.1, it is optional)
-  + `ri.ml` (representation invaraint shared by all interfaces)
+  + `ri.ml` (representation invariant shared by all interfaces)
   + `INTERFACE.ml` (source code and HAT of this interface)
 
 #### Format of `lib_nty.ml`
@@ -379,7 +384,7 @@ let INTERFACE = OCAML_EXPR
 let[@assertRty] INTERFACE = HTY
 ```
 
-The source code `OCAML_EXPR` expected by **Marple** is simply an OCaml functions listing. Currently, **Marple** handles only a subset of OCaml, it does not handle features involving references and effects, parametric polymorphism, or concurrency. Additionally, all functions should be annotated with precise input and output type; all left-hand-side variables in a let binding should be annotated with its precise type.
+The source code `OCAML_EXPR` expected by **Marple** is simply an OCaml function listing. Currently, **Marple** handles only a subset of OCaml, it does not handle features involving references and effects, parametric polymorphism, or concurrency. Additionally, all functions should be annotated with precise input and output type; all left-hand-side variables in a let binding should be annotated with its precise type.
 
 #### Syntax of HAT
 
@@ -444,8 +449,10 @@ The definition of the coverage type is consistent with Figure 4. Precisely,
 + the qualifier is defined as `PROP`.
 + the refinement type is defined as `RTY`.
 + the Symbolic Finite Automata is defined as `SFA`. Notice that, the type alias `∼𝑣𝑥` is notated by `[@d]`. We also accept the automata predicates application, e.g., `𝑃exists (k)` in Example 4.2.
-+ the Hoare Automata Types is defined as `HAT`, we use an abbreviation with `newadding` feild when the postcondition automata just appending new events to the precondition automata.
-+ Our syntax share the same syntax sugar with OCaml program, thus, for example
++ the Hoare Automata Types is defined as `HAT`, we use an abbreviation with the
+  `newadding` field when the postcondition automata is just appending new events
+  to the precondition automata.
++ Our syntax share the same syntax sugar with OCaml programs, thus, for example
 
 ```
 let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
