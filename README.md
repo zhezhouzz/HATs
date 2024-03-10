@@ -107,7 +107,7 @@ This section gives a brief overview of the files in this artifact.
 * `coersion/` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
   + `data/predefined/`: the predefined types.
-  + `data/ri/ADT_LIBRARY/INTERFACE.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `INTERFACE.ml` that are methods of given `ADT` implementation, these folders also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and represention invaraint `ri.ml`.
+  + `data/ri/ADT_LIBRARY/INTERFACE.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `INTERFACE.ml` that are methods of given `ADT` implementation, these folders also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and represention invariant `ri.ml`.
 * `desymbolic/`: minterm transformation that convert SFA into FA.
 * `dtree/`: the decision tree data structure used in instantiation and minterm generation.
 * `env/`: the universal environment of **Marple** which is loaded from the configuration files.
