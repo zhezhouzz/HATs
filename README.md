@@ -143,7 +143,7 @@ Then, the following prints the first part of table 1 (as Markdown table). The pr
 
 ##### Step 2: Type Check
 
-The following scripts run typecheck on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
+The following scripts run type check on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
 
     $ ../.venv/bin/python scripts/comprehensive.py silent typing data/ri
 
