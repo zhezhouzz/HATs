@@ -147,11 +147,11 @@ The following scripts run typecheck on all benchmark suite displayed in Table 1 
 
     $ ../.venv/bin/python scripts/comprehensive.py silent typing data/ri
 
-Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
+Then, the following prints the two parts of table 1 (please first performs preprocess to get the statistics result for the first part of the table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
-(Optional) The reader can also print the table 2 shown in the supplemental material (again, please first performs preporcess to get the statistics result for the first part of the table).
+(Optional) The reader can also print the table 2 shown in the supplemental material (again, please first performs preprocess to get the statistics result for the first part of the table).
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table2 data/ri
 
