@@ -137,7 +137,7 @@ config file `meta-config.json`, the default location is `.stat`).
 
     $ ../.venv/bin/python scripts/comprehensive.py silent ntyping data/ri
 
-Then, the following prints the first part of table 1 (as markdown table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
+Then, the following prints the first part of table 1 (as Markdown table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
@@ -147,7 +147,7 @@ The following scripts run typecheck on all benchmark suite displayed in Table 1 
 
     $ ../.venv/bin/python scripts/comprehensive.py silent typing data/ri
 
-Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
+Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
