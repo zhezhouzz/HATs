@@ -203,7 +203,7 @@ The following command performs the basic type check  (and normalization which co
 
     $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
-By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desguaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
+By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desugaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
 
 **Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
 
