@@ -449,7 +449,7 @@ The definition of the coverage type is consistent with Figure 4. Precisely,
 + the qualifier is defined as `PROP`.
 + the refinement type is defined as `RTY`.
 + the Symbolic Finite Automata is defined as `SFA`. Notice that, the type alias `∼𝑣𝑥` is notated by `[@d]`. We also accept the automata predicates application, e.g., `𝑃exists (k)` in Example 4.2.
-+ the Hoare Automata Types is defined as `HAT`, we use an abbreviation with `newadding` feild when the postcondition automata just appending new events to the precondition automata.
++ the Hoare Automata Types is defined as `HAT`, we use an abbreviation with `newadding` field when the postcondition automata just appending new events to the precondition automata.
 + Our syntax share the same syntax sugar with OCaml program, thus, for example
 
 ```
