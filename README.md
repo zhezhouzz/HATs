@@ -104,7 +104,7 @@ In this section, we provide the instructions to evaluate our artifact.
 This section gives a brief overview of the files in this artifact.
 
 * `bin/main.ml`: the main entry point of **Marple**.
-* `coersion` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
+* `coersion/` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
   + `data/predefined/`: the predefined types.
   + `data/ri/ADT_LIBRARY/INTERFACE.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `INTERFACE.ml` that are methods of given `ADT` implementation, these folder also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and represention invaraint `ri.ml`.
