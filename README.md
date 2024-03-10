@@ -55,11 +55,11 @@ successfully:
 
 ##### Pretty Printing
 
-As another way to verify the tool operating successfull, the following command pretty prints the content of given files, which may contains source code, autoamata predicates, and HATs:
+As another way to verify the tool operating successfull, the following command pretty prints the content of given files, which may contains source code, automata predicates, and HATs:
 
     $ ./main.exe print-raw meta-config.json data/ri/FileSystem_KVStore/ri.ml
 
-The script will print the following autoamata predicates:
+The script will print the following automata predicates:
 
 ```
 val[@pred] rI: (p : Path.t) = ☐⟨is_root p⟩ ∨ (¬aliveP(p) ∨ dirP(parent p))
@@ -71,7 +71,7 @@ Another example:
 
 The script will print the following source code and refinement types:
 
-```
+```ocaml
 let add = fun (path : Path.t) ->
   fun (content : Bytes.t) ->
     (if exists path
@@ -104,11 +104,11 @@ In this section, we provide the instructions to evaluate our artifact.
 This section gives a brief overview of the files in this artifact.
 
 * `bin/main.ml`: the main entry point of **Marple**.
-* `coersion` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
+* `coersion/` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
   + `data/predefined/`: the predefined types.
-  + `data/ri/ADT_LIBRARY/INTERFACE.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `INTERFACE.ml` that are methods of given `ADT` implementation, these folder also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and represention invaraint `ri.ml`.
-* `desymbolic/`: minterm transfermation that convert SFA into FA.
+  + `data/ri/ADT_LIBRARY/INTERFACE.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `INTERFACE.ml` that are methods of given `ADT` implementation, these folders also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and representation invariant `ri.ml`.
+* `desymbolic/`: minterm transformation that convert SFA into FA.
 * `dtree/`: the decision tree data structure used in instantiation and minterm generation.
 * `env/`: the universal environment of **Marple** which is loaded from the configuration files.
 * `formalization/`: the Coq proofs of our core language **λ<sup>E</sup>**.
@@ -123,7 +123,7 @@ This section gives a brief overview of the files in this artifact.
 
 ### Running Benchmarks of Marple
 
-In this section, we discuss the scripts that displays the tables in the evaluation section of the paper.
+In this section, we discuss the scripts that display the tables in the evaluation section of the paper.
 
 #### Comprehensive Scripts
 
@@ -131,32 +131,34 @@ The following scripts run the benchmark suite displayed in Table 1 of the paper.
 
 ##### Step 1: Preprocess
 
-The following scripts run the preprocess on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`).
+The following scripts run the preprocess step on all benchmark suite displayed
+in Table 1 of the paper, and store the result into a statfile file (defined in
+config file `meta-config.json`, the default location is `.stat`).
 
     $ ../.venv/bin/python scripts/comprehensive.py silent ntyping data/ri
 
-Then, the following prints the first part of table 1 (as markdown table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
+Then, the following prints the first part of table 1 (as Markdown table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
 ##### Step 2: Type Check
 
-The following scripts run typecheck on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
+The following scripts run type check on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
 
     $ ../.venv/bin/python scripts/comprehensive.py silent typing data/ri
 
-Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
+Then, the following prints the two parts of table 1 (please first perform preprocessing to get the statistics result for the first part of the table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
-(Optional) The reader can also print the table 2 shown in the supplemental material (again, please first performs preporcess to get the statistics result for the first part of the table).
+(Optional) The reader can also print the table 2 shown in the supplemental material (again, please first perform preprocessing to get the statistics result for the first part of the table).
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table2 data/ri
 
 
 #### Detailed Steps
 
-By add commanding the line argument `verbose`, all of the scripts above will show the actual command sent to **Marple** on each benchmark. For example, by running:
+By add commanding the line argument `verbose`, all of the above scripts will show the actual command sent to **Marple** on each benchmark. For example, by running:
 
     $ ../.venv/bin/python scripts/comprehensive.py verbose ntyping data/ri
 
@@ -184,7 +186,8 @@ Readers can try these commands to execute each step individually.
 
 ### Detail Usage of Marple
 
-For resuablility, we introduce the detail usage of Marple. Using **Marple**, you can
+For reusability, we introduce the detail usage of Marple. Using **Marple**, you
+can do the following.
 
 #### Pretty Printing
 
@@ -196,19 +199,19 @@ The following command performs the basic (OCaml) type check (and normalization w
 
     $ ../.venv/bin/python scripts/comprehensive.py silent ntyping-one data/ri/FileSystem_Tree
 
-The following command performs the basic type check  (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
+The following command performs the basic type check (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
 
     $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
-By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desguaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
+By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desugaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
 
-**Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
+**Requirements:** We use bold and colored printing in the command line, make sure your terminal supports escape sequences.
 
-> For example,
+For example,
 
     $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
-> will print
+will print
 
 ```
 Top Operation Normal Type Context:
@@ -273,13 +276,13 @@ The following command performs the HAT type check for a given ADT implementation
 
     $ ../.venv/bin/python scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
 
-The following command performs the HAT type check for a interface of a given ADT implementation.
+The following command performs the HAT type check for an interface of a given ADT implementation.
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
 By enable the `typing` option in the config file `meta-config.json`, **Marple** will print the typing rules and subtyping rules used during type check.
 
-**Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
+**Requirements:** We use bold and coloring printing in command line, make sure your terminal supports escape sequences.
 
 > For example,
 
@@ -315,8 +318,8 @@ DT(FileSystem)  Task 1(add): exec time 19.768031(s), type check succeeded
 
 All commands of **Marple** will take a universal configuration file (`meta-config.json`) in JSON format as its first argument. Precisely, the JSON file outputs results in JSON format to some output directory.
 - the `debug_tags` field controls the debug information output. Precisely, we have the following options:
-  + if the `preprocess` field is true, **Marple** will print the preprocess result. It will print the given source code, type code, and the code in A-Normal Form.
-  + if the `typing` field is set as true, **Marple** will print the type judgement of each step in the type check.
+  + if the `preprocess` field is true, **Marple** will print the preprocessed result. It will print the given source code, typed code, and the code in A-Normal Form.
+  + if the `typing` field is set as true, **Marple** will print the typing judgement of each step in the type check.
   + if the `result` field is set as true, **Marple** will print the type check result.
 - the `resfile` field indicates the path of the output file of type check.
 - the `logfile` field indicates the path of the log file of type check.
@@ -327,7 +330,7 @@ OCaml primitives, including various arithmetic operators, and data constructors,
 
 #### Input File Formats
 
-As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check a interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
+As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json ADT_DIR/INTERFACE.ml
 
@@ -452,7 +455,7 @@ let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
 
 can be desugared as
 
-```
+```ocaml
 let[@assertRty] add =
     fun ((p : Path.t) [@ghost]) ->
     fun ?l:(path = (true : [%v: Path.t])) ->
