@@ -326,7 +326,7 @@ All commands of **Marple** will take a universal configuration file (`meta-confi
 - the `statfile` field indicates the path of the statistics file of type check.
 - the `uninterops` field indicates the built-in operators and method predicates used in the current benchmarks.
 - the `prim_path` field indicates the predefined refinement types for a number of
-OCaml primitives, including various arithmetic operators, and data constructors, and axioms of unintepreted functions.
+OCaml primitives, including various arithmetic operators, and data constructors, and axioms of uninterpreted functions.
 
 #### Input File Formats
 
