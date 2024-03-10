@@ -71,7 +71,7 @@ Another example:
 
 The script will print the following source code and refinement types:
 
-```
+```ocaml
 let add = fun (path : Path.t) ->
   fun (content : Bytes.t) ->
     (if exists path
@@ -206,11 +206,11 @@ By enable the `preprocess` option in the config file `meta-config.json`, **Marpl
 
 **Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
 
-> For example,
+For example,
 
     $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
-> will print
+will print
 
 ```
 Top Operation Normal Type Context:
@@ -454,7 +454,7 @@ let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
 
 can be desugared as
 
-```
+```ocaml
 let[@assertRty] add =
     fun ((p : Path.t) [@ghost]) ->
     fun ?l:(path = (true : [%v: Path.t])) ->
