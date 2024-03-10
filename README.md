@@ -384,7 +384,7 @@ let INTERFACE = OCAML_EXPR
 let[@assertRty] INTERFACE = HTY
 ```
 
-The source code `OCAML_EXPR` expected by **Marple** is simply an OCaml functions listing. Currently, **Marple** handles only a subset of OCaml, it does not handle features involving references and effects, parametric polymorphism, or concurrency. Additionally, all functions should be annotated with precise input and output type; all left-hand-side variables in a let binding should be annotated with its precise type.
+The source code `OCAML_EXPR` expected by **Marple** is simply an OCaml function listing. Currently, **Marple** handles only a subset of OCaml, it does not handle features involving references and effects, parametric polymorphism, or concurrency. Additionally, all functions should be annotated with precise input and output type; all left-hand-side variables in a let binding should be annotated with its precise type.
 
 #### Syntax of HAT
 
