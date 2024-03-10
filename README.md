@@ -276,7 +276,7 @@ The following command performs the HAT type check for a given ADT implementation
 
     $ ../.venv/bin/python scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
 
-The following command performs the HAT type check for a interface of a given ADT implementation.
+The following command performs the HAT type check for an interface of a given ADT implementation.
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
@@ -330,7 +330,7 @@ OCaml primitives, including various arithmetic operators, and data constructors,
 
 #### Input File Formats
 
-As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check a interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
+As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json ADT_DIR/INTERFACE.ml
 
