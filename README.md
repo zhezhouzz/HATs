@@ -330,7 +330,7 @@ OCaml primitives, including various arithmetic operators, and data constructors,
 
 #### Input File Formats
 
-As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
+As a verification tool for representation invaraint of datatypes that is implemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check an interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json ADT_DIR/INTERFACE.ml
 
