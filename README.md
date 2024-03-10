@@ -123,7 +123,7 @@ This section gives a brief overview of the files in this artifact.
 
 ### Running Benchmarks of Marple
 
-In this section, we discuss the scripts that displays the tables in the evaluation section of the paper.
+In this section, we discuss the scripts that display the tables in the evaluation section of the paper.
 
 #### Comprehensive Scripts
 
