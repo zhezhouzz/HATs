@@ -186,7 +186,7 @@ Readers can try these commands to execute each step individually.
 
 ### Detail Usage of Marple
 
-For resuablility, we introduce the detail usage of Marple. Using **Marple**, you can
+For reusability, we introduce the detail usage of Marple. Using **Marple**, you can
 
 #### Pretty Printing
 
