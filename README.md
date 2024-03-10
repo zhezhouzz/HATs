@@ -199,7 +199,7 @@ The following command performs the basic (OCaml) type check (and normalization w
 
     $ ../.venv/bin/python scripts/comprehensive.py silent ntyping-one data/ri/FileSystem_Tree
 
-The following command performs the basic type check  (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
+The following command performs the basic type check (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
 
     $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
