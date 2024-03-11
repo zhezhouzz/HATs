@@ -197,7 +197,7 @@ The following command performs the basic (OCaml) type check (and normalization w
 
 The following command performs the basic type check (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
 
-    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
+    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/init.ml
 
 By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desugaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
 
@@ -205,7 +205,7 @@ By enable the `preprocess` option in the config file `meta-config.json`, **Marpl
 
 For example,
 
-    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
+    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/init.ml
 
 will print
 
