@@ -8,7 +8,7 @@ A docker image of this repo with all required dependecies is available on: `http
 
 We recommend machines have at least 8 GB of memory and 8 GB of hard
 disk space available when building and running Docker images. All
-benchmarks were tested on MacBook Pro 14-inc, 2021, which has an Apple M1 Pro CPU with 16 GB RAM. The estimated execution time in the rest of the document also fits this setting.
+benchmarks were tested on a Linux machine having Intel i7-8700 CPU @ 3.20GHz with `64GB` of RAM. The estimated execution time in the rest of the document also fits this setting.
 
 ### Requirements
 
@@ -150,10 +150,6 @@ The following scripts run type check on all benchmark suite displayed in Table 1
 Then, the following prints the two parts of table 1 (please first perform preprocessing to get the statistics result for the first part of the table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
     $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
-
-(Optional) The reader can also print the table 2 shown in the supplemental material (again, please first perform preprocessing to get the statistics result for the first part of the table).
-
-    $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table2 data/ri
 
 
 #### Detailed Steps
