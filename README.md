@@ -280,11 +280,11 @@ By enable the `typing` option in the config file `meta-config.json`, **Marple** 
 
 **Requirements:** We use bold and coloring printing in command line, make sure your terminal supports escape sequences.
 
-> For example,
+For example,
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
-> will print
+will print
 
 ```
 ...
