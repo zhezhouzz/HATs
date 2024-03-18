@@ -8,7 +8,7 @@ A docker image of this repo with all required dependecies is available on: `http
 
 We recommend machines have at least 8 GB of memory and 8 GB of hard
 disk space available when building and running Docker images. All
-benchmarks were tested on MacBook Pro 14-inc, 2021, which has an Apple M1 Pro CPU with 16 GB RAM. The estimated execution time in the rest of the document also fits this setting.
+benchmarks were tested on a Linux machine having Intel i7-8700 CPU @ 3.20GHz with `64GB` of RAM. The estimated execution time in the rest of the document also fits this setting.
 
 ### Requirements
 
@@ -55,11 +55,11 @@ successfully:
 
 ##### Pretty Printing
 
-As another way to verify the tool operating successfull, the following command pretty prints the content of given files, which may contains source code, autoamata predicates, and HATs:
+As another way to verify the tool operating successfull, the following command pretty prints the content of given files, which may contains source code, automata predicates, and HATs:
 
     $ ./main.exe print-raw meta-config.json data/ri/FileSystem_KVStore/ri.ml
 
-The script will print the following autoamata predicates:
+The script will print the following automata predicates:
 
 ```
 val[@pred] rI: (p : Path.t) = ☐⟨is_root p⟩ ∨ (¬aliveP(p) ∨ dirP(parent p))
@@ -71,7 +71,7 @@ Another example:
 
 The script will print the following source code and refinement types:
 
-```
+```ocaml
 let add = fun (path : Path.t) ->
   fun (content : Bytes.t) ->
     (if exists path
@@ -97,19 +97,18 @@ The Coq proofs of our core language **λ<sup>E</sup>** are located in the `forma
 
 ## Step-by-Step Instructions
 
-In this section, we provide the instructions to evaluate our artifact. The [first half of this section](#running-benchmarks-of-poirot) describes the installation and use of **Marple**, an OCaml implementation of a refinement type checker that verifies the coverage property of the test input generators written in OCaml. The [rest of this section](#proof-readme) describes the Coq formalization of the core language **λ<sup>TG</sup>** in the paper and the corresponding soundness theorem.
-
+In this section, we provide the instructions to evaluate our artifact.
 
 ### Artifact Structure
 
 This section gives a brief overview of the files in this artifact.
 
 * `bin/main.ml`: the main entry point of **Marple**.
-* `coersion` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
+* `coersion/` and `normalization/`: the normalization procedure that normalizes the code into the Monadic Normal Form (a variant of the A-Normal form).
 * `data/`: the predefined types and the benchmark input files.
   + `data/predefined/`: the predefined types.
-  + `data/ri/ADT_LIBRARY/METHOD.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `METHOD.ml` that are methods of given `ADT` implementation, these folder also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and represention invaraint `ri.ml`.
-* `desymbolic/`: minterm transfermation that convert SFA into FA.
+  + `data/ri/ADT_LIBRARY/INTERFACE.ml`: the benchmark input files. For each `ADT` that is implemented by different underline library `LIBRARY`, There is a folder under path `data/ri/`. Besides `INTERFACE.ml` that are methods of given `ADT` implementation, these folders also provide the basic and refinement types for underline library (`lib_nty.ml` and `lib_rty.ml`), automata predicates (`automata_preds.ml`) and representation invariant `ri.ml`.
+* `desymbolic/`: minterm transformation that convert SFA into FA.
 * `dtree/`: the decision tree data structure used in instantiation and minterm generation.
 * `env/`: the universal environment of **Marple** which is loaded from the configuration files.
 * `formalization/`: the Coq proofs of our core language **λ<sup>E</sup>**.
@@ -124,7 +123,7 @@ This section gives a brief overview of the files in this artifact.
 
 ### Running Benchmarks of Marple
 
-In this section, we discuss the scripts that displays the tables in the evaluation section of the paper.
+In this section, we discuss the scripts that display the tables in the evaluation section of the paper.
 
 #### Comprehensive Scripts
 
@@ -132,34 +131,32 @@ The following scripts run the benchmark suite displayed in Table 1 of the paper.
 
 ##### Step 1: Preprocess
 
-The following scripts run the preprocess on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`).
+The following scripts run the preprocess step on all benchmark suite displayed
+in Table 1 of the paper, and store the result into a statfile file (defined in
+config file `meta-config.json`, the default location is `.stat`).
 
-    $ python3 scripts/comprehensive.py silent ntyping data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent ntyping data/ri
 
-Then, the following prints the first part of table 1 (as markdown table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
+Then, the following prints the first part of table 1 (as Markdown table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
-    $ python3 scripts/comprehensive.py silent show-md-table1 data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
 ##### Step 2: Type Check
 
-The following scripts run typecheck on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
+The following scripts run type check on all benchmark suite displayed in Table 1 of the paper, and store the result into statfile file (defined in config file `meta-config.json`, the default location is `.stat`). It will take about `15` mins:
 
-    $ python3 scripts/comprehensive.py silent typing data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent typing data/ri
 
-Then, the following prints the two parts of table 1 (please first performs preporcess to get the statistics result for the first part of the table). The printed table is in _GitHub_ markdown format, the reader can visualize the table via `https://gist.github.com/` or any other markdown visualizer.
+Then, the following prints the two parts of table 1 (please first perform preprocessing to get the statistics result for the first part of the table). The printed table is in _GitHub_ Markdown format, the reader can visualize the table via `https://gist.github.com/` or any other Markdown visualizer.
 
-    $ python3 scripts/comprehensive.py silent show-md-table1 data/ri
-
-(Optional) The reader can also print the table 2 shown in the supplemental material (again, please first performs preporcess to get the statistics result for the first part of the table).
-
-    $ python3 scripts/comprehensive.py silent show-md-table2 data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py silent show-md-table1 data/ri
 
 
 #### Detailed Steps
 
-By add commanding the line argument `verbose`, all of the scripts above will show the actual command sent to **Marple** on each benchmark. For example, by running:
+By add commanding the line argument `verbose`, all of the above scripts will show the actual command sent to **Marple** on each benchmark. For example, by running:
 
-    $ python3 scripts/comprehensive.py verbose ntyping data/ri
+    $ ../.venv/bin/python scripts/comprehensive.py verbose ntyping data/ri
 
 The script will print the following commands:
 
@@ -185,7 +182,8 @@ Readers can try these commands to execute each step individually.
 
 ### Detail Usage of Marple
 
-For resuablility, we introduce the detail usage of Marple. Using **Marple**, you can
+For reusability, we introduce the detail usage of Marple. Using **Marple**, you
+can do the following.
 
 #### Pretty Printing
 
@@ -195,21 +193,21 @@ See [Pretty Printing](#pretty-printing).
 
 The following command performs the basic (OCaml) type check (and normalization which converts code into A-normal form, converts LTLf formulae into symbolic regular language) for a given ADT implementation.
 
-    $ python3 scripts/comprehensive.py silent ntyping-one data/ri/FileSystem_Tree
+    $ ../.venv/bin/python scripts/comprehensive.py silent ntyping-one data/ri/FileSystem_Tree
 
-The following command performs the basic type check  (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
+The following command performs the basic type check (and normalization which convert code into A-normal form, converts LTLf formulae into symbolic regular language) for one interface of a given ADT implementation.
 
-    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
+    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/init.ml
 
-By enable the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desguaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
+By enabling the `preprocess` option in the config file `meta-config.json`, **Marple** will print the result of preprocess: desugaring, basic type check, and normalization. The details can be found in [Configuration of Marple](#configuration-of-marple).
 
-**Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
+**Requirements:** We use bold and colored printing in the command line, make sure your terminal supports escape sequences.
 
-> For example,
+For example,
 
-    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/add.ml
+    $ ./_build/default/bin/main.exe ri-ntype-check meta-config.json data/ri/FileSystem_Tree/init.ml
 
-> will print
+will print
 
 ```
 Top Operation Normal Type Context:
@@ -272,21 +270,21 @@ fun (u : unit) ->
 
 The following command performs the HAT type check for a given ADT implementation. It will take about `3` min:
 
-    $ python3 scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
+    $ ../.venv/bin/python scripts/comprehensive.py silent typing-one data/ri/FileSystem_Tree
 
-The following command performs the HAT type check for a interface of a given ADT implementation.
+The following command performs the HAT type check for an interface of a given ADT implementation.
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
 By enable the `typing` option in the config file `meta-config.json`, **Marple** will print the typing rules and subtyping rules used during type check.
 
-**Requirements:** We use bold and coloring printting in command line, make sure your terminal supports escape sequences.
+**Requirements:** We use bold and coloring printing in command line, make sure your terminal supports escape sequences.
 
-> For example,
+For example,
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json data/ri/FileSystem_Tree/add.ml
 
-> will print
+will print
 
 ```
 ...
@@ -316,19 +314,24 @@ DT(FileSystem)  Task 1(add): exec time 19.768031(s), type check succeeded
 
 All commands of **Marple** will take a universal configuration file (`meta-config.json`) in JSON format as its first argument. Precisely, the JSON file outputs results in JSON format to some output directory.
 - the `debug_tags` field controls the debug information output. Precisely, we have the following options:
-  + if the `preprocess` field is true, **Marple** will print the preprocess result. It will print the given source code, type code, and the code in A-Normal Form.
-  + if the `typing` field is set as true, **Marple** will print the type judgement of each step in the type check.
+  + if the `preprocess` field is true, **Marple** will print the preprocessed result. It will print the given source code, typed code, and the code in A-Normal Form.
+  + if the `typing` field is set as true, **Marple** will print the typing judgement of each step in the type check.
   + if the `result` field is set as true, **Marple** will print the type check result.
 - the `resfile` field indicates the path of the output file of type check.
 - the `logfile` field indicates the path of the log file of type check.
 - the `statfile` field indicates the path of the statistics file of type check.
 - the `uninterops` field indicates the built-in operators and method predicates used in the current benchmarks.
 - the `prim_path` field indicates the predefined refinement types for a number of
-OCaml primitives, including various arithmetic operators, and data constructors, and axioms of unintepreted functions.
+OCaml primitives, including various arithmetic operators, and data constructors, and axioms of uninterpreted functions.
 
 #### Input File Formats
 
-As a verification tool for representation invaraint of datatypes that is impelemented by underline stateful library, **Marple** expects input contains the specification of underline stateful library and a representation invaraint shared by all interfaces. For example, when **Marple** can type check a interface `INTERFACE` via the following command (introduced in [HAT Type check](#hat-type-check)):
+As a verification tool for representation invariant of datatypes that is
+implemented by an underline stateful library, **Marple** expects input that contains
+the specification of underline stateful library and a representation invariant
+shared by all interfaces. For example, when **Marple** can type check an
+interface `INTERFACE` via the following command (introduced in [HAT Type
+check](#hat-type-check)):
 
     $ ./_build/default/bin/main.exe ri-type-check meta-config.json ADT_DIR/INTERFACE.ml
 
@@ -338,7 +341,7 @@ a folder (`ADT_DIR`) should contain the following files:
   + `lib_nty.ml` (the basic (OCaml) typing for the underline stateful library)
   + `lib_rty.ml` (the HAT typing for the underline stateful library)
   + `automata_preds.ml` (automata predicates, e.g., 𝑃stored in Example 4.1, it is optional)
-  + `ri.ml` (representation invaraint shared by all interfaces)
+  + `ri.ml` (representation invariant shared by all interfaces)
   + `INTERFACE.ml` (source code and HAT of this interface)
 
 #### Format of `lib_nty.ml`
@@ -377,7 +380,7 @@ let INTERFACE = OCAML_EXPR
 let[@assertRty] INTERFACE = HTY
 ```
 
-The source code `OCAML_EXPR` expected by **Marple** is simply an OCaml functions listing. Currently, **Marple** handles only a subset of OCaml, it does not handle features involving references and effects, parametric polymorphism, or concurrency. Additionally, all functions should be annotated with precise input and output type; all left-hand-side variables in a let binding should be annotated with its precise type.
+The source code `OCAML_EXPR` expected by **Marple** is simply an OCaml function listing. Currently, **Marple** handles only a subset of OCaml, it does not handle features involving references and effects, parametric polymorphism, or concurrency. Additionally, all functions should be annotated with precise input and output type; all left-hand-side variables in a let binding should be annotated with its precise type.
 
 #### Syntax of HAT
 
@@ -442,8 +445,10 @@ The definition of the coverage type is consistent with Figure 4. Precisely,
 + the qualifier is defined as `PROP`.
 + the refinement type is defined as `RTY`.
 + the Symbolic Finite Automata is defined as `SFA`. Notice that, the type alias `∼𝑣𝑥` is notated by `[@d]`. We also accept the automata predicates application, e.g., `𝑃exists (k)` in Example 4.2.
-+ the Hoare Automata Types is defined as `HAT`, we use an abbreviation with `newadding` feild when the postcondition automata just appending new events to the precondition automata.
-+ Our syntax share the same syntax sugar with OCaml program, thus, for example
++ the Hoare Automata Types is defined as `HAT`, we use an abbreviation with the
+  `newadding` field when the postcondition automata is just appending new events
+  to the precondition automata.
++ Our syntax share the same syntax sugar with OCaml programs, thus, for example
 
 ```
 let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
@@ -453,7 +458,7 @@ let[@assertRty] add ((p : Path.t) [@ghost]) ?l:(path = (true : [%v: Path.t]))
 
 can be desugared as
 
-```
+```ocaml
 let[@assertRty] add =
     fun ((p : Path.t) [@ghost]) ->
     fun ?l:(path = (true : [%v: Path.t])) ->
