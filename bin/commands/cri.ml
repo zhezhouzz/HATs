@@ -344,6 +344,11 @@ let typecheck_cmds =
           let s = mk_inputs_setting meta_config_file in
           let x = type_check_ (dummy_ri_input, s) [ source_file ] in
           ()) );
+    ( "ntype-check",
+      cmd_config_source "type check" (fun meta_config_file source_file () ->
+          let s = mk_inputs_setting meta_config_file in
+          let x = ntype_check_ (dummy_ri_input, s) [ source_file ] in
+          ()) );
     ( "subtype-check",
       cmd_config_source "subtype check" (fun meta_config_file source_file () ->
           let s = mk_inputs_setting meta_config_file in

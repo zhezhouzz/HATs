@@ -72,6 +72,18 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
               let rhs = to_comp @@ mk_fix fixname fixarg fixbody in
               construct_lete fixname rhs (normalize_get_comp k' letbody))
             rhs
+      | true, [ lhs ] ->
+          normalize_get_value
+            (fun rhs ->
+              match rhs.x with
+              | VLam { lamarg; lambody } ->
+                  let f =
+                    VFix { fixname = lhs; fixarg = lamarg; fixbody = lambody }
+                  in
+                  construct_lete lhs (CVal f) #: rhs.ty
+                    (normalize_get_comp k' letbody)
+              | _ -> _failatwith __FILE__ __LINE__ "bad")
+            rhs
       | true, _ -> _failatwith __FILE__ __LINE__ "bad"
       | false, [] -> _failatwith __FILE__ __LINE__ "bad"
       | false, [ lhs ] ->
@@ -101,11 +113,6 @@ and normalize_get_comp (k' : cont) (expr : T.term T.typed) : comp typed =
                  { constructor = "False" #: bool_ty; args = []; exp = ef };
                ] ))
           #: expr.ty)
-  (* | T.(Ite (cond, et, ef)) -> *)
-  (*     normalize_get_value *)
-  (*       (fun cond -> *)
-  (*         k (CIte { cond; et = normalize_term et; ef = normalize_term ef })) *)
-  (*       cond *)
   | T.(Match (matched, match_cases)) ->
       normalize_get_value
         (fun matched ->

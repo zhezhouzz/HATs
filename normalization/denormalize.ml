@@ -28,15 +28,30 @@ let rec denormalize_comp (comp : comp typed) : T.term T.typed =
           Match
             ( denormalize_value matched,
               List.map denormalize_match_case match_cases ))
-    | CLetE { lhs; rhs; letbody } ->
+    | CLetE { lhs; rhs; letbody } -> (
         T.(
-          Let
-            {
-              if_rec = false;
-              lhs = [ lhs ];
-              rhs = denormalize_comp rhs;
-              letbody = denormalize_comp letbody;
-            })
+          match rhs.x with
+          | CVal (VFix { fixname; fixarg; fixbody }) ->
+              let _ =
+                Sugar._check_equality __FILE__ __LINE__ String.equal fixname.x
+                  lhs.x
+              in
+              let f = VLam { lamarg = fixarg; lambody = fixbody } in
+              Let
+                {
+                  rhs = denormalize_comp (CVal f) #: rhs.ty;
+                  lhs = [ lhs ];
+                  letbody = denormalize_comp letbody;
+                  if_rec = true;
+                }
+          | _ ->
+              Let
+                {
+                  if_rec = false;
+                  lhs = [ lhs ];
+                  rhs = denormalize_comp rhs;
+                  letbody = denormalize_comp letbody;
+                }))
     | CApp { appf; apparg } ->
         T.(App (denormalize_value appf, [ denormalize_value apparg ]))
     | CAppOp { op; appopargs } ->
