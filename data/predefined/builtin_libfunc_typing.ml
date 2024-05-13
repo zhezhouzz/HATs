@@ -30,3 +30,15 @@ let[@libRty] setDeleted ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: Bytes.t]
 
 let[@libRty] isDir ?l:(a = (true : [%v: Bytes.t]) [@over]) : [%v: bool] =
   v == is_dir a
+
+(* Mirai *)
+let[@libRty] openFile ?l:(a = (true : [%v: Path.t]) [@over])
+    ?l:(c = (true : [%v: int]) [@over]) : [%v: bool] =
+  true
+
+let[@libRty] closeFile ?l:(a = (true : [%v: Path.t]) [@over]) : [%v: unit] =
+  true
+
+let[@libRty] ioctl ?l:(a = (true : [%v: Path.t]) [@over])
+    ?l:(c = (true : [%v: int]) [@over]) : [%v: unit] =
+  true

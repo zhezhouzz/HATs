@@ -142,6 +142,8 @@ let qualifier_of_ocamlexpr expr =
         | "ite", _ -> failwith "parsing: qualifier wrong ite"
         | "implies", [ e1; e2 ] -> Implies (aux e1, aux e2)
         | "implies", _ -> failwith "parsing: qualifier wrong implies"
+        | "#==>", [ e1; e2 ] -> Implies (aux e1, aux e2)
+        | "#==>", _ -> failwith "parsing: prop wrong implies"
         | "iff", [ e1; e2 ] -> Iff (aux e1, aux e2)
         | "iff", _ -> failwith "parsing: qualifier wrong iff"
         | "&&", [ a; b ] -> And [ aux a; aux b ]

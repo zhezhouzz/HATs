@@ -106,6 +106,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
         | Var x when is_effop opctx x ->
             check ctx (AppOp ({ x = Op.EffOp x; ty = f.ty }, args)) ty
         | _ ->
+            (* let () = Printf.printf "F: %s\n" (layout_term f) in *)
             let f, fty = bidirect_infer ctx f in
             (* let () = Printf.printf "F: %s\n" (layout f) in *)
             (* let () = Printf.printf "ty: %s\n" (Nt.layout ty) in *)
@@ -216,6 +217,7 @@ let type_check (opctx : NOpTypectx.ctx) (nctx : NTypectx.ctx) (x : term typed)
           in
           (Lam { lamarg; lambody }, ty)
       | AppOp (op, args) ->
+          (* let () = Printf.printf "%s\n" (Op.to_string op.x) in *)
           let args, argsty = List.split @@ List.map (bidirect_infer ctx) args in
           let op, opty = infer_op_may_eff opctx op in
           let argsty, retty = _solve_by_argsty __FILE__ __LINE__ opty argsty in

@@ -59,6 +59,7 @@ type inputs_setting = {
 }
 
 let load_opnctx filename =
+  (* let () = Printf.printf "filename: %s\n" filename in *)
   let pcode = load_raw_code_from_file filename in
   let opnctx = StructureRaw.mk_normal_top_ctx pcode in
   let opnctx = List.map ~f:(fun (x, ty) -> (Op.force_id_to_op x, ty)) opnctx in
@@ -214,6 +215,9 @@ let type_check_ (ri_input, s) source_file =
   let () =
     Stat.update_dt_dynamic_stat
       (ri_input.dt, ri_input.lib, !Stat.local_interface_dynamic_stat)
+  in
+  let () =
+    Printf.printf "SMT num: %i\n" !Stat.local_interface_dynamic_stat.numQuery
   in
   (* let () = Stat.dump default_stat_file ress in *)
   (* let () = Printf.printf "%s\n" @@ Smtquery.(layout_cache check_bool_cache) in *)

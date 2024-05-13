@@ -14,3 +14,7 @@ let[@axiom] elem3 ((a [@forall]) : Elem.t) ((b [@forall]) : Elem.t) =
 let[@axiom] elem4 ((a [@forall]) : Elem.t) ((b [@forall]) : Elem.t)
     ((c [@forall]) : Elem.t) =
   implies (elem_lt a b && elem_lt b c) (elem_lt a c)
+
+let[@axiom] code1 = can_read 2 && can_write 2
+let[@axiom] code2 ((a [@forall]) : Path.t) = is_disable_device a 1
+let[@axiom] code3 = can_execute 777

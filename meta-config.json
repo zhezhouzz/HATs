@@ -5,6 +5,8 @@
     // "preprocess",
     // "ntyping",
     // "typing",
+      // "desymbolic",
+      // "smt_regex",
     "result",
     "never-use"
   ],
@@ -23,7 +25,19 @@
         "elem_lt",
         "color_eq",
         "node_eq",
-        "cell_eq"
+        "cell_eq",
+        "can_read",
+        "can_write",
+        "is_disable_device",
+        "is_detect_device",
+        "disable_device",
+        "is_babuk_renamed",
+        "is_cron_link",
+        "is_daemon_path",
+        "is_tmp_dir",
+        "is_mining_script_link",
+        "is_null_dir",
+        "can_execute"
     ],
     "prim_path": {
         "qualifier_builtin_type": "data/predefined/qualifier_builtin_type.ml",

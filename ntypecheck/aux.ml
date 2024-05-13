@@ -6,7 +6,13 @@ module OpCtx = NOpTypectx
 open Nt
 open Sugar
 
-let infer_id nctx x = Ctx.get_ty nctx x
+let infer_id nctx x =
+  (* let () = *)
+  (*   Printf.printf "%s\n" @@ Zzdatatype.Datatype.List.split_by_comma fst nctx *)
+  (* in *)
+  (* let () = Printf.printf "x:%s\n" x in *)
+  Ctx.get_ty nctx x
+
 let is_builtop opctx x = OpCtx.exists opctx (Op.BuiltinOp x)
 let is_effop opctx x = OpCtx.exists opctx (Op.EffOp x)
 
@@ -69,6 +75,15 @@ let check_id nctx (x : string typed) : string typed * Nt.t =
   (_unify_update __FILE__ __LINE__ ty x, ty)
 
 let check_op opctx (x : Op.t typed) : Op.t typed * Nt.t =
+  (* let () = *)
+  (*   Printf.printf "%s\n" *)
+  (*   @@ Zzdatatype.Datatype.List.split_by_comma *)
+  (*        (fun (x, _) -> Sexplib.Sexp.to_string @@ Op.sexp_of_t x) *)
+  (*        opctx *)
+  (* in *)
+  (* let () = *)
+  (*   Printf.printf "x:%s\n" (Sexplib.Sexp.to_string @@ Op.sexp_of_t x.x) *)
+  (* in *)
   let ty = infer_op opctx x.x in
   (_unify_update __FILE__ __LINE__ ty x, ty)
 

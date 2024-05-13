@@ -1,5 +1,5 @@
 From stdpp Require Import stringmap mapset.
-  
+
 (** This file defines atom, i.e., variable names, and its related concepts. *)
 
 (** We use strings as variables in the core langauge. *)
