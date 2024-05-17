@@ -5,6 +5,8 @@
     // "preprocess",
     // "ntyping",
     // "typing",
+    // "desymbolic",
+    // "smt_regex",
     "result",
     "never-use"
   ],
