@@ -1,6 +1,6 @@
 let[@libRty] newCell ((x : Cell.t) [@ghost]) ?l:(a = (true : [%v: unit])) =
   {
-    pre = _G (Any true);
+    pre = _G (not (NewCell (x_0, v, v == x)));
     res = (v == x : [%v: Cell.t]);
     newadding = lastL && NewCell (x_0, v, v == x);
   }
