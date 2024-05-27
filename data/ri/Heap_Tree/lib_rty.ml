@@ -16,9 +16,9 @@ let[@libRty] addLeft ?l:(a = (true : [%v: Elem.t]))
 let[@libRty] addRight ?l:(a = (true : [%v: Elem.t]))
     ?l:(b = (true : [%v: Elem.t])) =
   {
-    pre = memP a && not (has_leftP a);
+    pre = memP a && not (has_rightP a);
     res = (true : [%v: unit]);
-    newadding = lastL && AddLeft ((a [@d]), (b [@d]), v, true);
+    newadding = lastL && AddRight ((a [@d]), (b [@d]), v, true);
   }
 
 let[@libRty] hasRoot ?l:(a = (true : [%v: unit])) =
