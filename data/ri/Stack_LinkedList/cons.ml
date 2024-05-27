@@ -2,7 +2,7 @@ let rec cons (x : Elem.t) (s : Cell.t) : Cell.t =
   if hasPrev s then s
   else
     let (c : Cell.t) = newCell () in
-    if isCell c then
+    if cell_eq c s then
       let (c' : Cell.t) = cons x s in
       c'
     else (
