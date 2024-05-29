@@ -1,8 +1,8 @@
 let minset_singleton (x : Elem.t) : bool =
   if isWritten () then false
   else (
-    insert x;
     write x;
+    insert x;
     true)
 
 let[@assertRty] minset_singleton ((m : Elem.t) [@ghost])
